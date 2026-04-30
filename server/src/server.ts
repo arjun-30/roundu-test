@@ -6,11 +6,13 @@ import { getPool, closePool } from './config/database';
 import { createApp } from './app';
 
 async function main() {
+  console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
   const db = getPool();
   const app = createApp({ db });
 
-  const httpServer = app.listen(env.PORT, '0.0.0.0', () => {
-    console.log(`[server] listening on port ${env.PORT} (${env.NODE_ENV})`);
+  const port = Number(process.env.PORT) || 5000;
+  const httpServer = app.listen(port, '0.0.0.0', () => {
+    console.log(`[server] listening on port ${port} (${env.NODE_ENV})`);
     console.log(`[server] Allowed CORS origins: ${env.corsOrigins.join(', ')}`);
   });
 
