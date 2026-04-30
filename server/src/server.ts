@@ -17,10 +17,10 @@ async function main() {
   // 3. Initialize Socket.IO on the HTTP server
   const io = new SocketServer(httpServer, {
     cors: { 
-      origin: env.corsOrigins,
+      origin: "*", 
+      methods: ["GET", "POST"],
       credentials: true 
     },
-    // Removing explicit transports to allow auto-negotiation
   });
 
   // Attach io to app locals so controllers can use it
