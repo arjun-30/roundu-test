@@ -18,12 +18,18 @@ async function main() {
   const io = new SocketServer(httpServer, {
     path: "/socket.io/",
     cors: { 
-      origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
+      origin: (origin, callback) => {
+        if (!origin || origin.includes('vercel.app') || env.corsOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
       credentials: true,
       methods: ["GET", "POST"]
     },
     allowEIO3: true,
-    transports: ['polling', 'websocket'] // Ensure polling is tried first for stable handshake
+    transports: ['polling', 'websocket']
   });
 
   // Attach io to app locals so controllers can use it
