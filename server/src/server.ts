@@ -10,7 +10,7 @@ async function main() {
   const httpServer = http.createServer();
   const io = new SocketServer(httpServer, {
     cors: { 
-      origin: env.isProduction ? "https://client-nine-ivory-62.vercel.app" : "*",
+      origin: env.corsOrigins,
       credentials: true 
     },
     transports: ['websocket', 'polling'],
