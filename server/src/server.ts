@@ -7,24 +7,17 @@ import { createApp } from './app';
 
 async function main() {
   const db = getPool();
-  
-  // 1. Create the Express app first
   const app = createApp({ db });
-  
-  // 2. Create the HTTP server using the Express app
-  const httpServer = http.createServer(app);
-  
-  // 3. Initialize Socket.IO on the HTTP server
+
+  const httpServer = app.listen(env.PORT, '0.0.0.0', () => {
+    console.log(`[server] listening on port ${env.PORT} (${env.NODE_ENV})`);
+    console.log(`[server] Allowed CORS origins: ${env.corsOrigins.join(', ')}`);
+  });
+
   const io = new SocketServer(httpServer, {
     path: "/socket.io/",
     cors: { 
-      origin: (origin, callback) => {
-        if (!origin || origin.includes('vercel.app') || env.corsOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(null, false);
-        }
-      },
+      origin: true, // Echo origin to bypass CORS
       credentials: true,
       methods: ["GET", "POST"]
     },
@@ -32,7 +25,6 @@ async function main() {
     transports: ['polling', 'websocket']
   });
 
-  // Attach io to app locals so controllers can use it
   app.locals.io = io;
 
   io.on('connection', (socket) => {
@@ -63,14 +55,6 @@ async function main() {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);
       }
-    });
-  });
-
-  await new Promise<void>((resolve) => {
-    httpServer.listen(env.PORT, '0.0.0.0', () => {
-      console.log(`[server] listening on port ${env.PORT} (${env.NODE_ENV})`);
-      console.log(`[server] Allowed CORS origins: ${env.corsOrigins.join(', ')}`);
-      resolve();
     });
   });
 
