@@ -7,18 +7,24 @@ import { createApp } from './app';
 
 async function main() {
   const db = getPool();
-  const httpServer = http.createServer();
+  
+  // 1. Create the Express app first
+  const app = createApp({ db });
+  
+  // 2. Create the HTTP server using the Express app
+  const httpServer = http.createServer(app);
+  
+  // 3. Initialize Socket.IO on the HTTP server
   const io = new SocketServer(httpServer, {
     cors: { 
       origin: env.corsOrigins,
       credentials: true 
     },
-    transports: ['websocket', 'polling'],
-    allowEIO3: true
+    // Removing explicit transports to allow auto-negotiation
   });
 
-  const app = createApp({ db, io });
-  httpServer.on('request', app);
+  // Attach io to app locals so controllers can use it
+  app.locals.io = io;
 
   io.on('connection', (socket) => {
     if (env.isDevelopment) {
@@ -27,12 +33,11 @@ async function main() {
 
     socket.on('new_booking', (data) => {
       console.log(`[socket] new_booking received: ${data.id}`);
-      // Broadcast to all clients (nearby filtering would happen here)
       socket.broadcast.emit('incoming_request', {
         id: `req-${data.id}`,
-        customerName: data.customerName || "Anita Sharma",
+        customerName: data.customerName || "Customer",
         serviceId: data.serviceId,
-        address: data.address || "12, MG Road, Indiranagar",
+        address: data.address || "Client Address",
         date: data.date,
         time: data.time,
         price: data.price,
@@ -42,7 +47,6 @@ async function main() {
     });
 
     socket.on('provider_location', (data) => {
-      // Relay provider location to customers
       socket.broadcast.emit('provider_location_update', data);
     });
 
@@ -55,8 +59,8 @@ async function main() {
 
   await new Promise<void>((resolve) => {
     httpServer.listen(env.PORT, '0.0.0.0', () => {
-      console.log(`[server] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
-      console.log(`[server] CORS origins: ${env.corsOrigins.join(', ')}`);
+      console.log(`[server] listening on port ${env.PORT} (${env.NODE_ENV})`);
+      console.log(`[server] Allowed CORS origins: ${env.corsOrigins.join(', ')}`);
       resolve();
     });
   });
