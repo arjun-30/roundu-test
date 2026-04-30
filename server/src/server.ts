@@ -16,11 +16,14 @@ async function main() {
   
   // 3. Initialize Socket.IO on the HTTP server
   const io = new SocketServer(httpServer, {
+    path: "/socket.io/",
     cors: { 
-      origin: "*", 
-      methods: ["GET", "POST"],
-      credentials: true 
+      origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
+      credentials: true,
+      methods: ["GET", "POST"]
     },
+    allowEIO3: true,
+    transports: ['polling', 'websocket'] // Ensure polling is tried first for stable handshake
   });
 
   // Attach io to app locals so controllers can use it
