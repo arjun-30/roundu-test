@@ -4,7 +4,7 @@
  * Priority: VITE_API_URL env var → Railway production URL
  */
 
-const RAILWAY_URL = "https://roundu-app.up.railway.app";
+const RAILWAY_URL = "roundu-app-production.up.railway.app";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||          // e.g. http://172.20.10.2:5000/api/v1
