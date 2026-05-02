@@ -1,8 +1,9 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/config/env";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
+  baseURL: API_BASE_URL,
   timeout: 15000, // 15s timeout
 });
 

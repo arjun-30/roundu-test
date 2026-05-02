@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://roundu-app.up.railway.app';
+import { API_BASE_URL } from '@/config/env';
 
 const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL: API_BASE_URL,
 });
 
 export const fetchProviderDashboard = async (userId: string) => {

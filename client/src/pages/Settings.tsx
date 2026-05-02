@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/config/env";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +31,7 @@ const Settings = () => {
     setDeleting(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-      const response = await axios.delete(`${apiUrl}/users/${user.id}`);
+      const response = await axios.delete(`${API_BASE_URL}/users/${user.id}`);
 
       if (response.data.success) {
         toast.success("Account deleted successfully");

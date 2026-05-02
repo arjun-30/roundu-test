@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/config/env";
 
 const OtpVerify = () => {
   const navigate = useNavigate();
@@ -40,8 +41,7 @@ const OtpVerify = () => {
     setLoading(true);
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-      const response = await axios.post(`${apiUrl}/auth/verify-otp`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         phone,
         otp: otpCode
       });

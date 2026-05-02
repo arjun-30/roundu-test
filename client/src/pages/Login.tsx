@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/env";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,8 +29,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-      const response = await axios.post(`${apiUrl}/auth/send-otp`, { phone: data.phone });
+      const response = await axios.post(`${API_BASE_URL}/auth/send-otp`, { phone: data.phone });
 
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
