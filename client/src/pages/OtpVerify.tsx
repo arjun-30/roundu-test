@@ -8,7 +8,7 @@ import { toast } from "sonner";
 const OtpVerify = () => {
   const navigate = useNavigate();
   const { phone, dispatch } = useApp();
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -22,41 +22,52 @@ const OtpVerify = () => {
     const next = [...otp];
     next[i] = digit;
     setOtp(next);
-    if (digit && i < 3) refs.current[i + 1]?.focus();
+    if (digit && i < 5) refs.current[i + 1]?.focus();
   };
 
   const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
-    if (e.key === "Enter" && otp.join("").length === 4) handleVerify();
+    if (e.key === "Enter" && otp.join("").length === 6) handleVerify();
   };
 
   const handleVerify = async () => {
-    if (otp.join("").length < 4) {
-      toast.error("Enter the 4-digit code");
+    const otpCode = otp.join("");
+    if (otpCode.length < 6) {
+      toast.error("Enter the 6-digit code");
       return;
     }
     
     setLoading(true);
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const response = await axios.post(`${apiUrl}/api/v1/auth/verify-otp`, {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+      const response = await axios.post(`${apiUrl}/auth/verify-otp`, {
         phone,
-        otp: otp.join("")
+        otp: otpCode
       });
 
       if (response.data.success) {
-        dispatch({ type: "SET_AUTH", value: true });
-        toast.success("Verified successfully");
+        const { token, user } = response.data;
         
-        // If they have a token, we could store it in localStorage here
-        if (response.data.token) {
-          localStorage.setItem("roundu_token", response.data.token);
+        // Store token
+        if (token) {
+          localStorage.setItem("roundu_token", token);
         }
 
-        const isReturning = phone === "9999999999";
-        if (isReturning) {
-          dispatch({ type: "SET_NEW_USER", value: false });
+        // Update Context
+        dispatch({ type: "SET_AUTH", value: true });
+        dispatch({ type: "SET_USER_ID", id: user.id });
+        dispatch({ type: "UPDATE_USER", user: {
+          name: user.name || "",
+          email: user.email || "",
+          address: user.address || "",
+          role: user.role || "customer"
+        }});
+
+        toast.success("Verified successfully");
+        
+        // Check if onboarding is needed
+        if (user.name) {
           navigate("/home", { replace: true });
         } else {
           navigate("/onboarding-name", { replace: true });
@@ -82,11 +93,11 @@ const OtpVerify = () => {
       <div className="mt-10 mb-8 animate-fade-in">
         <h1 className="text-3xl font-extrabold text-foreground leading-tight">Verify your number</h1>
         <p className="text-muted-foreground mt-3 text-sm">
-          We sent a 4-digit code to <span className="font-semibold text-foreground">+91 {phone}</span>
+          We sent a 6-digit code to <span className="font-semibold text-foreground">+91 {phone}</span>
         </p>
       </div>
 
-      <div className="flex gap-3 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
+      <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
         {otp.map((d, i) => (
           <input
             key={i}
@@ -95,7 +106,7 @@ const OtpVerify = () => {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             inputMode="numeric"
-            className="w-14 h-16 text-center text-2xl font-extrabold rounded-2xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-11 h-14 text-center text-xl font-extrabold rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
         ))}
       </div>
@@ -106,7 +117,7 @@ const OtpVerify = () => {
 
       <button
         onClick={handleVerify}
-        disabled={otp.join("").length < 4 || loading}
+        disabled={otp.join("").length < 6 || loading}
         className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:bg-secondary active:scale-[0.98] transition-all flex items-center justify-center gap-2"
       >
         {loading ? (

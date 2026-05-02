@@ -59,6 +59,10 @@ import Portfolio from "@/pages/provider/Portfolio";
 import Documents from "@/pages/provider/Documents";
 import GPSMonitor from "@/pages/provider/GPSMonitor";
 import ServiceSelection from "@/pages/ServiceSelection";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import NetworkStatus from "@/components/NetworkStatus";
 
 import DbCheck from "@/pages/DbCheck";
 import NotFound from "./pages/NotFound";
@@ -132,6 +136,8 @@ const AppRoutes = () => (
       <Route path="/provider/documents" element={<RequireAuth><Documents /></RequireAuth>} />
       <Route path="/provider/gps-monitor" element={<RequireAuth><GPSMonitor /></RequireAuth>} />
 
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
       <Route path="/db-check" element={<DbCheck />} />
       <Route path="*" element={<NotFound />} />
@@ -140,17 +146,20 @@ const AppRoutes = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppProvider>
-          <AppRoutes />
-        </AppProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <NetworkStatus />
+        <BrowserRouter>
+          <AppProvider>
+            <AppRoutes />
+          </AppProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

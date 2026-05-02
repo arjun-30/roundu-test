@@ -33,5 +33,9 @@ export const UserModel = {
       [id, ...values]
     );
     return res.rows[0];
+  },
+
+  async delete(id: string): Promise<void> {
+    await getPool().query('DELETE FROM users WHERE id = $1', [id]);
   }
 };

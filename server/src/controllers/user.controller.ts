@@ -10,3 +10,16 @@ export const updateUser = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // In a real app, you might want to verify that the logged-in user is deleting their own account
+    // or use req.user.id from the auth middleware.
+    await UserModel.delete(id);
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+

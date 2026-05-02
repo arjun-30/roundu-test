@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { env } from '../config/env';
 
-export const sendOTP = async (mobile: string) => {
+export const sendOTP = async (mobile: string, otp?: string) => {
   if (!env.MSG91_AUTH_KEY) {
     console.warn('MSG91_AUTH_KEY not set, skipping SMS send');
     return { success: true, message: 'Mock success' };
@@ -14,6 +14,7 @@ export const sendOTP = async (mobile: string) => {
         mobile: `91${mobile}`,
         authkey: env.MSG91_AUTH_KEY,
         sender: env.MSG91_SENDER_ID || 'ROUNDU',
+        otp: otp // Optional custom OTP
       }
     });
     console.log('MSG91 Response:', JSON.stringify(response.data));

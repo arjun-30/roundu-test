@@ -74,6 +74,87 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Payments Table
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'INR',
+    status VARCHAR(20) DEFAULT 'pending', -- pending, success, failed, refunded
+    razorpay_order_id VARCHAR(100),
+    razorpay_payment_id VARCHAR(100),
+    razorpay_signature VARCHAR(255),
+    method VARCHAR(50), -- card, upi, netbanking, wallet
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
+
+-- Ratings Table
+CREATE TABLE IF NOT EXISTS ratings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES users(id),
+    provider_id UUID REFERENCES providers(id),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ratings_provider ON ratings(provider_id);
+
+-- Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50), -- booking, payment, offer, general
+    is_read BOOLEAN DEFAULT false,
+    data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+
+-- KYC Documents Table
+CREATE TABLE IF NOT EXISTS kyc_documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    provider_id UUID REFERENCES providers(id) ON DELETE CASCADE,
+    document_type VARCHAR(50) NOT NULL, -- aadhar, pan, driving_license
+    document_number VARCHAR(100),
+    document_url TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, verified, rejected
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_kyc_docs_provider ON kyc_documents(provider_id);
+
+-- Deleted Accounts (Audit)
+CREATE TABLE IF NOT EXISTS deleted_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    phone VARCHAR(15) NOT NULL,
+    reason TEXT,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- OTP Attempts Table
+CREATE TABLE IF NOT EXISTS otp_attempts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    phone VARCHAR(15) NOT NULL,
+    otp_hash TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_attempts_phone ON otp_attempts(phone);
+
 -- Insert Initial Services
 INSERT INTO services (id, label, description, price_per_hr) VALUES
 ('plumber', 'Plumber', 'Pipes & drainage', 299),
@@ -82,3 +163,5 @@ INSERT INTO services (id, label, description, price_per_hr) VALUES
 ('drivers', 'Acting Drivers', 'Expert chauffeurs', 399),
 ('housekeeping', 'House Keeping', 'Deep & regular', 499)
 ON CONFLICT (id) DO NOTHING;
+
+
