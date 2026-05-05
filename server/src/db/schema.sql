@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     address TEXT,
     price DECIMAL(10, 2),
     notes TEXT,
+    voice_note BOOLEAN DEFAULT false,
     paid BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

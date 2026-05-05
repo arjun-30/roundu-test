@@ -29,6 +29,7 @@ interface State {
   selectedDate: string | null;
   selectedTime: string | null;
   bookingNotes: string;
+  bookingVoiceNote: boolean;
   // Records
   bookings: Booking[];
   providerRequests: ProviderRequest[];
@@ -79,7 +80,7 @@ type Action =
   | { type: "PAY_BOOKING"; id: string }
   | { type: "SELECT_DATE"; date: string }
   | { type: "SELECT_TIME"; time: string }
-  | { type: "SET_NOTES"; notes: string }
+  | { type: "SET_NOTES"; notes: string; voiceNote?: boolean }
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
@@ -116,6 +117,7 @@ const initialState: State = {
   selectedDate: null,
   selectedTime: null,
   bookingNotes: "",
+  bookingVoiceNote: false,
   bookings: [],
   providerRequests: [],
   completedJobs: [],
@@ -171,7 +173,7 @@ function reducer(state: State, action: Action): State {
     case "SELECT_TIME":
       return { ...state, selectedTime: action.time };
     case "SET_NOTES":
-      return { ...state, bookingNotes: action.notes };
+      return { ...state, bookingNotes: action.notes, bookingVoiceNote: action.voiceNote || false };
     case "PAY_BOOKING":
       return {
         ...state,
@@ -186,6 +188,7 @@ function reducer(state: State, action: Action): State {
         selectedDate: null,
         selectedTime: null,
         bookingNotes: "",
+        bookingVoiceNote: false,
       };
     case "ADD_BOOKING":
       return { ...state, bookings: [action.booking, ...state.bookings] };
@@ -329,7 +332,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                   address: b.address,
                   price: b.price,
                   status: b.status,
-                  notes: b.notes
+                  notes: b.notes,
+                  voiceNote: b.voice_note || false
                 }));
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
               }

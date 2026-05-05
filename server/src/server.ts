@@ -8,6 +8,12 @@ import { createApp } from './app';
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
   const db = getPool();
+  try {
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
+    console.log('[server] Database schema up to date.');
+  } catch (err) {
+    console.error('[server] Migration error:', err);
+  }
   const app = createApp({ db });
 
   const port = Number(process.env.PORT) || 5000;
@@ -45,7 +51,8 @@ async function main() {
         time: data.time,
         price: data.price,
         status: "pending",
-        notes: data.notes
+        notes: data.notes,
+        voiceNote: data.voice_note || false
       });
     });
 

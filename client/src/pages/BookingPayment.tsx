@@ -13,7 +13,8 @@ const BookingPayment = () => {
     selectedServiceId, 
     selectedDate = new Date().toISOString().slice(0, 10), 
     selectedTime = "10:00 AM", 
-    bookingNotes, 
+    bookingNotes,
+    bookingVoiceNote,
     bookings,
     user,
     dispatch,
@@ -94,6 +95,7 @@ const BookingPayment = () => {
               address: user.address || "Client Address",
               price: total,
               notes: bookingNotes,
+              voice_note: bookingVoiceNote, // Pass the boolean flag
               payment_id: response.razorpay_payment_id,
             };
 

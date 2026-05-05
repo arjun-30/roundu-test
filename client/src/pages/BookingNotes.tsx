@@ -51,9 +51,9 @@ const BookingNotes = () => {
   };
 
   const handleNext = useCallback(() => {
-    dispatch({ type: "SET_NOTES", notes });
+    dispatch({ type: "SET_NOTES", notes, voiceNote: audioBlob });
     navigate("/booking/payment");
-  }, [dispatch, navigate, notes]);
+  }, [dispatch, navigate, notes, audioBlob]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

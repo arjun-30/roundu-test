@@ -42,6 +42,7 @@ export interface Booking {
   rating?: number;
   review?: string;
   paid?: boolean;
+  voiceNote?: boolean;
 }
 
 export interface ProviderRequest {
@@ -54,6 +55,7 @@ export interface ProviderRequest {
   price: number;
   status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
   notes?: string;
+  voiceNote?: boolean;
 }
 
 export const services: Service[] = [
