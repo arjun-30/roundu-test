@@ -1,16 +1,18 @@
-import { ArrowLeft, Camera, User, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Camera, User, Mail, Phone, Briefcase } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
+import { services } from "@/data/mockData";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { user } = useApp();
+  const { user, providerRegistrationDraft } = useApp();
 
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || "hello@roundu.in");
   const [phone, setPhone] = useState(user.phone);
+  const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
 
   const handleSave = () => {
     // API call would go here
@@ -78,6 +80,24 @@ const EditProfile = () => {
               />
             </div>
           </div>
+
+          {user.role === "provider" && (
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1 mb-2 block">Primary Service *</label>
+              <div className="relative">
+                <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select 
+                  value={serviceId}
+                  onChange={(e) => setServiceId(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm appearance-none"
+                >
+                  {services.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         <button 
