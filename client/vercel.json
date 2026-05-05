@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://roundu-app-production.up.railway.app/api/:match*"
+    },
+    {
+      "source": "/socket.io/:match*",
+      "destination": "https://roundu-app-production.up.railway.app/socket.io/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
