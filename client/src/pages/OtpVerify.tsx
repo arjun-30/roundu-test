@@ -68,7 +68,13 @@ const OtpVerify = () => {
         
         // Check if onboarding is needed
         if (user.name) {
-          navigate("/home", { replace: true });
+          if (user.role === "provider") {
+            dispatch({ type: "SET_ROLE", role: "provider" });
+            navigate("/provider", { replace: true });
+          } else {
+            dispatch({ type: "SET_ROLE", role: "customer" });
+            navigate("/home", { replace: true });
+          }
         } else {
           navigate("/onboarding-name", { replace: true });
         }
