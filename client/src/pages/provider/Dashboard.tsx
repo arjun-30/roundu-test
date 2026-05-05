@@ -76,13 +76,17 @@ const Dashboard = () => {
             </button>
           </div>
           <button 
-            onClick={() => navigate("/role-select")}
+            onClick={() => navigate("/provider/profile")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
-            title="Switch to Customer"
+            title="Provider Profile"
           >
             <User size={18} className="text-foreground" />
           </button>
-          <button className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative">
+          <button 
+            onClick={() => navigate("/notifications")}
+            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
+            title="Notifications"
+          >
             <Bell size={18} className="text-foreground" />
             {pending.length > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>

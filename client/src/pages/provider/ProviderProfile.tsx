@@ -56,7 +56,7 @@ const ProviderProfile = () => {
         </div>
 
         <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
-          <Item icon={User} label="Edit Profile" onClick={() => toast("Edit Profile coming soon")} />
+          <Item icon={User} label="Edit Profile" onClick={() => navigate("/profile/edit")} />
           <Item icon={ImageIcon} label="My Portfolio" onClick={() => navigate("/provider/portfolio")} />
           <Item icon={FileText} label="Documents & KYC" onClick={() => navigate("/provider/documents")} />
           <Item icon={Briefcase} label="My Jobs" onClick={() => navigate("/provider/jobs")} />
