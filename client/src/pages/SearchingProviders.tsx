@@ -67,21 +67,9 @@ const SearchingProviders = () => {
     };
   };
 
-  // Logic: Success transition (Simulated) + Real-time Notification
+  // Logic: Success transition
   useEffect(() => {
     if (!hasTriggered.current) {
-      // Trigger a real booking notification via Socket.io
-      addBooking({
-        id: `book-${Date.now()}`,
-        providerId: "searching", 
-        serviceId: serviceId || "electrician",
-        date: new Date().toISOString().slice(0, 10),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        notes: "Quick fix request from customer",
-        status: "pending",
-        createdAt: Date.now(),
-        price: 299,
-      });
       hasTriggered.current = true;
     }
 

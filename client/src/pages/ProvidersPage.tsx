@@ -7,7 +7,7 @@ import ProviderCard from "@/components/ProviderCard";
 import FilterModal, { FilterValues } from "@/components/FilterModal";
 import EmptyState from "@/components/EmptyState";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import api, { createBooking } from "@/lib/api";
 
 const tabs = ["All", "Top Rated", "Nearest", "Budget", "Fastest"];
 const defaultFilters: FilterValues = { maxPrice: 1000, minRating: 0, maxDistance: 50, availableOnly: false };
@@ -15,7 +15,7 @@ const defaultFilters: FilterValues = { maxPrice: 1000, minRating: 0, maxDistance
 const ProvidersPage = () => {
   const { serviceId = "" } = useParams();
   const navigate = useNavigate();
-  const { dispatch, addBooking } = useApp();
+  const { dispatch, addBooking, user } = useApp();
   const service = getServiceById(serviceId);
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState("");
@@ -71,27 +71,35 @@ const ProvidersPage = () => {
     return l;
   }, [providers, q, filters, tab]);
 
-  const handleBook = (id: string) => {
+  const handleBook = async (id: string) => {
     dispatch({ type: "SELECT_PROVIDER", id });
     dispatch({ type: "SELECT_SERVICE", id: serviceId });
     
-    // Create the booking immediately (Pay after work)
-    const newBooking = {
-      id: `bk-${Date.now()}`,
-      providerId: id,
-      serviceId: serviceId,
-      date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      notes: "Quick fix requested",
-      status: "assigned",
-      createdAt: Date.now(),
+    // Create the booking via backend API
+    const bookingData = {
+      customer_id: user.id,
+      provider_id: id,
+      service_id: serviceId,
+      scheduled_at: `${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      address: user.address || "Client Address",
       price: providers.find(p => p.id === id)?.pricePerHr || 299,
-      paid: false, // Payment happens later
+      notes: "Quick fix requested",
+      voice_note: false,
     };
 
-    addBooking(newBooking);
-    toast.success("Booking confirmed!");
-    navigate(`/booking/success/${newBooking.id}`);
+    try {
+      const res = await createBooking(bookingData);
+      if (res.success) {
+        addBooking(res.data);
+        toast.success("Booking confirmed!");
+        navigate(`/booking/success/${res.data.id}`);
+      } else {
+        toast.error("Failed to confirm booking.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error creating booking. Check your connection.");
+    }
   };
 
   return (
