@@ -50,9 +50,12 @@ const ProvidersPage = () => {
       ...p,
       pricePerHr: p.price_per_hr || 299,
       rating: parseFloat(p.rating || "0"),
+      reviews: Math.floor(Math.random() * 200) + 50, // Simulated reviews
       distanceKm: p.distance_km || 5, // Simulated for now
       etaMin: p.eta_min || 15, // Simulated for now
-      available: p.is_online
+      available: p.is_online,
+      avatar: p.avatar_url || p.name?.charAt(0) || "P",
+      tags: ["Verified", "Fast"] // Default tags for now
     }));
 
     l = l.filter(
