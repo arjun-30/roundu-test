@@ -1,15 +1,10 @@
 import { ArrowLeft, Bell, CalendarCheck, Gift, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const notifications = [
-  { id: 1, type: "booking", title: "Booking Confirmed", desc: "Your AC Cleaning is scheduled for tomorrow at 10 AM.", time: "1h ago", read: false },
-  { id: 2, type: "offer", title: "Flash Sale!", desc: "Get 20% off on all deep cleaning services today.", time: "3h ago", read: false },
-  { id: 3, type: "payment", title: "Cashback Credited", desc: "₹50 has been added to your RoundU wallet.", time: "1d ago", read: true },
-  { id: 4, type: "reminder", title: "Upcoming Service", desc: "Your booked electrician is arriving in 30 minutes.", time: "2d ago", read: true },
-];
+import { useApp } from "@/context/AppContext";
 
 const Notifications = () => {
   const navigate = useNavigate();
+  const { notifications } = useApp();
 
   const getIcon = (type: string) => {
     switch(type) {
@@ -28,6 +23,14 @@ const Notifications = () => {
     }
   };
 
+  const formatTime = (ts: number) => {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  };
+
   return (
     <div className="min-h-full flex flex-col bg-[#F5F6FA] pb-24 font-sans">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
@@ -43,22 +46,29 @@ const Notifications = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 space-y-3">
-        {notifications.map(n => (
-          <div key={n.id} className={`p-4 rounded-2xl border transition-all ${n.read ? 'bg-white border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] opacity-70' : 'bg-white border-blue-100 shadow-[0_4px_20px_rgba(37,99,235,0.08)] ring-1 ring-blue-50'}`}>
-            <div className="flex gap-3.5">
-              <div className={`w-11 h-11 rounded-full flex items-center justify-center border flex-shrink-0 ${getIconBg(n.type)}`}>
-                {getIcon(n.type)}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className={`text-[15px] ${n.read ? 'font-bold text-gray-700' : 'font-extrabold text-gray-900'}`}>{n.title}</h3>
-                  <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">{n.time}</span>
+        {notifications.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 font-medium">
+            <Bell size={40} className="mx-auto mb-3 opacity-30" />
+            <p>No new notifications</p>
+          </div>
+        ) : (
+          notifications.map(n => (
+            <div key={n.id} className="p-4 rounded-2xl border transition-all bg-white border-blue-100 shadow-[0_4px_20px_rgba(37,99,235,0.08)] ring-1 ring-blue-50">
+              <div className="flex gap-3.5">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center border flex-shrink-0 ${getIconBg("default")}`}>
+                  {getIcon("default")}
                 </div>
-                <p className={`text-[13px] leading-snug mt-0.5 ${n.read ? 'text-gray-500 font-medium' : 'text-gray-600 font-semibold'}`}>{n.desc}</p>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-[15px] font-extrabold text-gray-900">Alert</h3>
+                    <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">{formatTime(n.ts)}</span>
+                  </div>
+                  <p className="text-[13px] leading-snug mt-0.5 text-gray-600 font-semibold">{n.text}</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
