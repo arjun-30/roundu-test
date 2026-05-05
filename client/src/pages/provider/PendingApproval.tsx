@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { toast } from 'sonner';
+import api from '@/lib/api';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
-  const { providerRegistrationDraft } = useApp();
+  const { providerRegistrationDraft, user, dispatch } = useApp();
   const { kyc } = providerRegistrationDraft;
 
   // We'll add a secret simulation feature for demo purposes: 
@@ -80,32 +81,38 @@ const PendingApproval = () => {
 
       <div className="flex flex-col w-full max-w-[320px] gap-3 mb-8 relative z-10">
         <button 
-          onClick={() => {
-            toast.promise(
-              new Promise((resolve) => setTimeout(resolve, 2000)),
-              {
-                loading: 'Checking global server status...',
-                success: 'All systems green!',
-                error: 'Connection failed',
-              }
-            );
+          onClick={async () => {
+            if (!user?.id) {
+              toast.error("User not authenticated");
+              return;
+            }
+            const promise = async () => {
+              const res = await api.registerProvider({
+                userId: user.id,
+                bio: providerRegistrationDraft.bio,
+                experienceYears: providerRegistrationDraft.experienceYears,
+                workingHours: providerRegistrationDraft.workingHours,
+                serviceRadius: providerRegistrationDraft.serviceRadius,
+                serviceIds: providerRegistrationDraft.serviceIds
+              });
+              if (!res.success) throw new Error(res.message || "Registration failed");
+              dispatch({ type: "SET_ROLE", role: "provider" });
+              return res;
+            };
+
+            toast.promise(promise(), {
+              loading: 'Submitting registration securely to database...',
+              success: () => {
+                setTimeout(() => navigate('/provider'), 1000);
+                return "Registration successful! Redirecting to Dashboard...";
+              },
+              error: (err) => err.message || 'Connection failed',
+            });
           }}
           className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-black text-sm flex items-center justify-center gap-3 shadow-xl shadow-accent/20 active:scale-[0.98] transition-all"
         >
-          <BellRing size={20} strokeWidth={2.5} />
-          Check Live Status
-        </button>
-        
-        {/* DEV ONLY: Simulate Approval */}
-        <button 
-          onClick={() => {
-            toast.success("Hooray! You've been approved.");
-            setTimeout(() => navigate('/provider'), 1500);
-          }}
-          className="w-full h-14 rounded-2xl border-2 border-dashed border-border bg-transparent text-muted-foreground font-bold text-xs flex items-center justify-center gap-2 hover:border-accent/40 hover:text-accent transition-all active:scale-[0.98]"
-        >
-          <CheckCircle2 size={16} />
-          Simulate Admin Approval (Demo Only)
+          <CheckCircle2 size={20} strokeWidth={2.5} />
+          Complete Registration
         </button>
       </div>
 

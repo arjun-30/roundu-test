@@ -25,6 +25,11 @@ export const updateUser = async (userId: string, data: any) => {
   return res.data;
 };
 
+export const registerProvider = async (data: any) => {
+  const res = await api.post('/providers/register', data);
+  return res.data;
+};
+
 export const loadRazorpay = () => {
   return new Promise((resolve) => {
     if ((window as any).Razorpay) {

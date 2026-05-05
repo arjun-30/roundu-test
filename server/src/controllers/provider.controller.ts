@@ -39,3 +39,26 @@ export const searchProviders = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+export const registerProvider = async (req: Request, res: Response) => {
+  try {
+    const { userId, bio, experienceYears, workingHours, serviceRadius, serviceIds } = req.body;
+    
+    if (!userId || !serviceIds || serviceIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const provider = await ProviderModel.register(userId, {
+      bio: bio || '',
+      experienceYears: experienceYears || 1,
+      workingHours: workingHours || '9 AM - 6 PM',
+      serviceRadius: serviceRadius || 5,
+      serviceIds
+    });
+
+    res.status(201).json({ success: true, data: provider, message: 'Provider registered successfully' });
+  } catch (error) {
+    console.error('Register provider error:', error);
+    res.status(500).json({ success: false, message: 'Failed to register provider' });
+  }
+};
