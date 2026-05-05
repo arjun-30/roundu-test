@@ -4,11 +4,19 @@ import { useApp } from "@/context/AppContext";
 
 const RoleSelect = () => {
   const navigate = useNavigate();
-  const { dispatch } = useApp();
+  const { dispatch, user } = useApp();
 
   const select = (role: "customer" | "provider") => {
     dispatch({ type: "SET_ROLE", role });
-    navigate(role === "customer" ? "/onboarding" : "/provider/select-service", { replace: true });
+    if (role === "customer") {
+      navigate("/home", { replace: true });
+    } else {
+      if (user.role === "provider") {
+        navigate("/provider", { replace: true });
+      } else {
+        navigate("/provider/select-service", { replace: true });
+      }
+    }
   };
 
   return (

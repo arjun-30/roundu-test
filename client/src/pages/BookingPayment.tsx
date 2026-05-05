@@ -16,7 +16,8 @@ const BookingPayment = () => {
     bookingNotes, 
     bookings,
     user,
-    dispatch 
+    dispatch,
+    addBooking
   } = useApp();
   
   const [method, setMethod] = useState<"wallet" | "upi">("wallet");
@@ -98,7 +99,7 @@ const BookingPayment = () => {
 
             const bookingRes = await createBooking(bookingData);
             if (bookingRes.success) {
-              dispatch({ type: "ADD_BOOKING", booking: bookingRes.data });
+              addBooking(bookingRes.data);
               dispatch({ type: "RESET_BOOKING_DRAFT" });
               toast.success("Payment Successful!");
               navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });

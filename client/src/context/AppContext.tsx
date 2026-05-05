@@ -6,7 +6,7 @@ import {
 } from "@/data/mockData";
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
-import { fetchProviderDashboard, fetchCustomerBookings } from "@/lib/api";
+import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
 
 type Role = "customer" | "provider" | null;
 
@@ -68,6 +68,7 @@ interface State {
 
 type Action =
   | { type: "ADD_PROVIDER_REQUEST"; request: ProviderRequest }
+  | { type: "SET_PROVIDER_REQUESTS"; requests: ProviderRequest[] }
   | { type: "SET_PHONE"; phone: string }
   | { type: "SET_USER_ID"; id: string }
   | { type: "SET_AUTH"; value: boolean }
@@ -149,6 +150,8 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "ADD_PROVIDER_REQUEST":
       return { ...state, providerRequests: [action.request, ...state.providerRequests] };
+    case "SET_PROVIDER_REQUESTS":
+      return { ...state, providerRequests: action.requests };
     case "SET_PHONE":
       return { ...state, phone: action.phone, user: { ...state.user, phone: action.phone } };
     case "SET_USER_ID":
@@ -313,6 +316,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const dashboard = await fetchProviderDashboard(state.user.id);
             if (dashboard.success) {
               dispatch({ type: "UPDATE_STATS", patch: dashboard.data.stats });
+              const providerId = dashboard.data.provider.id;
+              const pbRes = await fetchProviderBookings(providerId);
+              if (pbRes.success) {
+                const mappedRequests = pbRes.data.map((b: any) => ({
+                  id: b.id,
+                  customerId: b.customer_id,
+                  customerName: "Customer", // In a full app, join with users table
+                  serviceId: b.service_id,
+                  date: b.scheduled_at?.split(' ')[0] || "Today",
+                  time: b.scheduled_at?.split(' ')[1] || "10:00 AM",
+                  address: b.address,
+                  price: b.price,
+                  status: b.status,
+                  notes: b.notes
+                }));
+                dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
+              }
             }
           } else if (state.role === 'customer') {
             const bookings = await fetchCustomerBookings(state.user.id);

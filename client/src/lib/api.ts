@@ -15,6 +15,11 @@ export const fetchCustomerBookings = async (userId: string) => {
   return res.data;
 };
 
+export const fetchProviderBookings = async (providerId: string) => {
+  const res = await api.get(`/bookings/provider/${providerId}`);
+  return res.data;
+};
+
 export const createBooking = async (bookingData: any) => {
   const res = await api.post('/bookings', bookingData);
   return res.data;

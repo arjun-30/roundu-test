@@ -15,7 +15,7 @@ const defaultFilters: FilterValues = { maxPrice: 1000, minRating: 0, maxDistance
 const ProvidersPage = () => {
   const { serviceId = "" } = useParams();
   const navigate = useNavigate();
-  const { dispatch } = useApp();
+  const { dispatch, addBooking } = useApp();
   const service = getServiceById(serviceId);
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState("");
@@ -89,7 +89,7 @@ const ProvidersPage = () => {
       paid: false, // Payment happens later
     };
 
-    dispatch({ type: "ADD_BOOKING", booking: newBooking });
+    addBooking(newBooking);
     toast.success("Booking confirmed!");
     navigate(`/booking/success/${newBooking.id}`);
   };
