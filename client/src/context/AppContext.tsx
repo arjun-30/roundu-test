@@ -353,27 +353,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     syncDb();
   }, [state.isAuthenticated, state.user.id, state.role]);
 
-  // Re-join provider room when role becomes provider
-  useEffect(() => {
-    if (state.role === "provider" && socket.connected) {
-      socket.emit("join_provider");
-    }
-  }, [state.role]);
-
-  // Socket.io Real-time Setup
+  // Socket.io Real-time Setup — connect once, handle incoming_request always
   useEffect(() => {
     socket.connect();
 
-    socket.on("connect", () => {
-      // If the user is a provider, join the providers room
-      if (state.role === "provider") {
-        socket.emit("join_provider");
-      }
-    });
-
     socket.on("incoming_request", (request: ProviderRequest) => {
+      // Only process if currently acting as a provider
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      dispatch({ type: "ADD_NOTIFICATION", text: `New ${request.serviceId} request from ${request.customerName}!` });
+      dispatch({ type: "ADD_NOTIFICATION", text: `📦 New ${request.serviceId} job from ${request.customerName}!` });
     });
 
     socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
@@ -381,11 +368,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
-      socket.off("connect");
       socket.off("incoming_request");
+      socket.off("provider_location_update");
       socket.disconnect();
     };
   }, []);
+
+  // Join providers room whenever we become a provider (or on reconnect while provider)
+  useEffect(() => {
+    const joinRoom = () => {
+      if (state.role === "provider") {
+        socket.emit("join_provider");
+        console.log("[socket] joining providers room");
+      }
+    };
+
+    // Join immediately if already connected
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    // Also join on every (re)connect while role is provider
+    socket.on("connect", joinRoom);
+
+    return () => {
+      socket.off("connect", joinRoom);
+    };
+  }, [state.role]);
 
   // Sync bookings to socket (notify providers)
   const addBooking = useCallback((booking: Booking) => {

@@ -34,6 +34,18 @@ const Dashboard = () => {
 
   const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
 
+  // Alert provider when new job request arrives
+  const prevPendingCount = useState(pending.length)[0];
+  useEffect(() => {
+    if (pending.length > 0) {
+      const latest = pending[0];
+      toast(`📦 New job from ${latest.customerName} — ${latest.serviceId}`, {
+        description: `₹${latest.price} · ${latest.address}`,
+        duration: 8000,
+      });
+    }
+  }, [pending.length]);
+
   useEffect(() => {
     if (isCritical) {
       setShowPip(true);

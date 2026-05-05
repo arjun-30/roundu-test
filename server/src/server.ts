@@ -47,8 +47,8 @@ async function main() {
 
     socket.on('new_booking', (data) => {
       console.log(`[socket] new_booking received: ${data.id}`);
-      // Emit to all providers in the 'providers' room
-      io.to('providers').emit('incoming_request', {
+      // Broadcast to ALL connected sockets — every client filters on their own role
+      io.emit('incoming_request', {
         id: `req-${data.id}`,
         customerName: data.customerName || "Customer",
         serviceId: data.serviceId,
