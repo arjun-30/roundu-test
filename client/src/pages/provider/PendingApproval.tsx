@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import { registerProvider } from '@/lib/api';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ const PendingApproval = () => {
               return;
             }
             const promise = async () => {
-              const res = await api.registerProvider({
+              const res = await registerProvider({
                 userId: user.id,
                 bio: providerRegistrationDraft.bio,
                 experienceYears: providerRegistrationDraft.experienceYears,
