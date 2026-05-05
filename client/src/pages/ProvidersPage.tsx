@@ -46,22 +46,29 @@ const ProvidersPage = () => {
     if (q) l = l.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
     
     // Convert DB fields to frontend card fields if needed
-    l = l.map(p => ({
-      ...p,
-      pricePerHr: p.price_per_hr || 299,
-      rating: parseFloat(p.rating || "0"),
-      reviews: Math.floor(Math.random() * 200) + 50, // Simulated reviews
-      distanceKm: p.distance_km || 5, // Simulated for now
-      etaMin: p.eta_min || 15, // Simulated for now
-      available: p.is_online,
-      avatar: p.avatar_url || p.name?.charAt(0) || "P",
-      tags: ["Verified", "Fast"] // Default tags for now
-    }));
+    l = l.map(p => {
+      // Generate a consistent pseudo-random distance based on their name length so it stays stable
+      const nameHash = p.name ? p.name.charCodeAt(0) + p.name.length : 15;
+      const calculatedDistance = p.distance_km || (nameHash % 60) + 1; // 1 to 60 km
+      
+      return {
+        ...p,
+        pricePerHr: p.price_per_hr || 299,
+        rating: parseFloat(p.rating || "0"),
+        reviews: Math.floor(Math.random() * 200) + 50,
+        distanceKm: calculatedDistance,
+        etaMin: calculatedDistance * 3, // Roughly 3 mins per km
+        available: p.is_online,
+        avatar: p.avatar_url || p.name?.charAt(0) || "P",
+        tags: ["Verified", "Fast"]
+      };
+    });
 
     l = l.filter(
       (p) =>
         p.pricePerHr <= filters.maxPrice &&
         p.rating >= filters.minRating &&
+        p.distanceKm <= filters.maxDistance &&
         (!filters.availableOnly || p.available)
     );
     
@@ -72,6 +79,12 @@ const ProvidersPage = () => {
   }, [providers, q, filters, tab]);
 
   const handleBook = async (id: string) => {
+    if (!user || !user.id) {
+      toast.error("Please log in to book a service");
+      navigate("/auth", { replace: true });
+      return;
+    }
+
     dispatch({ type: "SELECT_PROVIDER", id });
     dispatch({ type: "SELECT_SERVICE", id: serviceId });
     
@@ -82,7 +95,7 @@ const ProvidersPage = () => {
       service_id: serviceId,
       scheduled_at: `${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       address: user.address || "Client Address",
-      price: providers.find(p => p.id === id)?.pricePerHr || 299,
+      price: list.find(p => p.id === id)?.pricePerHr || 299,
       notes: "Quick fix requested",
       voice_note: false,
     };
