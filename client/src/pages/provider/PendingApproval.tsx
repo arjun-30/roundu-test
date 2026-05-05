@@ -97,6 +97,7 @@ const PendingApproval = () => {
               });
               if (!res.success) throw new Error(res.message || "Registration failed");
               dispatch({ type: "SET_ROLE", role: "provider" });
+              dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
               return res;
             };
 

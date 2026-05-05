@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { User, Wrench, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
@@ -6,16 +7,36 @@ const RoleSelect = () => {
   const navigate = useNavigate();
   const { dispatch, user } = useApp();
 
-  const select = (role: "customer" | "provider") => {
+  const [loading, setLoading] = useState(false);
+
+  const select = async (role: "customer" | "provider") => {
     dispatch({ type: "SET_ROLE", role });
     if (role === "customer") {
       navigate("/home", { replace: true });
     } else {
+      // If local state says they are a provider, trust it
       if (user.role === "provider") {
         navigate("/provider", { replace: true });
-      } else {
-        navigate("/provider/select-service", { replace: true });
+        return;
       }
+      
+      // Otherwise, double-check the database just in case the local state is stale
+      setLoading(true);
+      try {
+        const { fetchProviderDashboard } = await import("@/lib/api");
+        const res = await fetchProviderDashboard(user.id);
+        if (res.success) {
+          dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
+          navigate("/provider", { replace: true });
+          return;
+        }
+      } catch (err) {
+        // Not a provider yet or error
+      } finally {
+        setLoading(false);
+      }
+      
+      navigate("/provider/select-service", { replace: true });
     }
   };
 

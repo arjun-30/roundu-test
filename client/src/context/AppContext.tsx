@@ -16,6 +16,7 @@ interface UserProfile {
   phone: string;
   email: string;
   address: string;
+  role?: "customer" | "provider";
 }
 
 interface State {
