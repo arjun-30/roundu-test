@@ -216,6 +216,9 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.map((r) =>
           r.id === action.id ? { ...r, status: "accepted" } : r
         ),
+        bookings: state.bookings.map((b) => 
+          b.id === action.id.replace('req-', '') ? { ...b, status: "assigned" } : b
+        )
       };
     case "REJECT_REQUEST":
       return {
@@ -228,6 +231,9 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.map((r) =>
           r.id === action.id ? { ...r, ...action.patch } : r
         ),
+        bookings: state.bookings.map((b) => 
+          b.id === action.id.replace('req-', '') ? { ...b, ...action.patch } : b
+        )
       };
     case "COMPLETE_REQUEST": {
       const req = state.providerRequests.find((r) => r.id === action.id);
@@ -236,6 +242,9 @@ function reducer(state: State, action: Action): State {
         ...state,
         providerRequests: state.providerRequests.filter((r) => r.id !== action.id),
         completedJobs: [{ ...req, status: "completed" }, ...state.completedJobs],
+        bookings: state.bookings.map((b) => 
+          b.id === action.id.replace('req-', '') ? { ...b, status: "completed" } : b
+        )
       };
     }
     case "UPDATE_REGISTRATION_DRAFT":

@@ -20,20 +20,8 @@ const Tracking = () => {
   const booking = bookings.find((b) => b.id === id);
   const [eta, setEta] = useState(15);
 
-  useEffect(() => {
-    if (!booking) return;
-    if (booking.status === "completed") return;
-    const t = setInterval(() => {
-      const idx = stages.indexOf(booking.status);
-      if (idx >= 0 && idx < stages.length - 1) {
-        const nextStatus = stages[idx + 1];
-        dispatch({ type: "UPDATE_BOOKING", id: booking.id, patch: { status: nextStatus } });
-        dispatch({ type: "ADD_NOTIFICATION", text: `Status updated: ${stageLabels[nextStatus].title}` });
-      }
-    }, 4000);
-    return () => clearInterval(t);
-  }, [booking?.status, booking?.id, dispatch]);
-
+  // Simulated live tracking status updates have been removed.
+  // The status is now driven solely by the provider's actions via AppContext.
   useEffect(() => {
     const t = setInterval(() => setEta((e) => Math.max(0, e - 1)), 2000);
     return () => clearInterval(t);
