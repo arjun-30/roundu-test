@@ -40,9 +40,15 @@ async function main() {
       console.log(`[socket] client connected: ${socket.id}`);
     }
 
+    socket.on('join_provider', () => {
+      socket.join('providers');
+      console.log(`[socket] ${socket.id} joined providers room`);
+    });
+
     socket.on('new_booking', (data) => {
       console.log(`[socket] new_booking received: ${data.id}`);
-      socket.broadcast.emit('incoming_request', {
+      // Emit to all providers in the 'providers' room
+      io.to('providers').emit('incoming_request', {
         id: `req-${data.id}`,
         customerName: data.customerName || "Customer",
         serviceId: data.serviceId,

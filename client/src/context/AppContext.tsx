@@ -353,9 +353,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     syncDb();
   }, [state.isAuthenticated, state.user.id, state.role]);
 
+  // Re-join provider room when role becomes provider
+  useEffect(() => {
+    if (state.role === "provider" && socket.connected) {
+      socket.emit("join_provider");
+    }
+  }, [state.role]);
+
   // Socket.io Real-time Setup
   useEffect(() => {
     socket.connect();
+
+    socket.on("connect", () => {
+      // If the user is a provider, join the providers room
+      if (state.role === "provider") {
+        socket.emit("join_provider");
+      }
+    });
 
     socket.on("incoming_request", (request: ProviderRequest) => {
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
@@ -367,6 +381,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
+      socket.off("connect");
       socket.off("incoming_request");
       socket.disconnect();
     };
