@@ -26,8 +26,11 @@ const Home = () => {
     { icon: Smartphone, label: "Refer & Earn", path: "/refer-earn" },
     { icon: Settings, label: "Settings", path: "/settings" },
     { icon: HelpCircle, label: "Help & Support", path: "/support" },
-    { icon: Wrench, label: "Switch to Provider", path: "/role-select" },
   ];
+
+  if (user.role === "provider") {
+    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role-select" });
+  }
 
   return (
     <div className="min-h-full flex flex-col bg-[#F5F6FA] pb-24 relative">

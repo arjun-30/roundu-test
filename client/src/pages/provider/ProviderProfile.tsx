@@ -61,7 +61,7 @@ const ProviderProfile = () => {
           <Item icon={FileText} label="Documents & KYC" onClick={() => navigate("/provider/documents")} />
           <Item icon={Briefcase} label="My Jobs" onClick={() => navigate("/provider/jobs")} />
           <Item icon={Wallet} label="Earnings" onClick={() => navigate("/provider/earnings")} />
-          <Item icon={Settings} label="Location Settings" onClick={() => navigate("/provider/location-settings")} last />
+          <Item icon={Settings} label="Location Settings" onClick={() => navigate("/provider/gps-monitor")} last />
         </div>
 
         <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
