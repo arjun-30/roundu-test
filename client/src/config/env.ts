@@ -15,14 +15,5 @@ export const API_BASE_URL = Capacitor.isNativePlatform()
     ? "/api/v1" 
     : import.meta.env.VITE_API_URL || `${RAILWAY_URL}/api/v1`;
 
-// Socket connects to the root origin
-export const SOCKET_URL = (() => {
-  if (Capacitor.isNativePlatform()) return VERCEL_URL;
-  if (import.meta.env.PROD) return ""; // Empty string tells socket.io to use the current host (Vercel)
-  
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/api\/v1\/?$/, "");
-  }
-  return RAILWAY_URL;
-})();
+// Socket connects directly to the backend to avoid Vercel's Serverless Proxy dropping WebSockets
+export const SOCKET_URL = RAILWAY_URL;
