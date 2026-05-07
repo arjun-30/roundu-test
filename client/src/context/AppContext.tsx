@@ -551,9 +551,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state.isAuthenticated && state.user.id) {
-      socket.emit("register", { userId: state.user.id, role: state.role });
+      socket.emit("register", { 
+        userId: state.user.id, 
+        role: state.role,
+        serviceIds: state.onboardingData?.serviceIds || []
+      });
     }
-  }, [state.isAuthenticated, state.user.id, state.role]);
+  }, [state.isAuthenticated, state.user.id, state.role, state.onboardingData.serviceIds]);
 
   const addBooking = useCallback((booking: Booking) => {
     dispatch({ type: "ADD_BOOKING", booking });

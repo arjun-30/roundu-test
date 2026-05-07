@@ -45,6 +45,15 @@ async function main() {
       socket.data.role = data.role;
       if (data.role === 'provider') {
         socket.join('providers');
+        
+        // Join service-specific rooms
+        if (Array.isArray(data.serviceIds)) {
+          data.serviceIds.forEach((serviceId: string) => {
+            socket.join(`service:${serviceId}`);
+            console.log(`[socket] provider ${data.userId} joined service room: service:${serviceId}`);
+          });
+        }
+        
         console.log(`[socket] provider ${data.userId} joined providers room via register`);
       }
     });
@@ -55,7 +64,7 @@ async function main() {
     });
 
     socket.on('new_booking', async (data) => {
-      console.log(`[socket] new_booking received: ${data.id}`);
+      console.log(`[socket] new_booking received: ${data.id} for service: ${data.serviceId}`);
       const payload = {
         id: `req-${data.id}`,
         customerName: data.customerName || "Customer",
@@ -75,6 +84,7 @@ async function main() {
       const providerSockets = await io.in('providers').fetchSockets();
 
       if (providerSockets.length > 0) {
+        // 1. Specific provider targeted
         if (data.providerId && data.providerId !== 'searching') {
           const specificProvider = providerSockets.find(s => s.data.userId === data.providerId);
           if (specificProvider) {
@@ -82,8 +92,10 @@ async function main() {
             return;
           }
         }
-        // Broadcast to ALL registered providers
-        io.to('providers').emit('incoming_request', payload);
+        
+        // 2. Broadcast to specific service room (e.g., only plumbers)
+        console.log(`[socket] broadcasting to room: service:${data.serviceId}`);
+        io.to(`service:${data.serviceId}`).emit('incoming_request', payload);
       } else {
         // Fallback for development/compatibility: broadcast to all others if no registered providers
         socket.broadcast.emit('incoming_request', payload);
