@@ -439,6 +439,9 @@ function reducer(state: State, action: Action): State {
       localStorage.removeItem("roundu_token");
       localStorage.removeItem("roundu_user");
       localStorage.removeItem("roundu_role");
+      if (socket.connected) {
+        socket.disconnect();
+      }
       return { ...initialState };
     default:
       return state;

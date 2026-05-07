@@ -4,7 +4,7 @@ import {
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
   Power, Star, TrendingUp, AlertTriangle, Lightbulb, 
   ChevronRight, Inbox, Briefcase, FileText, Image as ImageIcon, Video, Play, Mic, Eye,
-  ClipboardCheck, Images, Wrench
+  ClipboardCheck, Images, Wrench, LogOut
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
@@ -121,6 +121,16 @@ const Dashboard = () => {
             title="Provider Profile"
           >
             <User size={18} className="text-foreground" />
+          </button>
+          <button 
+            onClick={() => {
+              dispatch({ type: "LOGOUT" });
+              navigate("/login", { replace: true });
+            }}
+            className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center relative hover:bg-red-100 transition-colors"
+            title="Log Out"
+          >
+            <LogOut size={18} className="text-red-500" />
           </button>
           <button 
             onClick={() => navigate("/notifications")}
