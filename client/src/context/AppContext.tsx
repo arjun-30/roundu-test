@@ -321,7 +321,13 @@ function reducer(state: State, action: Action): State {
     case "SET_CURRENT_LOCATION":
       return { ...state, currentLocation: { lat: action.lat, lng: action.lng } };
     case "ADD_LIVE_BROADCAST":
-      return { ...state, liveBroadcasts: [action.broadcast, ...state.liveBroadcasts] };
+      return { 
+        ...state, 
+        liveBroadcasts: [
+          action.broadcast, 
+          ...state.liveBroadcasts.filter(b => b.customerId !== action.broadcast.customerId)
+        ] 
+      };
     case "REMOVE_LIVE_BROADCAST":
       return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
     case "ADD_RECEIVED_QUOTE":
