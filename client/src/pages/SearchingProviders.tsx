@@ -101,7 +101,7 @@ const SearchingProviders = () => {
       customer_id: user.id,
       provider_id: quote.providerId,
       service_id: serviceId,
-      scheduled_at: `${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      scheduled_at: new Date(Date.now() + quote.etaMin * 60000).toISOString(),
       address: user.address || "Client Address",
       price: quote.price,
       notes: "Quick fix requested",

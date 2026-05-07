@@ -37,9 +37,9 @@ export const createBooking = async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: booking });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create booking error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message, stack: error.stack });
   }
 };
 
