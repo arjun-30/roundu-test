@@ -135,9 +135,9 @@ const BookService = () => {
            <div className="flex gap-3">
               <button 
                 onClick={() => handleScheduleSelect("now")}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[16px] border-2 transition-all ${scheduleType === 'now' ? 'bg-blue-600 border-gray-900 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]' : 'bg-white border-gray-100 text-gray-600 shadow-sm hover:border-gray-200'}`}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[16px] border-2 transition-all ${scheduleType === 'now' ? 'bg-amber-500 border-amber-600 text-white shadow-[0_4px_14px_rgba(245,158,11,0.3)]' : 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm hover:bg-amber-100'}`}
               >
-                <Zap size={18} />
+                <Zap size={18} className={scheduleType === 'now' ? 'text-white' : 'text-amber-500'} />
                 <span className="font-bold text-[14px]">Quick Fix</span>
               </button>
               <button 
