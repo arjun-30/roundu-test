@@ -424,7 +424,7 @@ function reducer(state: State, action: Action): State {
         ] 
       };
     case "REMOVE_LIVE_BROADCAST":
-      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
+      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.broadcastId) };
     case "ADD_RECEIVED_QUOTE":
       return {
         ...state,
