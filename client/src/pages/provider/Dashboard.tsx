@@ -39,29 +39,19 @@ const Dashboard = () => {
 
   const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
 
-  // Alert provider when new job request arrives
-  useEffect(() => {
-    if (pending.length > 0) {
-      const latest = pending[0];
-      toast(`📦 New job from ${latest.customerName} — ${latest.serviceId}`, {
-        description: `₹${latest.price} · ${latest.address}`,
-        duration: 8000,
-        position: 'top-center'
-      });
-    }
-  }, [pending.length]);
+  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
 
-  // Alert provider when a live broadcast request arrives
+  // Alert provider when a new direct request arrives
   useEffect(() => {
-    if (liveBroadcasts.length > 0 && isOnline) {
-      const latest = liveBroadcasts[0];
-      toast.info(`🚨 LIVE Job Alert: ${latest.serviceId}`, {
-        description: `Customer is searching near ${latest.address}. Tap to quote!`,
-        duration: 8000,
-        position: 'top-center'
-      });
-    }
-  }, [liveBroadcasts.length, isOnline]);
+    const handleNewRequest = (request: any) => {
+      // Show the popup at the top
+      setActiveDirectRequest(request);
+    };
+    socket.on("incoming_request", handleNewRequest);
+    return () => {
+      socket.off("incoming_request", handleNewRequest);
+    };
+  }, []);
 
   useEffect(() => {
     if (isCritical) {
@@ -602,18 +592,24 @@ const Dashboard = () => {
       )}
 
 
-      {simulatedRequest && (
+      {/* Direct Request Popup (Top-aligned) */}
+      {(simulatedRequest || activeDirectRequest) && (
         <IncomingRequestPopup 
-          request={simulatedRequest}
+          request={simulatedRequest || activeDirectRequest}
+          isBroadcast={false}
           onAccept={() => {
-            dispatch({ type: "ACCEPT_REQUEST", id: simulatedRequest.id });
-            setSimulatedRequest(null);
+            const req = simulatedRequest || activeDirectRequest;
+            dispatch({ type: "ACCEPT_REQUEST", id: req.id });
+            if (simulatedRequest) setSimulatedRequest(null);
+            if (activeDirectRequest) setActiveDirectRequest(null);
             toast.success("Job accepted!");
-            navigate(`/provider/job/${simulatedRequest.id}`);
+            navigate(`/provider/job/${req.id}`);
           }}
           onReject={() => {
-            dispatch({ type: "REJECT_REQUEST", id: simulatedRequest.id });
-            setSimulatedRequest(null);
+            const req = simulatedRequest || activeDirectRequest;
+            dispatch({ type: "REJECT_REQUEST", id: req.id });
+            if (simulatedRequest) setSimulatedRequest(null);
+            if (activeDirectRequest) setActiveDirectRequest(null);
             toast("Request declined.");
           }}
         />
