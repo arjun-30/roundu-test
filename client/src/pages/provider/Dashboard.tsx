@@ -355,7 +355,6 @@ const Dashboard = () => {
         </div>
 
 
-
         {/* Incoming Requests */}
         <div className="px-5 mb-6">
           <h2 className="text-sm font-bold text-foreground mb-3">Incoming Requests</h2>
@@ -617,6 +616,27 @@ const Dashboard = () => {
             setSimulatedRequest(null);
             toast("Request declined.");
           }}
+        />
+      )}
+
+      {/* Live Job Broadcast Popup (Top-aligned) */}
+      {isOnline && liveBroadcasts.length > 0 && !quotingBroadcast && (
+        <IncomingRequestPopup 
+          request={{
+            ...liveBroadcasts[0],
+            serviceId: liveBroadcasts[0].serviceId,
+            customerName: liveBroadcasts[0].customerName,
+            customerRating: "4.8",
+            distanceKm: "1.2",
+            address: liveBroadcasts[0].address,
+            date: liveBroadcasts[0].date,
+            time: liveBroadcasts[0].time,
+            price: 0,
+            notes: liveBroadcasts[0].notes || "No notes provided."
+          }}
+          isBroadcast={true}
+          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
         />
       )}
 
