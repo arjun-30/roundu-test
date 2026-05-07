@@ -3,10 +3,12 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { env } from '../config/env';
 
-const razorpay = new Razorpay({
-  key_id: env.RAZORPAY_KEY_ID || '',
-  key_secret: env.RAZORPAY_KEY_SECRET || '',
-});
+const razorpay = env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET
+  ? new Razorpay({
+      key_id: env.RAZORPAY_KEY_ID,
+      key_secret: env.RAZORPAY_KEY_SECRET,
+    })
+  : null;
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
@@ -23,6 +25,10 @@ export const createOrder = async (req: Request, res: Response) => {
       currency,
       receipt,
     };
+
+    if (!razorpay) {
+      return res.status(503).json({ success: false, message: 'Payments not configured' });
+    }
 
     const order = await razorpay.orders.create(options);
     res.json({ success: true, order });
