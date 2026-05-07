@@ -86,6 +86,25 @@ const SearchingProviders = () => {
         notes: "Quick fix request from customer"
       });
       
+      // Simulate an incoming quote for demonstration/testing purposes
+      setTimeout(() => {
+        dispatch({
+          type: "ADD_RECEIVED_QUOTE",
+          quote: {
+            broadcastId,
+            providerId: "9999999991", // Matches the seeded Rajesh Kumar ID
+            providerName: "Rajesh Kumar",
+            providerAvatar: "R",
+            price: Math.floor(Math.random() * 200) + 299,
+            rating: 4.9,
+            distanceKm: 3,
+            etaMin: 15,
+            reviews: 244,
+            submittedAt: Date.now()
+          }
+        });
+      }, 4500);
+
       hasTriggered.current = true;
     }
   }, [serviceId, user, dispatch]);
