@@ -71,23 +71,37 @@ const SearchingProviders = () => {
 
   // Emit broadcast and listen for quotes
   useEffect(() => {
-    if (!hasTriggered.current) {
-      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
-      
-      const broadcastId = `bc-${Date.now()}`;
-      socket.emit("broadcast_job", {
-        broadcastId,
-        customerId: user.id,
-        customerName: user.name,
-        serviceId: serviceId || "electrician",
-        address: user.address || "Current Location",
-        date: new Date().toISOString().slice(0, 10),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        notes: "Quick fix request from customer"
-      });
+    if (hasTriggered.current) return;
+    hasTriggered.current = true;
+    dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
 
-      hasTriggered.current = true;
+    const broadcastId = `bc-${Date.now()}`;
+    const payload = {
+      broadcastId,
+      customerId: user.id,
+      customerName: user.name,
+      serviceId: serviceId || "electrician",
+      address: user.address || "Current Location",
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      notes: "Quick fix request from customer"
+    };
+
+    const doEmit = () => {
+      console.log("[socket] emitting broadcast_job:", payload);
+      socket.emit("broadcast_job", payload);
+    };
+
+    // If already connected, emit immediately; otherwise wait for connection
+    if (socket.connected) {
+      doEmit();
+    } else {
+      socket.once("connect", doEmit);
     }
+
+    return () => {
+      socket.off("connect", doEmit);
+    };
   }, [serviceId, user, dispatch]);
 
   const handleAcceptQuote = async (quote: any) => {
