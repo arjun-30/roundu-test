@@ -40,7 +40,6 @@ const Dashboard = () => {
   const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
 
   // Alert provider when new job request arrives
-  const prevPendingCount = useState(pending.length)[0];
   useEffect(() => {
     if (pending.length > 0) {
       const latest = pending[0];
@@ -50,6 +49,17 @@ const Dashboard = () => {
       });
     }
   }, [pending.length]);
+
+  // Alert provider when a live broadcast request arrives
+  useEffect(() => {
+    if (liveBroadcasts.length > 0 && isOnline) {
+      const latest = liveBroadcasts[0];
+      toast.info(`🚨 LIVE Job Alert: ${latest.serviceId}`, {
+        description: `Customer is searching near ${latest.address}. Tap to quote!`,
+        duration: 8000,
+      });
+    }
+  }, [liveBroadcasts.length, isOnline]);
 
   useEffect(() => {
     if (isCritical) {
