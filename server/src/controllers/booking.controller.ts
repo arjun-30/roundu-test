@@ -5,7 +5,18 @@ import { NotificationModel } from '../models/notification.model';
 
 export const createBooking = async (req: Request, res: Response) => {
   try {
-    const booking = await BookingModel.create(req.body);
+    const bookingData = { ...req.body };
+    
+    // The frontend might send users.id instead of providers.id for the quote.
+    // Try to resolve it to a providers.id if it matches a user.
+    if (bookingData.provider_id) {
+      const provider = await ProviderModel.findByUserId(bookingData.provider_id);
+      if (provider) {
+        bookingData.provider_id = provider.id;
+      }
+    }
+
+    const booking = await BookingModel.create(bookingData);
     
     // Notify relevant providers
     if (booking.service_id) {
