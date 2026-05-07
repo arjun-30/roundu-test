@@ -134,6 +134,8 @@ type Action =
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
+  | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
+  | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
   | { type: "LOGOUT" };
 
 const initialState: State = {
@@ -196,6 +198,52 @@ function reducer(state: State, action: Action): State {
           b.id === action.bookingId ? { ...b, status: action.status as any } : b
         ),
       };
+    case "HANDLE_JOB_ACCEPTED": {
+      const { booking } = action;
+      if (state.role === "provider" && state.user.id === booking.provider_user_id) {
+        const mappedRequest = {
+          id: booking.id,
+          customerId: booking.customer_id,
+          customerName: "Customer",
+          serviceId: booking.service_id,
+          date: booking.scheduled_at?.split('T')[0] || "Today",
+          time: booking.scheduled_at?.split('T')[1]?.slice(0, 5) || "Now",
+          address: booking.address,
+          price: booking.price,
+          status: booking.status || "assigned",
+          notes: booking.notes,
+          voiceNote: booking.voice_note || false
+        };
+        // Also fire the toast here if possible, or just rely on state change. 
+        // We'll use a timeout hack to fire toast from reducer just to ensure it fires reliably, 
+        // though technically an anti-pattern, it works for this isolated case.
+        setTimeout(() => toast.success("🎉 Your quote was accepted! Job added."), 100);
+        
+        return {
+          ...state,
+          providerRequests: [mappedRequest, ...state.providerRequests],
+          liveBroadcasts: state.liveBroadcasts.filter((b) => b.broadcastId !== booking.broadcastId)
+        };
+      }
+      return state;
+    }
+    case "HANDLE_JOB_STATUS_UPDATED": {
+      if (state.role === "customer") {
+        return {
+          ...state,
+          bookings: state.bookings.map((b) =>
+            b.id === action.data.bookingId ? { ...b, status: action.data.status as any } : b
+          ),
+        };
+      } else {
+        return {
+          ...state,
+          providerRequests: state.providerRequests.map((r) =>
+            r.id === action.data.bookingId ? { ...r, status: action.data.status as any } : r
+          ),
+        };
+      }
+    }
     case "SET_PROVIDER_REQUESTS":
       return { ...state, providerRequests: action.requests };
     case "SET_PHONE":
@@ -453,38 +501,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on("job_accepted", (booking: any) => {
-      // Provider listens to this. Check if it belongs to the current user.
-      if (state.role === "provider") {
-        // We add it to providerRequests as an accepted job
-        const mappedRequest = {
-          id: booking.id,
-          customerId: booking.customer_id,
-          customerName: "Customer", // Ideally joined from DB
-          serviceId: booking.service_id,
-          date: booking.scheduled_at?.split('T')[0] || "Today",
-          time: booking.scheduled_at?.split('T')[1]?.slice(0, 5) || "Now",
-          address: booking.address,
-          price: booking.price,
-          status: booking.status || "assigned",
-          notes: booking.notes,
-          voiceNote: booking.voice_note || false
-        };
-        dispatch({ type: "ADD_PROVIDER_REQUEST", request: mappedRequest });
-        
-        // Remove it from live broadcasts since it's now won
-        dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: booking.broadcastId }); // If broadcastId exists
-        dispatch({ type: "ADD_NOTIFICATION", text: `🎉 Your quote was accepted! Job added.` });
-      }
+      dispatch({ type: "HANDLE_JOB_ACCEPTED", booking });
     });
 
     socket.on("job_status_updated", (data: { bookingId: string; status: string }) => {
-      if (state.role === "customer") {
-        // Update customer booking
-        dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: data.bookingId, status: data.status });
-      } else {
-        // Update provider request
-        dispatch({ type: "UPDATE_REQUEST", id: data.bookingId, patch: { status: data.status as any } });
-      }
+      dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
     });
 
     return () => {
