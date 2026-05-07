@@ -436,6 +436,9 @@ function reducer(state: State, action: Action): State {
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
     case "LOGOUT":
+      localStorage.removeItem("roundu_token");
+      localStorage.removeItem("roundu_user");
+      localStorage.removeItem("roundu_role");
       return { ...initialState };
     default:
       return state;
@@ -451,7 +454,30 @@ const AppContext = createContext<Ctx | null>(null);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
+
+  // Restore session on mount
+  useEffect(() => {
+    const token = localStorage.getItem("roundu_token");
+    const savedUser = localStorage.getItem("roundu_user");
+    const savedRole = localStorage.getItem("roundu_role");
+
+    if (token && savedUser && savedRole) {
+      try {
+        const user = JSON.parse(savedUser);
+        dispatch({ type: "SET_AUTH", value: true });
+        dispatch({ type: "SET_USER_ID", id: user.id });
+        dispatch({ type: "SET_ROLE", role: savedRole as Role });
+        dispatch({ type: "UPDATE_USER", user: {
+          name: user.name || "",
+          email: user.email || "",
+          address: user.address || "",
+          role: savedRole as any
+        }});
+      } catch (e) {
+        console.error("Session restore error", e);
+      }
+    }
+  }, []);
   useEffect(() => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {

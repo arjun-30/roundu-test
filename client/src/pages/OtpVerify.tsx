@@ -49,9 +49,11 @@ const OtpVerify = () => {
       if (response.data.success) {
         const { token, user } = response.data;
         
-        // Store token
+        // Store session info
         if (token) {
           localStorage.setItem("roundu_token", token);
+          localStorage.setItem("roundu_user", JSON.stringify(user));
+          localStorage.setItem("roundu_role", user.role || "customer");
         }
 
         // Update Context
