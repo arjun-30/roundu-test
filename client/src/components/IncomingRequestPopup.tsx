@@ -28,7 +28,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: Inco
   const percentage = (timeLeft / 120) * 100;
 
   return (
-    <div className={`fixed inset-0 z-[200] flex justify-center p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-300 ${isBroadcast ? 'items-start pt-12' : 'items-center'}`}>
+    <div className="fixed inset-0 z-[200] flex justify-center items-start pt-12 p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
       <div className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col relative">
         {/* Timer Bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-muted">
