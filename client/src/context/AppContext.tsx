@@ -7,6 +7,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
+import { toast } from "sonner";
 
 type Role = "customer" | "provider" | null;
 
@@ -189,8 +190,49 @@ const initialState: State = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case "ADD_PROVIDER_REQUEST":
-      return { ...state, providerRequests: [action.request, ...state.providerRequests] };
+    case "ADD_PROVIDER_REQUEST": {
+      const request = action.request as any;
+
+      if (state.role !== "provider") return state;
+
+      if (request.providerId && request.providerId !== "searching" && request.providerId !== state.user.id) {
+        return state;
+      }
+
+      if (state.onboardingData?.serviceIds?.length > 0) {
+        if (!state.onboardingData.serviceIds.includes(request.serviceId)) {
+          return state;
+        }
+      }
+
+      if (request.lat && request.lng && state.currentLocation) {
+        const R = 6371;
+        const dLat = (request.lat - state.currentLocation.lat) * Math.PI / 180;
+        const dLng = (request.lng - state.currentLocation.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(state.currentLocation.lat * Math.PI / 180) * Math.cos(request.lat * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+
+        const maxRadius = state.providerRegistrationDraft?.serviceRadius || 10;
+        if (distance > maxRadius) {
+          return state;
+        }
+      }
+
+      // Check if request already exists
+      if (state.providerRequests.some(r => r.id === request.id)) return state;
+
+      return { 
+        ...state, 
+        providerRequests: [request, ...state.providerRequests],
+        notifications: [
+          { id: `n-${Date.now()}`, text: `📦 New ${request.serviceId} job from ${request.customerName}!`, ts: Date.now() },
+          ...state.notifications,
+        ].slice(0, 20)
+      };
+    }
     case "UPDATE_BOOKING_STATUS":
       return {
         ...state,
@@ -214,9 +256,6 @@ function reducer(state: State, action: Action): State {
           notes: booking.notes,
           voiceNote: booking.voice_note || false
         };
-        // Also fire the toast here if possible, or just rely on state change. 
-        // We'll use a timeout hack to fire toast from reducer just to ensure it fires reliably, 
-        // though technically an anti-pattern, it works for this isolated case.
         setTimeout(() => toast.success("🎉 Your quote was accepted! Job added."), 100);
         
         return {
@@ -353,7 +392,6 @@ function reducer(state: State, action: Action): State {
       };
     case "UPDATE_ONBOARDING": {
       const newData = { ...state.onboardingData, ...action.patch };
-      // Async sync to Supabase (side effect in reducer is bad practice, but for rapid prototyping we can do it here or better in a useEffect in the provider)
       return {
         ...state,
         onboardingData: newData,
@@ -388,13 +426,12 @@ function reducer(state: State, action: Action): State {
     case "REMOVE_LIVE_BROADCAST":
       return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
     case "ADD_RECEIVED_QUOTE":
-      // Only keep the latest quote from the same provider for the same broadcast
       return {
         ...state,
         receivedQuotes: [
           action.quote,
           ...state.receivedQuotes.filter(q => !(q.broadcastId === action.quote.broadcastId && q.providerId === action.quote.providerId))
-        ].sort((a, b) => a.price - b.price) // Sort by price ascending
+        ].sort((a, b) => a.price - b.price)
       };
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
@@ -415,7 +452,6 @@ const AppContext = createContext<Ctx | null>(null);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   
-  // Sync onboarding data to Supabase
   useEffect(() => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
@@ -432,7 +468,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     syncData();
   }, [state.onboardingData, state.phone]);
 
-  // Sync data from DB
   useEffect(() => {
     const syncDb = async () => {
       if (state.isAuthenticated && state.user.id) {
@@ -447,7 +482,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 const mappedRequests = pbRes.data.map((b: any) => ({
                   id: b.id,
                   customerId: b.customer_id,
-                  customerName: "Customer", // In a full app, join with users table
+                  customerName: "Customer",
                   serviceId: b.service_id,
                   date: b.scheduled_at?.split(' ')[0] || "Today",
                   time: b.scheduled_at?.split(' ')[1] || "10:00 AM",
@@ -474,14 +509,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     syncDb();
   }, [state.isAuthenticated, state.user.id, state.role]);
 
-  // Socket.io Real-time Setup — connect once, handle incoming_request always
   useEffect(() => {
     socket.connect();
 
     socket.on("incoming_request", (request: ProviderRequest) => {
-      // Only process if currently acting as a provider
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      dispatch({ type: "ADD_NOTIFICATION", text: `📦 New ${request.serviceId} job from ${request.customerName}!` });
     });
 
     socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
@@ -489,13 +521,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
-      // Providers listen to this
       dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
       dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
     });
 
     socket.on("quote_received", (quote: ProviderQuote) => {
-      // Customers listen to this
       dispatch({ type: "ADD_RECEIVED_QUOTE", quote });
       dispatch({ type: "ADD_NOTIFICATION", text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}` });
     });
@@ -519,37 +549,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Join providers room whenever we become a provider (or on reconnect while provider)
   useEffect(() => {
-    const joinRoom = () => {
-      if (state.role === "provider") {
-        socket.emit("join_provider");
-        console.log("[socket] joining providers room");
-      }
-    };
-
-    // Join immediately if already connected
-    if (socket.connected) {
-      joinRoom();
+    if (state.isAuthenticated && state.user.id) {
+      socket.emit("register", { userId: state.user.id, role: state.role });
     }
+  }, [state.isAuthenticated, state.user.id, state.role]);
 
-    // Also join on every (re)connect while role is provider
-    socket.on("connect", joinRoom);
-
-    return () => {
-      socket.off("connect", joinRoom);
-    };
-  }, [state.role]);
-
-  // Sync bookings to socket (notify providers)
   const addBooking = useCallback((booking: Booking) => {
     dispatch({ type: "ADD_BOOKING", booking });
     socket.emit("new_booking", {
       ...booking,
       customerName: state.user.name,
       address: state.user.address,
+      lat: state.currentLocation?.lat,
+      lng: state.currentLocation?.lng
     });
-  }, [dispatch, state.user]);
+  }, [dispatch, state.user, state.currentLocation]);
 
   const selectedProvider = state.selectedProviderId
     ? allProviders.find((p) => p.id === state.selectedProviderId) ?? null
@@ -568,7 +583,6 @@ export const useApp = () => {
   return ctx;
 };
 
-// Helper to create stable action callbacks
 export const useAppActions = () => {
   const { dispatch } = useApp();
   return {

@@ -40,18 +40,29 @@ async function main() {
       console.log(`[socket] client connected: ${socket.id}`);
     }
 
-    socket.on('join_provider', () => {
-      socket.join('providers');
-      console.log(`[socket] ${socket.id} joined providers room`);
+    socket.on('register', (data) => {
+      socket.data.userId = data.userId;
+      socket.data.role = data.role;
+      if (data.role === 'provider') {
+        socket.join('providers');
+        console.log(`[socket] provider ${data.userId} joined providers room via register`);
+      }
     });
 
-    socket.on('new_booking', (data) => {
+    socket.on('join_provider', () => {
+      socket.join('providers');
+      console.log(`[socket] ${socket.id} joined providers room via join_provider`);
+    });
+
+    socket.on('new_booking', async (data) => {
       console.log(`[socket] new_booking received: ${data.id}`);
-      // Broadcast to ALL connected sockets — every client filters on their own role
-      io.emit('incoming_request', {
+      const payload = {
         id: `req-${data.id}`,
         customerName: data.customerName || "Customer",
         serviceId: data.serviceId,
+        providerId: data.providerId,
+        lat: data.lat,
+        lng: data.lng,
         address: data.address || "Client Address",
         date: data.date,
         time: data.time,
@@ -59,7 +70,24 @@ async function main() {
         status: "pending",
         notes: data.notes,
         voiceNote: data.voice_note || false
-      });
+      };
+
+      const providerSockets = await io.in('providers').fetchSockets();
+
+      if (providerSockets.length > 0) {
+        if (data.providerId && data.providerId !== 'searching') {
+          const specificProvider = providerSockets.find(s => s.data.userId === data.providerId);
+          if (specificProvider) {
+            specificProvider.emit('incoming_request', payload);
+            return;
+          }
+        }
+        // Broadcast to ALL registered providers
+        io.to('providers').emit('incoming_request', payload);
+      } else {
+        // Fallback for development/compatibility: broadcast to all others if no registered providers
+        socket.broadcast.emit('incoming_request', payload);
+      }
     });
 
     socket.on('broadcast_job', (data) => {
