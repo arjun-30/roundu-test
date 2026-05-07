@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { socket } from "@/lib/socket";
+import { createBooking } from "@/lib/api";
+import { toast } from "sonner";
 
 /**
  * 🎨 DESIGN SYSTEM & SPEC-DRIVEN
@@ -37,9 +40,8 @@ const SearchingProviders = () => {
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const [isLongWait, setIsLongWait] = useState(false);
 
-  const { addBooking, user, nearbyProviders, currentLocation, dispatch } = useApp();
+  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes } = useApp();
   const hasTriggered = useRef(false);
-  const nextId = useRef(0);
 
   // Fetch Customer Location
   useEffect(() => {
@@ -67,18 +69,59 @@ const SearchingProviders = () => {
     };
   };
 
-  // Logic: Success transition
+  // Emit broadcast and listen for quotes
   useEffect(() => {
     if (!hasTriggered.current) {
+      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+      
+      const broadcastId = `bc-${Date.now()}`;
+      socket.emit("broadcast_job", {
+        broadcastId,
+        customerId: user.id,
+        customerName: user.name,
+        serviceId: serviceId || "electrician",
+        address: user.address || "Current Location",
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        notes: "Quick fix request from customer"
+      });
+      
       hasTriggered.current = true;
     }
+  }, [serviceId, user, dispatch]);
 
-    const successTimer = setTimeout(() => {
-      navigate(`/providers/${serviceId}`);
-    }, 15000); // Increased for testing
+  const handleAcceptQuote = async (quote: any) => {
+    if (!user || !user.id) {
+      toast.error("Please log in to confirm booking");
+      navigate("/auth", { replace: true });
+      return;
+    }
 
-    return () => clearTimeout(successTimer);
-  }, [navigate, serviceId]);
+    const bookingData = {
+      customer_id: user.id,
+      provider_id: quote.providerId,
+      service_id: serviceId,
+      scheduled_at: `${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      address: user.address || "Client Address",
+      price: quote.price,
+      notes: "Quick fix requested",
+      voice_note: false,
+    };
+
+    try {
+      const res = await createBooking(bookingData);
+      if (res.success) {
+        dispatch({ type: "ADD_BOOKING", booking: res.data });
+        toast.success("Quote accepted & Booking confirmed!");
+        navigate(`/booking/success/${res.data.id}`);
+      } else {
+        toast.error("Failed to confirm booking.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error confirming quote. Check your connection.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#EEF2F7] flex flex-col font-['DM_Sans',sans-serif] overflow-hidden select-none">
@@ -222,38 +265,84 @@ const SearchingProviders = () => {
 
           <h2 className="text-[18px] font-[600] text-[#030916] mb-1.5">Finding nearby professionals</h2>
 
-          <div className="h-6 flex items-center justify-center overflow-hidden w-full relative">
+          <div className="h-6 flex items-center justify-center overflow-hidden w-full relative mb-4">
             <p
               key={statusIndex + (isLongWait ? 'wait' : '')}
               className="text-[13px] text-[#7A8BA0] font-[400] animate-status-fade absolute"
             >
-              {isLongWait ? "Still searching for the best providers near you..." : SECONDARY_STATUS_MESSAGES[statusIndex]}
+              {receivedQuotes.length > 0 
+                ? "Providers are responding..." 
+                : (isLongWait ? "Still searching for the best providers near you..." : SECONDARY_STATUS_MESSAGES[statusIndex])}
             </p>
           </div>
 
-          {/* Animated Progress Dots */}
-          <div className="flex gap-2.5 my-6">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-[7px] h-[7px] rounded-full transition-all duration-300 ${i === activeDotIndex ? 'bg-[#F59E0B] scale-[1.35]' : 'bg-[#D1DCE8]'}`}
-              />
-            ))}
-          </div>
+          {/* Received Quotes Section */}
+          {receivedQuotes.length > 0 ? (
+            <div className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar">
+              {receivedQuotes.map((q) => (
+                <div key={q.providerId} className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-[#152E4B] border border-[#E1E8EF]">
+                        {q.providerAvatar}
+                      </div>
+                      <div>
+                        <h4 className="text-[15px] font-[600] text-[#030916]">{q.providerName}</h4>
+                        <div className="flex items-center gap-2 text-[11px] text-[#7A8BA0] mt-0.5">
+                          <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                          <span>• {q.distanceKm}km away</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[18px] font-extrabold text-[#152E4B]">₹{q.price}</p>
+                      <p className="text-[10px] text-green-600 font-[600] bg-green-50 px-1.5 py-0.5 rounded-md mt-1 inline-block">ETA: {q.etaMin} mins</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleAcceptQuote(q)}
+                    className="w-full bg-[#152E4B] text-white py-2.5 rounded-xl text-[13px] font-[600] mt-1 active:scale-95 transition-transform"
+                  >
+                    Accept Quote
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Animated Progress Dots */}
+              <div className="flex gap-2.5 my-6">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-[7px] h-[7px] rounded-full transition-all duration-300 ${i === activeDotIndex ? 'bg-[#F59E0B] scale-[1.35]' : 'bg-[#D1DCE8]'}`}
+                  />
+                ))}
+              </div>
 
-          {/* Trust Indicators */}
-          <div className="w-full bg-[#F5F8FB] rounded-[12px] p-3 flex justify-between items-center mb-6">
-            <TrustIndicator label="Verified pros" />
-            <TrustIndicator label="Fast response" />
-            <TrustIndicator label="Trusted service" />
-          </div>
+              {/* Trust Indicators */}
+              <div className="w-full bg-[#F5F8FB] rounded-[12px] p-3 flex justify-between items-center mb-6">
+                <TrustIndicator label="Verified pros" />
+                <TrustIndicator label="Fast response" />
+                <TrustIndicator label="Trusted service" />
+              </div>
+            </>
+          )}
 
-          <button
-            onClick={() => navigate(-1)}
-            className="text-[14px] font-[600] text-[#7A8BA0] hover:text-[#152E4B] transition-colors"
-          >
-            Cancel
-          </button>
+          <div className="flex flex-col gap-3 w-full">
+            <button
+              onClick={() => navigate(`/providers/${serviceId}`)}
+              className="text-[14px] font-[600] text-[#152E4B] hover:bg-[#F5F8FB] py-3 rounded-xl transition-colors border border-[#E1E8EF]"
+            >
+              Browse all providers manually
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="text-[13px] font-[600] text-[#7A8BA0] hover:text-[#152E4B] transition-colors pb-2"
+            >
+              Cancel Request
+            </button>
+          </div>
         </div>
       </div>
 

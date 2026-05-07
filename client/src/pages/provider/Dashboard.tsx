@@ -13,13 +13,18 @@ import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import { toast } from "sonner";
+import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats } = useApp();
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts } = useApp();
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
+  
+  const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
+  const [quotePrice, setQuotePrice] = useState("");
+  const [quoteEta, setQuoteEta] = useState("15");
   
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "in_progress");
@@ -51,6 +56,27 @@ const Dashboard = () => {
       setShowPip(true);
     }
   }, [isCritical]);
+
+  const handleSubmitQuote = () => {
+    if (!quotingBroadcast || !quotePrice) return;
+    
+    socket.emit("submit_quote", {
+      broadcastId: quotingBroadcast.broadcastId,
+      providerId: user.id,
+      providerName: user.name,
+      providerAvatar: user.name.charAt(0),
+      price: Number(quotePrice),
+      rating: providerStats.rating || 4.8,
+      distanceKm: 5, // Hardcoded for demo
+      etaMin: Number(quoteEta),
+      reviews: 120
+    });
+    
+    dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
+    setQuotingBroadcast(null);
+    setQuotePrice("");
+    toast.success("Quote submitted to customer!");
+  };
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
@@ -267,6 +293,54 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Live Job Broadcasts */}
+        {isOnline && liveBroadcasts.length > 0 && (
+          <div className="px-5 mb-6">
+            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              Live Job Requests
+            </h2>
+            <div className="space-y-3">
+              {liveBroadcasts.map((b) => {
+                const service = getServiceById(b.serviceId);
+                return (
+                  <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0 shadow-sm">
+                        {service && <service.icon size={18} className="text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[#030916]">{b.customerName}</p>
+                        <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
+                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
+                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                        </div>
+                        {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
+                        
+                        <div className="flex gap-2 mt-3">
+                          <button 
+                            onClick={() => setQuotingBroadcast(b)}
+                            className="flex-1 py-2 bg-[#F59E0B] text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                          >
+                            Provide Quote
+                          </button>
+                          <button 
+                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
+                            className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Incoming Requests */}
         <div className="px-5 mb-6">
@@ -530,6 +604,54 @@ const Dashboard = () => {
             toast("Request declined.");
           }}
         />
+      )}
+
+      {/* Quote Modal */}
+      {quotingBroadcast && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 animate-fade-in backdrop-blur-sm">
+          <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
+            <h3 className="text-lg font-bold text-[#030916] mb-1">Submit Your Quote</h3>
+            <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1 block">Your Price (₹)</label>
+                <input 
+                  type="number" 
+                  value={quotePrice}
+                  onChange={(e) => setQuotePrice(e.target.value)}
+                  placeholder="e.g. 450"
+                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1 block">Estimated Arrival (Mins)</label>
+                <input 
+                  type="number" 
+                  value={quoteEta}
+                  onChange={(e) => setQuoteEta(e.target.value)}
+                  placeholder="e.g. 15"
+                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={() => setQuotingBroadcast(null)}
+                className="flex-1 py-3 rounded-xl border border-border text-sm font-bold text-muted-foreground"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSubmitQuote}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md"
+              >
+                Send Quote
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

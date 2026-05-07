@@ -10,6 +10,32 @@ import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } 
 
 type Role = "customer" | "provider" | null;
 
+export interface JobBroadcast {
+  broadcastId: string;
+  customerId: string;
+  customerName: string;
+  serviceId: string;
+  address: string;
+  date: string;
+  time: string;
+  notes: string;
+  status: string;
+  createdAt: number;
+}
+
+export interface ProviderQuote {
+  broadcastId: string;
+  providerId: string;
+  providerName: string;
+  providerAvatar: string;
+  price: number;
+  rating: number;
+  distanceKm: number;
+  etaMin: number;
+  reviews: number;
+  submittedAt: number;
+}
+
 interface UserProfile {
   id: string;
   name: string;
@@ -59,6 +85,8 @@ interface State {
     rating: number;
     responseRate: number;
   };
+  liveBroadcasts: JobBroadcast[];
+  receivedQuotes: ProviderQuote[];
   onboardingData: {
     serviceIds: string[];
     homeType: string;
@@ -100,6 +128,10 @@ type Action =
   | { type: "UPDATE_STATS"; patch: Partial<State["providerStats"]> }
   | { type: "UPDATE_NEARBY_PROVIDER"; id: string; lat: number; lng: number; name: string }
   | { type: "SET_CURRENT_LOCATION"; lat: number; lng: number }
+  | { type: "ADD_LIVE_BROADCAST"; broadcast: JobBroadcast }
+  | { type: "REMOVE_LIVE_BROADCAST"; id: string }
+  | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
+  | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "LOGOUT" };
 
 const initialState: State = {
@@ -140,6 +172,8 @@ const initialState: State = {
     rating: 0,
     responseRate: 100,
   },
+  liveBroadcasts: [],
+  receivedQuotes: [],
   onboardingData: {
     serviceIds: [],
     homeType: "",
@@ -286,6 +320,21 @@ function reducer(state: State, action: Action): State {
       };
     case "SET_CURRENT_LOCATION":
       return { ...state, currentLocation: { lat: action.lat, lng: action.lng } };
+    case "ADD_LIVE_BROADCAST":
+      return { ...state, liveBroadcasts: [action.broadcast, ...state.liveBroadcasts] };
+    case "REMOVE_LIVE_BROADCAST":
+      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
+    case "ADD_RECEIVED_QUOTE":
+      // Only keep the latest quote from the same provider for the same broadcast
+      return {
+        ...state,
+        receivedQuotes: [
+          action.quote,
+          ...state.receivedQuotes.filter(q => !(q.broadcastId === action.quote.broadcastId && q.providerId === action.quote.providerId))
+        ].sort((a, b) => a.price - b.price) // Sort by price ascending
+      };
+    case "CLEAR_RECEIVED_QUOTES":
+      return { ...state, receivedQuotes: [] };
     case "LOGOUT":
       return { ...initialState };
     default:
@@ -376,9 +425,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
     });
 
+    socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
+      // Providers listen to this
+      dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
+      dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
+    });
+
+    socket.on("quote_received", (quote: ProviderQuote) => {
+      // Customers listen to this
+      dispatch({ type: "ADD_RECEIVED_QUOTE", quote });
+      dispatch({ type: "ADD_NOTIFICATION", text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}` });
+    });
+
     return () => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
+      socket.off("incoming_broadcast");
+      socket.off("quote_received");
       socket.disconnect();
     };
   }, []);

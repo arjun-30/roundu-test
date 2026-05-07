@@ -62,6 +62,39 @@ async function main() {
       });
     });
 
+    socket.on('broadcast_job', (data) => {
+      console.log(`[socket] broadcast_job received for ${data.serviceId}`);
+      // Send to all providers
+      io.emit('incoming_broadcast', {
+        broadcastId: data.broadcastId,
+        customerId: data.customerId,
+        customerName: data.customerName || "Customer",
+        serviceId: data.serviceId,
+        address: data.address || "Client Address",
+        date: data.date,
+        time: data.time,
+        notes: data.notes,
+        status: "active",
+        createdAt: Date.now()
+      });
+    });
+
+    socket.on('submit_quote', (data) => {
+      console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
+      io.emit('quote_received', {
+        broadcastId: data.broadcastId,
+        providerId: data.providerId,
+        providerName: data.providerName,
+        providerAvatar: data.providerAvatar,
+        price: data.price,
+        rating: data.rating,
+        distanceKm: data.distanceKm,
+        etaMin: data.etaMin,
+        reviews: data.reviews,
+        submittedAt: Date.now()
+      });
+    });
+
     socket.on('provider_location', (data) => {
       socket.broadcast.emit('provider_location_update', data);
     });
