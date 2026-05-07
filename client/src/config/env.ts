@@ -16,4 +16,6 @@ export const API_BASE_URL = Capacitor.isNativePlatform()
     : import.meta.env.VITE_API_URL || `${RAILWAY_URL}/api/v1`;
 
 // Socket connects directly to the backend to avoid Vercel's Serverless Proxy dropping WebSockets
-export const SOCKET_URL = RAILWAY_URL;
+export const SOCKET_URL = import.meta.env.DEV 
+  ? (import.meta.env.VITE_API_URL || "http://172.16.96.129:3000")
+  : RAILWAY_URL;
