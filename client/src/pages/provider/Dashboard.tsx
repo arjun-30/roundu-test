@@ -46,6 +46,7 @@ const Dashboard = () => {
       toast(`📦 New job from ${latest.customerName} — ${latest.serviceId}`, {
         description: `₹${latest.price} · ${latest.address}`,
         duration: 8000,
+        position: 'top-center'
       });
     }
   }, [pending.length]);
@@ -57,6 +58,7 @@ const Dashboard = () => {
       toast.info(`🚨 LIVE Job Alert: ${latest.serviceId}`, {
         description: `Customer is searching near ${latest.address}. Tap to quote!`,
         duration: 8000,
+        position: 'top-center'
       });
     }
   }, [liveBroadcasts.length, isOnline]);
