@@ -7,6 +7,7 @@ export const updateUser = async (req: Request, res: Response) => {
     const user = await UserModel.update(id, req.body);
     res.json({ success: true, data: user });
   } catch (error) {
+    console.error('[user.controller] error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -19,6 +20,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     await UserModel.delete(id);
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
+    console.error('[user.controller] error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

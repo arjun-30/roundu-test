@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
@@ -8,8 +8,13 @@ import { API_BASE_URL } from "@/config/env";
 
 const OtpVerify = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const devOtp = (location.state as { devOtp?: string } | null)?.devOtp;
   const { phone, dispatch } = useApp();
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState<string[]>(() => {
+    if (devOtp && /^\d{6}$/.test(devOtp)) return devOtp.split("");
+    return ["", "", "", "", "", ""];
+  });
   const [loading, setLoading] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -104,6 +109,12 @@ const OtpVerify = () => {
           We sent a 6-digit code to <span className="font-semibold text-foreground">+91 {phone}</span>
         </p>
       </div>
+
+      {devOtp && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center">
+          <span className="font-semibold">Dev OTP:</span> <span className="font-mono tracking-widest">{devOtp}</span>
+        </div>
+      )}
 
       <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
         {otp.map((d, i) => (
