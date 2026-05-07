@@ -550,6 +550,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
+      console.log("[socket] ✅ incoming_broadcast received:", broadcast);
       dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
       dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
     });
