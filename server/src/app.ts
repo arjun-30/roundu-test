@@ -54,7 +54,7 @@ export function createApp(deps: AppDeps): Application {
   });
 
   // ── TEMP DEBUG: trigger a broadcast directly via HTTP ──────────────────
-  app.get('/test-broadcast', (req: Request, res: Response) => {
+  app.get('/api/test-broadcast', (req: Request, res: Response) => {
     const serviceId = (req.query.serviceId as string) || 'plumber';
     if (!deps.io) return res.status(500).json({ error: 'io not initialized' });
     const payload = {
