@@ -129,9 +129,11 @@ type Action =
   | { type: "UPDATE_NEARBY_PROVIDER"; id: string; lat: number; lng: number; name: string }
   | { type: "SET_CURRENT_LOCATION"; lat: number; lng: number }
   | { type: "ADD_LIVE_BROADCAST"; broadcast: JobBroadcast }
-  | { type: "REMOVE_LIVE_BROADCAST"; id: string }
-  | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
+  | { type: "REMOVE_LIVE_BROADCAST"; broadcastId: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
+  | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
+  | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
+  | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "LOGOUT" };
 
 const initialState: State = {
@@ -187,6 +189,13 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "ADD_PROVIDER_REQUEST":
       return { ...state, providerRequests: [action.request, ...state.providerRequests] };
+    case "UPDATE_BOOKING_STATUS":
+      return {
+        ...state,
+        bookings: state.bookings.map((b) =>
+          b.id === action.bookingId ? { ...b, status: action.status as any } : b
+        ),
+      };
     case "SET_PROVIDER_REQUESTS":
       return { ...state, providerRequests: action.requests };
     case "SET_PHONE":
@@ -443,11 +452,48 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "ADD_NOTIFICATION", text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}` });
     });
 
+    socket.on("job_accepted", (booking: any) => {
+      // Provider listens to this. Check if it belongs to the current user.
+      if (state.role === "provider") {
+        // We add it to providerRequests as an accepted job
+        const mappedRequest = {
+          id: booking.id,
+          customerId: booking.customer_id,
+          customerName: "Customer", // Ideally joined from DB
+          serviceId: booking.service_id,
+          date: booking.scheduled_at?.split('T')[0] || "Today",
+          time: booking.scheduled_at?.split('T')[1]?.slice(0, 5) || "Now",
+          address: booking.address,
+          price: booking.price,
+          status: booking.status || "assigned",
+          notes: booking.notes,
+          voiceNote: booking.voice_note || false
+        };
+        dispatch({ type: "ADD_PROVIDER_REQUEST", request: mappedRequest });
+        
+        // Remove it from live broadcasts since it's now won
+        dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: booking.broadcastId }); // If broadcastId exists
+        dispatch({ type: "ADD_NOTIFICATION", text: `🎉 Your quote was accepted! Job added.` });
+      }
+    });
+
+    socket.on("job_status_updated", (data: { bookingId: string; status: string }) => {
+      if (state.role === "customer") {
+        // Update customer booking
+        dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: data.bookingId, status: data.status });
+      } else {
+        // Update provider request
+        dispatch({ type: "UPDATE_REQUEST", id: data.bookingId, patch: { status: data.status as any } });
+      }
+    });
+
     return () => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
       socket.off("incoming_broadcast");
       socket.off("quote_received");
+      socket.off("job_accepted");
+      socket.off("job_status_updated");
       socket.disconnect();
     };
   }, []);

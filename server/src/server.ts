@@ -99,6 +99,15 @@ async function main() {
       socket.broadcast.emit('provider_location_update', data);
     });
 
+    socket.on('update_job_status', (data) => {
+      console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}`);
+      io.emit('job_status_updated', {
+        bookingId: data.bookingId,
+        status: data.status,
+        timestamp: Date.now()
+      });
+    });
+
     socket.on('disconnect', () => {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);

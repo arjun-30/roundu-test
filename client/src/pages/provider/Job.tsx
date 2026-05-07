@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircl
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { toast } from "sonner";
+import { socket } from "@/lib/socket";
 
 const Job = () => {
   const navigate = useNavigate();
@@ -38,11 +39,13 @@ const Job = () => {
 
   const markOnTheWay = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
+    socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
     toast.success("Customer notified that you are on the way!");
   };
 
   const markArrived = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
+    socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
     toast.success("Customer notified that you have arrived!");
   };
 
@@ -63,6 +66,8 @@ const Job = () => {
   };
 
   const completeJob = () => {
+    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "completed" } });
+    socket.emit("update_job_status", { bookingId: job.id, status: "completed" });
     // Navigate to the Service Report form
     navigate(`/provider/job/${job.id}/report`);
   };
@@ -70,6 +75,7 @@ const Job = () => {
   const renderActionBar = () => {
     switch (job.status) {
       case "accepted":
+      case "assigned":
         return (
           <button onClick={markOnTheWay} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/30 transition-all">
             <Car size={18} /> Mark as On The Way

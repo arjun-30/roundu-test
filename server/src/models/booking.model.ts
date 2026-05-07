@@ -16,7 +16,7 @@ export const BookingModel = {
   async create(booking: Partial<Booking> & { voice_note?: boolean }): Promise<Booking> {
     const res = await getPool().query(
       'INSERT INTO bookings (customer_id, provider_id, service_id, status, scheduled_at, address, price, notes, voice_note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [booking.customer_id, booking.provider_id, booking.service_id, 'pending', booking.scheduled_at, booking.address, booking.price, booking.notes, booking.voice_note || false]
+      [booking.customer_id, booking.provider_id, booking.service_id, booking.status || 'pending', booking.scheduled_at, booking.address, booking.price, booking.notes, booking.voice_note || false]
     );
     return res.rows[0];
   },

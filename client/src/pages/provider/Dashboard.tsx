@@ -27,7 +27,7 @@ const Dashboard = () => {
   const [quoteEta, setQuoteEta] = useState("15");
   
   const pending = providerRequests.filter((r) => r.status === "pending");
-  const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "in_progress");
+  const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
   const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
 
   const toggleOnline = () => {
@@ -82,7 +82,7 @@ const Dashboard = () => {
       reviews: 120
     });
     
-    dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
+    dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
     setQuotePrice("");
     toast.success("Quote submitted to customer!");

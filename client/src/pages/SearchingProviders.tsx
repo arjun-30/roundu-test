@@ -101,6 +101,7 @@ const SearchingProviders = () => {
       customer_id: user.id,
       provider_id: quote.providerId,
       service_id: serviceId,
+      status: "assigned",
       scheduled_at: new Date(Date.now() + quote.etaMin * 60000).toISOString(),
       address: user.address || "Client Address",
       price: quote.price,
@@ -111,9 +112,18 @@ const SearchingProviders = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        dispatch({ type: "ADD_BOOKING", booking: res.data });
+        const enrichedBooking = {
+          ...res.data,
+          providerDetails: {
+            name: quote.providerName,
+            avatar: quote.providerAvatar,
+            rating: quote.rating,
+            experienceYrs: quote.reviews
+          }
+        };
+        dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
         toast.success("Quote accepted & Booking confirmed!");
-        navigate(`/booking/success/${res.data.id}`);
+        navigate(`/tracking/${res.data.id}`);
       } else {
         toast.error("Failed to confirm booking.");
       }

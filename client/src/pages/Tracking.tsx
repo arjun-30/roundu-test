@@ -31,7 +31,9 @@ const Tracking = () => {
     navigate("/home", { replace: true });
     return null;
   }
-  const provider = getProviderById(booking.providerId);
+  
+  // Use enriched provider details from the live quote, fallback to mock if missing
+  const provider = (booking as any).providerDetails || getProviderById(booking.providerId);
   const currentIdx = stages.indexOf(booking.status);
 
   return (

@@ -34,8 +34,9 @@ export const createBooking = async (req: Request, res: Response) => {
         await NotificationModel.create(n);
       }
       
-      // Real-time notification via Socket.io would go here
-      // req.app.get('io').to(`service_${booking.service_id}`).emit('new_job', booking);
+      // Real-time notification via Socket.io
+      // Provide the booking directly to all connected clients, but clients filter by provider_id
+      req.app.get('io').emit('job_accepted', booking);
     }
 
     res.json({ success: true, data: booking });
