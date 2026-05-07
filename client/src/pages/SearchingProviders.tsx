@@ -69,7 +69,7 @@ const SearchingProviders = () => {
     };
   };
 
-  // Emit broadcast and listen for quotes
+  // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
     if (hasTriggered.current) return;
     hasTriggered.current = true;
@@ -88,18 +88,24 @@ const SearchingProviders = () => {
     };
 
     const doEmit = () => {
-      console.log("[socket] emitting broadcast_job:", payload);
-      socket.emit("broadcast_job", payload);
+      if (socket.connected) {
+        console.log("[socket] emitting broadcast_job:", payload.serviceId);
+        socket.emit("broadcast_job", payload);
+      }
     };
 
-    // If already connected, emit immediately; otherwise wait for connection
+    // Emit immediately if connected, else wait for connect
     if (socket.connected) {
       doEmit();
     } else {
       socket.once("connect", doEmit);
     }
 
+    // Re-broadcast every 5 seconds for providers with unstable connections
+    const interval = setInterval(doEmit, 5000);
+
     return () => {
+      clearInterval(interval);
       socket.off("connect", doEmit);
     };
   }, [serviceId, user, dispatch]);
