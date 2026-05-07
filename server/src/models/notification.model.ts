@@ -9,10 +9,10 @@ export interface Notification {
 }
 
 export const NotificationModel = {
-  async create(notification: { user_id: string; text: string }): Promise<Notification> {
+  async create(notification: { user_id: string; title: string; message: string; type?: string }): Promise<Notification> {
     const res = await getPool().query(
-      'INSERT INTO notifications (user_id, text) VALUES ($1, $2) RETURNING *',
-      [notification.user_id, notification.text]
+      'INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4) RETURNING *',
+      [notification.user_id, notification.title, notification.message, notification.type || 'general']
     );
     return res.rows[0];
   },

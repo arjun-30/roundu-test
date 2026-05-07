@@ -24,7 +24,9 @@ export const createBooking = async (req: Request, res: Response) => {
       
       const notifications = providers.map(p => ({
         user_id: p.user_id,
-        text: `New job request for ${booking.service_id} at ${booking.address}`
+        title: 'New Job Request',
+        message: `New job request for ${booking.service_id} at ${booking.address}`,
+        type: 'booking'
       }));
 
       // In a real app, we would use a batch insert or a loop
