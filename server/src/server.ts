@@ -34,6 +34,7 @@ async function main() {
   });
 
   app.locals.io = io;
+  const activeBroadcasts = new Map<string, any>();
 
   io.on('connection', (socket) => {
     if (env.isDevelopment) {
@@ -70,6 +71,14 @@ async function main() {
           const roomName = `service:${serviceId}`;
           socket.join(roomName);
           console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
+        });
+        
+        // Send active broadcasts for their services
+        activeBroadcasts.forEach((payload, id) => {
+          if (serviceIds.includes(payload.serviceId)) {
+            socket.emit('incoming_broadcast', payload);
+            console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
+          }
         });
         
         console.log(`[socket] provider ${data.userId} fully registered`);
@@ -134,10 +143,30 @@ async function main() {
         createdAt: Date.now()
       };
 
+      // Store in active broadcasts
+      activeBroadcasts.set(data.broadcastId, broadcastPayload);
+
       // Target only relevant service room
       const roomName = `service:${data.serviceId}`;
       console.log(`[socket] broadcasting job to room: ${roomName}`);
       io.to(roomName).emit('incoming_broadcast', broadcastPayload);
+    });
+
+    socket.on('accept_quote', (data) => {
+      console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}`);
+      
+      const broadcast = activeBroadcasts.get(data.broadcastId);
+      if (broadcast) {
+        // Notify other providers in the service room
+        const roomName = `service:${broadcast.serviceId}`;
+        io.to(roomName).emit('job_taken', { 
+          broadcastId: data.broadcastId, 
+          acceptedProviderId: data.acceptedProviderId 
+        });
+        
+        // Remove from active broadcasts
+        activeBroadcasts.delete(data.broadcastId);
+      }
     });
 
     socket.on('submit_quote', (data) => {

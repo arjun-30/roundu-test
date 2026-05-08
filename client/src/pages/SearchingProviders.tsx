@@ -69,15 +69,16 @@ const SearchingProviders = () => {
     };
   };
 
+  const broadcastIdRef = useRef(`bc-${Date.now()}`);
+
   // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
     if (hasTriggered.current) return;
     hasTriggered.current = true;
     dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
 
-    const broadcastId = `bc-${Date.now()}`;
     const payload = {
-      broadcastId,
+      broadcastId: broadcastIdRef.current,
       customerId: user.id,
       customerName: user.name,
       serviceId: serviceId || "electrician",
@@ -145,6 +146,13 @@ const SearchingProviders = () => {
         };
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
         toast.success("Quote accepted & Booking confirmed!");
+        
+        // Notify other providers that the job is taken
+        socket.emit("accept_quote", { 
+          broadcastId: broadcastIdRef.current, 
+          acceptedProviderId: quote.providerId 
+        });
+
         navigate(`/tracking/${res.data.id}`);
       } else {
         toast.error("Failed to confirm booking.");

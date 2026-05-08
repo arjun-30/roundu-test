@@ -59,6 +59,17 @@ const Dashboard = () => {
     }
   }, [isCritical]);
 
+  useEffect(() => {
+    const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: data.broadcastId });
+      toast.info("A job you were viewing or quoted on was assigned to someone else.");
+    };
+    socket.on("job_taken", handleJobTaken);
+    return () => {
+      socket.off("job_taken", handleJobTaken);
+    };
+  }, [dispatch]);
+
   const handleSubmitQuote = () => {
     if (!quotingBroadcast || !quotePrice) return;
     
