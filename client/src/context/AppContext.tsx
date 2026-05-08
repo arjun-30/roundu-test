@@ -153,16 +153,29 @@ type Action =
   | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
   | { type: "LOGOUT" };
 
+const token = localStorage.getItem("roundu_token");
+const savedUser = localStorage.getItem("roundu_user");
+const savedRole = localStorage.getItem("roundu_role");
+
+let parsedUser = { id: "", name: "", phone: "", email: "", address: "" };
+if (savedUser) {
+  try {
+    parsedUser = JSON.parse(savedUser);
+  } catch (e) {
+    console.error("Failed to parse saved user", e);
+  }
+}
+
 const initialState: State = {
-  isAuthenticated: false,
-  phone: "",
-  role: null,
+  isAuthenticated: !!token && !!savedUser && !!savedRole,
+  phone: parsedUser.phone || "",
+  role: (savedRole as Role) || null,
   user: {
-    id: "",
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
+    id: parsedUser.id || "",
+    name: parsedUser.name || "",
+    phone: parsedUser.phone || "",
+    email: parsedUser.email || "",
+    address: parsedUser.address || "",
   },
   selectedServiceId: null,
   selectedProviderId: null,
@@ -478,31 +491,7 @@ const AppContext = createContext<Ctx | null>(null);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Restore session on mount
-  useEffect(() => {
-    const token = localStorage.getItem("roundu_token");
-    const savedUser = localStorage.getItem("roundu_user");
-    const savedRole = localStorage.getItem("roundu_role");
 
-    if (token && savedUser && savedRole) {
-      try {
-        const user = JSON.parse(savedUser);
-        dispatch({ type: "SET_AUTH", value: true });
-        dispatch({ type: "SET_USER_ID", id: user.id });
-        dispatch({ type: "SET_ROLE", role: savedRole as Role });
-        dispatch({ type: "SET_PHONE", phone: user.phone || "" });
-        dispatch({ type: "UPDATE_USER", user: {
-          name: user.name || "",
-          email: user.email || "",
-          address: user.address || "",
-          role: savedRole as any,
-          phone: user.phone || ""
-        }});
-      } catch (e) {
-        console.error("Session restore error", e);
-      }
-    }
-  }, []);
   useEffect(() => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
