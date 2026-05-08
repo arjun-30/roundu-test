@@ -230,6 +230,7 @@ async function main() {
       io.emit('job_status_updated', {
         bookingId: data.bookingId,
         status: data.status,
+        quote: data.quote || null,
         timestamp: Date.now()
       });
     });

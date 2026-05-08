@@ -41,6 +41,12 @@ const Job = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
     toast.success("Customer notified that you are on the way!");
+    // Open Google Maps navigation to customer location
+    if (job.lat && job.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`, '_blank');
+    } else if (job.address) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`, '_blank');
+    }
   };
 
   const markArrived = () => {
@@ -55,14 +61,9 @@ const Job = () => {
       return;
     }
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "quote_set", quote: totalQuote } });
+    socket.emit("update_job_status", { bookingId: job.id, status: "quote_set", quote: totalQuote });
     setIsQuoteModalOpen(false);
     toast.success("Quote sent to customer!");
-
-    setTimeout(() => {
-      // If user hasn't cancelled or moved away, mock approval
-      dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "in_progress" } });
-      toast.success("Customer approved your quote! Job has started.");
-    }, 4000);
   };
 
   const completeJob = () => {
@@ -77,12 +78,12 @@ const Job = () => {
       case "accepted":
       case "assigned":
         return (
-          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center animate-pulse">
-             <span className="text-xs font-bold text-primary flex items-center justify-center gap-2">
-               <Navigation size={14}/> Automatic Tracking Active
-             </span>
-             <p className="text-[10px] text-primary/70 mt-1">Status will update automatically as you drive</p>
-          </div>
+          <button
+            onClick={markOnTheWay}
+            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/30 transition-all"
+          >
+            <Navigation size={18} /> I'm On the Way
+          </button>
         );
       case "on_the_way":
         return (
@@ -167,7 +168,18 @@ const Job = () => {
           )}
         </div>
 
-        <button className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-3 shadow-card active:scale-[0.98]">
+        <button
+          onClick={() => {
+            if (job.lat && job.lng) {
+              window.open(`https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`, '_blank');
+            } else if (job.address) {
+              window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`, '_blank');
+            } else {
+              toast.error("No address available for navigation");
+            }
+          }}
+          className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-3 shadow-card active:scale-[0.98]"
+        >
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Navigation size={18} className="text-primary" />
           </div>
