@@ -69,7 +69,11 @@ const SearchingProviders = () => {
     };
   };
 
-  const broadcastIdRef = useRef(`bc-${Date.now()}`);
+  const broadcastIdRef = useRef(sessionStorage.getItem("current_broadcast_id") || `bc-${Date.now()}`);
+  
+  useEffect(() => {
+    sessionStorage.setItem("current_broadcast_id", broadcastIdRef.current);
+  }, []);
 
   // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
@@ -320,7 +324,11 @@ const SearchingProviders = () => {
           {receivedQuotes.length > 0 ? (
             <div className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar">
               {receivedQuotes.map((q) => (
-                <div key={q.providerId} className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up">
+                <div 
+                  key={q.providerId} 
+                  onClick={() => navigate(`/provider/${q.providerId}`)}
+                  className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer"
+                >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-[#152E4B] border border-[#E1E8EF]">
@@ -340,7 +348,10 @@ const SearchingProviders = () => {
                     </div>
                   </div>
                   <button 
-                    onClick={() => handleAcceptQuote(q)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAcceptQuote(q);
+                    }}
                     className="w-full bg-[#152E4B] text-white py-2.5 rounded-xl text-[13px] font-[600] mt-1 active:scale-95 transition-transform"
                   >
                     Accept Quote
