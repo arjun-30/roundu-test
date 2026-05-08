@@ -73,7 +73,7 @@ export function LocationMap({
           transformStyle: "preserve-3d",
         }}
         animate={{
-          width: isExpanded ? "100%" : "80%",
+          width: "100%",
           height: isExpanded ? 240 : 140,
         }}
         transition={{
@@ -332,58 +332,24 @@ export function LocationMap({
             </motion.div>
           </div>
 
-          {/* Bottom section */}
-          <div className="space-y-1">
-            <motion.h3
-              className="text-foreground text-sm font-medium tracking-tight"
-              animate={{
-                x: isHovered ? 4 : 0,
-              }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              {location}
-            </motion.h3>
-
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.p
-                  className="text-muted-foreground font-mono text-xs"
-                  initial={{ opacity: 0, y: -10, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, y: -10, height: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {coordinates}
-                </motion.p>
-              )}
-            </AnimatePresence>
-
-            {/* Animated underline */}
-            <motion.div
-              className="h-px bg-linear-to-r from-[#152E4B]/50 via-[#1C3D63]/30 to-transparent"
-              initial={{ scaleX: 0, originX: 0 }}
-              animate={{
-                scaleX: isHovered || isExpanded ? 1 : 0.3,
-              }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            />
-          </div>
+          {/* Bottom section removed from here */}
         </div>
       </motion.div>
 
-      {/* Click hint */}
-      <motion.p
-        className="text-muted-foreground absolute -bottom-6 left-1/2 text-[10px] whitespace-nowrap"
-        style={{ x: "-50%" }}
-        initial={{ opacity: 0 }}
-        animate={{
-          opacity: isHovered && !isExpanded ? 1 : 0,
-          y: isHovered ? 0 : 4,
-        }}
-        transition={{ duration: 0.2 }}
-      >
-        Click to expand
-      </motion.p>
+      {/* Location text below map */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mt-3 text-center"
+          >
+            <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{location}</h3>
+            <p className="text-muted-foreground font-mono text-xs mt-0.5">{coordinates}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
