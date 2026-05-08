@@ -303,6 +303,8 @@ function reducer(state: State, action: Action): State {
     }
     case "SET_PROVIDER_REQUESTS":
       return { ...state, providerRequests: action.requests };
+    case "ADD_REQUEST":
+      return { ...state, providerRequests: [action.request, ...state.providerRequests] };
     case "SET_PHONE":
       return { ...state, phone: action.phone, user: { ...state.user, phone: action.phone } };
     case "SET_USER_ID":

@@ -70,6 +70,41 @@ const Dashboard = () => {
     };
   }, [dispatch]);
 
+  useEffect(() => {
+    const handleQuoteAccepted = (data: { 
+      broadcastId: string; 
+      bookingId: string; 
+      serviceId: string; 
+      customerName: string; 
+      address: string; 
+    }) => {
+      toast.success("Your quote was accepted! Redirecting to job...");
+      
+      // Add to providerRequests so Job.tsx can find it
+      dispatch({ 
+        type: "ADD_REQUEST", 
+        request: {
+          id: data.bookingId,
+          customerName: data.customerName,
+          serviceId: data.serviceId,
+          address: data.address,
+          status: "assigned",
+          date: new Date().toISOString().slice(0, 10),
+          time: "Now",
+          price: 0, 
+        } 
+      });
+      
+      // Redirect to navigation (Job page)
+      navigate(`/provider/job/${data.bookingId}`);
+    };
+    
+    socket.on("quote_accepted", handleQuoteAccepted);
+    return () => {
+      socket.off("quote_accepted", handleQuoteAccepted);
+    };
+  }, [dispatch, navigate]);
+
   const handleSubmitQuote = () => {
     if (!quotingBroadcast || !quotePrice) return;
     

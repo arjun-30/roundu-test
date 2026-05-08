@@ -44,6 +44,13 @@ async function main() {
     socket.on('register', async (data) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
+      
+      // Join user-specific room
+      if (data.userId) {
+        socket.join(`user:${data.userId}`);
+        console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
+      }
+
       if (data.role === 'provider') {
         socket.join('providers');
         
@@ -162,6 +169,15 @@ async function main() {
         io.to(roomName).emit('job_taken', { 
           broadcastId: data.broadcastId, 
           acceptedProviderId: data.acceptedProviderId 
+        });
+        
+        // Notify the winning provider
+        io.to(`user:${data.acceptedProviderId}`).emit('quote_accepted', { 
+          broadcastId: data.broadcastId,
+          bookingId: data.bookingId,
+          serviceId: broadcast.serviceId,
+          customerName: broadcast.customerName,
+          address: broadcast.address
         });
         
         // Remove from active broadcasts
