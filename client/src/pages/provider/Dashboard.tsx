@@ -76,33 +76,38 @@ const Dashboard = () => {
       bookingId: string; 
       serviceId: string; 
       customerName: string; 
-      address: string; 
+      address: string;
+      price: number;
+      date: string;
+      time: string;
+      status: string;
     }) => {
-      toast.success("Your quote was accepted! Redirecting to job...");
+      console.log("[socket] quote_accepted received:", data);
+      toast.success("🎉 Your quote was accepted! Heading to job...");
       
       // Add to providerRequests so Job.tsx can find it
       dispatch({ 
         type: "ADD_REQUEST", 
         request: {
           id: data.bookingId,
-          customerName: data.customerName,
+          customerName: data.customerName || "Customer",
           serviceId: data.serviceId,
-          address: data.address,
+          address: data.address || "Customer Location",
           status: "assigned",
-          date: new Date().toISOString().slice(0, 10),
-          time: "Now",
-          price: 0, 
+          date: data.date || new Date().toISOString().slice(0, 10),
+          time: data.time || "Now",
+          price: data.price || 0,
+          quote: data.price || 0,
+          notes: "",
         } 
       });
       
-      // Redirect to navigation (Job page)
+      // Navigate to Job page
       navigate(`/provider/job/${data.bookingId}`);
     };
     
     socket.on("quote_accepted", handleQuoteAccepted);
-    return () => {
-      socket.off("quote_accepted", handleQuoteAccepted);
-    };
+    return () => { socket.off("quote_accepted", handleQuoteAccepted); };
   }, [dispatch, navigate]);
 
   const handleSubmitQuote = () => {

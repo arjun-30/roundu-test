@@ -170,28 +170,41 @@ async function main() {
     });
 
     socket.on('accept_quote', (data) => {
-      console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}`);
+      console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}, bookingId=${data.bookingId}`);
       
       const broadcast = activeBroadcasts.get(data.broadcastId);
-      if (broadcast) {
-        // Notify other providers in the service room
-        const roomName = `service:${broadcast.serviceId}`;
-        io.to(roomName).emit('job_taken', { 
-          broadcastId: data.broadcastId, 
-          acceptedProviderId: data.acceptedProviderId 
-        });
+      const serviceId = data.serviceId || broadcast?.serviceId;
+      const customerName = data.customerName || broadcast?.customerName || 'Customer';
+      const address = data.address || broadcast?.address || '';
+
+      if (broadcast || data.bookingId) {
+        // Notify other providers in the service room the job is taken
+        if (serviceId) {
+          io.to(`service:${serviceId}`).emit('job_taken', { 
+            broadcastId: data.broadcastId, 
+            acceptedProviderId: data.acceptedProviderId 
+          });
+        }
         
-        // Notify the winning provider
+        // ✅ Notify the WINNING provider with full job details
         io.to(`user:${data.acceptedProviderId}`).emit('quote_accepted', { 
           broadcastId: data.broadcastId,
           bookingId: data.bookingId,
-          serviceId: broadcast.serviceId,
-          customerName: broadcast.customerName,
-          address: broadcast.address
+          serviceId,
+          customerName,
+          address,
+          price: data.price || 0,
+          date: new Date().toISOString().slice(0, 10),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'assigned',
         });
         
+        console.log(`[socket] quote_accepted sent to user:${data.acceptedProviderId} for booking ${data.bookingId}`);
+        
         // Remove from active broadcasts
-        activeBroadcasts.delete(data.broadcastId);
+        if (broadcast) activeBroadcasts.delete(data.broadcastId);
+      } else {
+        console.warn(`[socket] accept_quote: no broadcast found for ${data.broadcastId}`);
       }
     });
 

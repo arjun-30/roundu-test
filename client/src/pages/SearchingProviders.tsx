@@ -151,10 +151,15 @@ const SearchingProviders = () => {
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
         toast.success("Quote accepted & Booking confirmed!");
         
-        // Notify other providers that the job is taken
+        // Notify the winning provider & other providers the job is taken
         socket.emit("accept_quote", { 
           broadcastId: broadcastIdRef.current, 
-          acceptedProviderId: quote.providerId 
+          acceptedProviderId: quote.providerId,
+          bookingId: res.data.id,           // ← critical: let server relay this to the provider
+          customerName: user.name,
+          address: user.address || "Customer Location",
+          serviceId: serviceId,
+          price: quote.price,
         });
 
         navigate(`/tracking/${res.data.id}`);
