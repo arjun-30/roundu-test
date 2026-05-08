@@ -40,20 +40,37 @@ async function main() {
       console.log(`[socket] client connected: ${socket.id}`);
     }
 
-    socket.on('register', (data) => {
+    socket.on('register', async (data) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
       if (data.role === 'provider') {
         socket.join('providers');
         
-        // Join service-specific rooms
-        if (Array.isArray(data.serviceIds)) {
-          data.serviceIds.forEach((serviceId: string) => {
-            const roomName = `service:${serviceId}`;
-            socket.join(roomName);
-            console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
-          });
+        let serviceIds: string[] = Array.isArray(data.serviceIds) ? data.serviceIds : [];
+        
+        // If client didn't send serviceIds, fetch from DB as fallback
+        if (serviceIds.length === 0 && data.userId) {
+          try {
+            const { getPool } = await import('./config/database');
+            const res = await getPool().query(
+              `SELECT ps.service_id FROM provider_services ps
+               JOIN providers p ON ps.provider_id = p.id
+               WHERE p.user_id = $1`,
+              [data.userId]
+            );
+            serviceIds = res.rows.map((r: any) => r.service_id);
+            console.log(`[socket] fetched serviceIds from DB for ${data.userId}:`, serviceIds);
+          } catch (err) {
+            console.error('[socket] failed to fetch serviceIds from DB:', err);
+          }
         }
+        
+        // Join service-specific rooms
+        serviceIds.forEach((serviceId: string) => {
+          const roomName = `service:${serviceId}`;
+          socket.join(roomName);
+          console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
+        });
         
         console.log(`[socket] provider ${data.userId} fully registered`);
       }

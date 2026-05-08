@@ -4,7 +4,7 @@ import {
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
   Power, Star, TrendingUp, AlertTriangle, Lightbulb, 
   ChevronRight, Inbox, Briefcase, FileText, Image as ImageIcon, Video, Play, Mic, Eye,
-  ClipboardCheck, Images, Wrench
+  ClipboardCheck, Images, Wrench, LogOut
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
@@ -39,27 +39,19 @@ const Dashboard = () => {
 
   const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
 
-  // Alert provider when new job request arrives
-  useEffect(() => {
-    if (pending.length > 0) {
-      const latest = pending[0];
-      toast(`📦 New job from ${latest.customerName} — ${latest.serviceId}`, {
-        description: `₹${latest.price} · ${latest.address}`,
-        duration: 8000,
-      });
-    }
-  }, [pending.length]);
+  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
 
-  // Alert provider when a live broadcast request arrives
+  // Alert provider when a new direct request arrives
   useEffect(() => {
-    if (liveBroadcasts.length > 0 && isOnline) {
-      const latest = liveBroadcasts[0];
-      toast.info(`🚨 LIVE Job Alert: ${latest.serviceId}`, {
-        description: `Customer is searching near ${latest.address}. Tap to quote!`,
-        duration: 8000,
-      });
-    }
-  }, [liveBroadcasts.length, isOnline]);
+    const handleNewRequest = (request: any) => {
+      // Show the popup at the top
+      setActiveDirectRequest(request);
+    };
+    socket.on("incoming_request", handleNewRequest);
+    return () => {
+      socket.off("incoming_request", handleNewRequest);
+    };
+  }, []);
 
   useEffect(() => {
     if (isCritical) {
@@ -131,6 +123,16 @@ const Dashboard = () => {
             <User size={18} className="text-foreground" />
           </button>
           <button 
+            onClick={() => {
+              dispatch({ type: "LOGOUT" });
+              navigate("/login", { replace: true });
+            }}
+            className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center relative hover:bg-red-100 transition-colors"
+            title="Log Out"
+          >
+            <LogOut size={18} className="text-red-500" />
+          </button>
+          <button 
             onClick={() => navigate("/notifications")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
             title="Notifications"
@@ -195,6 +197,55 @@ const Dashboard = () => {
             </div>
           );
         })()}
+
+        {/* Live Job Broadcasts (Moved to Top) */}
+        {isOnline && liveBroadcasts.length > 0 && (
+          <div className="px-5 mb-6 mt-4">
+            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              Live Job Requests
+            </h2>
+            <div className="space-y-3">
+              {liveBroadcasts.map((b) => {
+                const service = getServiceById(b.serviceId);
+                return (
+                  <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0 shadow-sm">
+                        {service && <service.icon size={18} className="text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[#030916]">{b.customerName}</p>
+                        <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
+                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
+                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                        </div>
+                        {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
+                        
+                        <div className="flex gap-2 mt-3">
+                          <button 
+                            onClick={() => setQuotingBroadcast(b)}
+                            className="flex-1 py-2 bg-[#F59E0B] text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                          >
+                            Provide Quote
+                          </button>
+                          <button 
+                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: b.broadcastId })}
+                            className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="px-5 mb-6">
@@ -303,54 +354,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Live Job Broadcasts */}
-        {isOnline && liveBroadcasts.length > 0 && (
-          <div className="px-5 mb-6">
-            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              Live Job Requests
-            </h2>
-            <div className="space-y-3">
-              {liveBroadcasts.map((b) => {
-                const service = getServiceById(b.serviceId);
-                return (
-                  <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
-                    <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0 shadow-sm">
-                        {service && <service.icon size={18} className="text-white" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[#030916]">{b.customerName}</p>
-                        <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
-                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
-                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
-                        </div>
-                        {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
-                        
-                        <div className="flex gap-2 mt-3">
-                          <button 
-                            onClick={() => setQuotingBroadcast(b)}
-                            className="flex-1 py-2 bg-[#F59E0B] text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
-                          >
-                            Provide Quote
-                          </button>
-                          <button 
-                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
-                            className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
-                          >
-                            Skip
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Incoming Requests */}
         <div className="px-5 mb-6">
@@ -599,20 +602,47 @@ const Dashboard = () => {
       )}
 
 
-      {simulatedRequest && (
+      {/* Direct Request Popup (Top-aligned) */}
+      {(simulatedRequest || activeDirectRequest) && (
         <IncomingRequestPopup 
-          request={simulatedRequest}
+          request={simulatedRequest || activeDirectRequest}
+          isBroadcast={false}
           onAccept={() => {
-            dispatch({ type: "ACCEPT_REQUEST", id: simulatedRequest.id });
-            setSimulatedRequest(null);
+            const req = simulatedRequest || activeDirectRequest;
+            dispatch({ type: "ACCEPT_REQUEST", id: req.id });
+            if (simulatedRequest) setSimulatedRequest(null);
+            if (activeDirectRequest) setActiveDirectRequest(null);
             toast.success("Job accepted!");
-            navigate(`/provider/job/${simulatedRequest.id}`);
+            navigate(`/provider/job/${req.id}`);
           }}
           onReject={() => {
-            dispatch({ type: "REJECT_REQUEST", id: simulatedRequest.id });
-            setSimulatedRequest(null);
+            const req = simulatedRequest || activeDirectRequest;
+            dispatch({ type: "REJECT_REQUEST", id: req.id });
+            if (simulatedRequest) setSimulatedRequest(null);
+            if (activeDirectRequest) setActiveDirectRequest(null);
             toast("Request declined.");
           }}
+        />
+      )}
+
+      {/* Live Job Broadcast Popup (Top-aligned) */}
+      {isOnline && liveBroadcasts.length > 0 && !quotingBroadcast && (
+        <IncomingRequestPopup 
+          request={{
+            ...liveBroadcasts[0],
+            serviceId: liveBroadcasts[0].serviceId,
+            customerName: liveBroadcasts[0].customerName,
+            customerRating: "4.8",
+            distanceKm: "1.2",
+            address: liveBroadcasts[0].address,
+            date: liveBroadcasts[0].date,
+            time: liveBroadcasts[0].time,
+            price: 0,
+            notes: liveBroadcasts[0].notes || "No notes provided."
+          }}
+          isBroadcast={true}
+          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
         />
       )}
 

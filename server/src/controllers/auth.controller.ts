@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import * as msg91 from '../services/msg91.service';
-import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { UserModel } from '../models/user.model';
 import { AuthService } from '../services/auth.service';
+import { signAccessToken, UserRole } from '../utils/jwt';
 
 export const sendOTP = async (req: Request, res: Response) => {
   try {
@@ -14,9 +14,18 @@ export const sendOTP = async (req: Request, res: Response) => {
     const otp = await AuthService.generateOTP(phone);
 
     // 2. Send via MSG91 (using custom OTP)
-    await msg91.sendOTP(phone, otp); 
+    await msg91.sendOTP(phone, otp);
 
-    res.json({ success: true, message: 'OTP sent successfully' });
+    // In dev mode without SMS configured, surface the OTP so it can actually be used.
+    const smsConfigured = Boolean(env.MSG91_AUTH_KEY);
+    if (!smsConfigured) {
+      console.log(`[auth] DEV OTP for ${phone}: ${otp}`);
+    }
+    res.json({
+      success: true,
+      message: 'OTP sent successfully',
+      ...(env.NODE_ENV !== 'production' && !smsConfigured ? { devOtp: otp } : {}),
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -38,11 +47,10 @@ export const verifyOTP = async (req: Request, res: Response) => {
       user = await UserModel.create({ phone, role: 'customer' });
     }
     
-    // Create JWT
-    const token = jwt.sign(
-      { id: user.id, phone: phone, role: user.role }, 
-      env.JWT_SECRET || 'fallback_secret', 
-      { expiresIn: '7d' }
+    // Create JWT (uses JWT_ACCESS_SECRET + issuer/audience expected by middleware)
+    const token = signAccessToken(
+      { sub: user.id, role: (user.role || 'customer') as UserRole, phone },
+      '7d',
     );
 
     res.json({ success: true, message: 'Verified', token, user });
@@ -65,7 +73,10 @@ export const verifyWidgetToken = async (req: Request, res: Response) => {
       user = await UserModel.create({ phone: mobile });
     }
     
-    const token = jwt.sign({ id: user.id, phone: mobile }, env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+    const token = signAccessToken(
+      { sub: user.id, role: ((user as any).role || 'customer') as UserRole, phone: mobile },
+      '7d',
+    );
 
     res.json({ success: true, message: 'Verified', token, mobile, user });
   } catch (error: any) {

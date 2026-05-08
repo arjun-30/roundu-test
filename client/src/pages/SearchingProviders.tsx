@@ -69,25 +69,45 @@ const SearchingProviders = () => {
     };
   };
 
-  // Emit broadcast and listen for quotes
+  // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
-    if (!hasTriggered.current) {
-      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
-      
-      const broadcastId = `bc-${Date.now()}`;
-      socket.emit("broadcast_job", {
-        broadcastId,
-        customerId: user.id,
-        customerName: user.name,
-        serviceId: serviceId || "electrician",
-        address: user.address || "Current Location",
-        date: new Date().toISOString().slice(0, 10),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        notes: "Quick fix request from customer"
-      });
+    if (hasTriggered.current) return;
+    hasTriggered.current = true;
+    dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
 
-      hasTriggered.current = true;
+    const broadcastId = `bc-${Date.now()}`;
+    const payload = {
+      broadcastId,
+      customerId: user.id,
+      customerName: user.name,
+      serviceId: serviceId || "electrician",
+      address: user.address || "Current Location",
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      notes: "Quick fix request from customer"
+    };
+
+    const doEmit = () => {
+      if (socket.connected) {
+        console.log("[socket] emitting broadcast_job:", payload.serviceId);
+        socket.emit("broadcast_job", payload);
+      }
+    };
+
+    // Emit immediately if connected, else wait for connect
+    if (socket.connected) {
+      doEmit();
+    } else {
+      socket.once("connect", doEmit);
     }
+
+    // Re-broadcast every 5 seconds for providers with unstable connections
+    const interval = setInterval(doEmit, 5000);
+
+    return () => {
+      clearInterval(interval);
+      socket.off("connect", doEmit);
+    };
   }, [serviceId, user, dispatch]);
 
   const handleAcceptQuote = async (quote: any) => {

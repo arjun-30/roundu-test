@@ -4,12 +4,13 @@ import { getServiceById } from "@/data/mockData";
 import { X, Check, MapPin, Calendar, Clock, Star, Map, User, Navigation } from "lucide-react";
 
 interface IncomingRequestPopupProps {
-  request: ProviderRequest;
+  request: any; // Can be ProviderRequest or JobBroadcast
   onAccept: () => void;
   onReject: () => void;
+  isBroadcast?: boolean;
 }
 
-const IncomingRequestPopup = ({ request, onAccept, onReject }: IncomingRequestPopupProps) => {
+const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: IncomingRequestPopupProps) => {
   const [timeLeft, setTimeLeft] = useState(120);
   const service = getServiceById(request.serviceId);
 
@@ -27,7 +28,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject }: IncomingRequestPo
   const percentage = (timeLeft / 120) * 100;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex justify-center items-start pt-12 p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
       <div className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col relative">
         {/* Timer Bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-muted">
@@ -50,8 +51,10 @@ const IncomingRequestPopup = ({ request, onAccept, onReject }: IncomingRequestPo
             {service && <service.icon size={32} className="text-primary" />}
           </div>
 
-          <h2 className="text-xs uppercase tracking-wider font-bold text-primary mb-1">New Request</h2>
-          <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label}</h1>
+          <h2 className="text-xs uppercase tracking-wider font-bold text-primary mb-1">
+            {isBroadcast ? "Live Job Alert" : "New Request"}
+          </h2>
+          <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label || request.serviceId}</h1>
           
           <div className="flex items-center gap-4 mt-4 bg-muted/50 rounded-2xl p-3 border border-border/50">
             <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center text-lg font-bold">
@@ -92,9 +95,15 @@ const IncomingRequestPopup = ({ request, onAccept, onReject }: IncomingRequestPo
         </div>
 
         <div className="p-6">
-          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Estimated Earnings</p>
-          <p className="text-3xl font-extrabold text-emerald-600">₹{request.price} - {request.price + 200}</p>
-          <p className="text-xs text-muted-foreground mt-1">Final amount depends on work complexity</p>
+          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
+          {isBroadcast ? (
+            <p className="text-sm font-medium text-foreground italic">"{request.notes || "No notes provided."}"</p>
+          ) : (
+            <>
+              <p className="text-3xl font-extrabold text-emerald-600">₹{request.price} - {request.price + 200}</p>
+              <p className="text-xs text-muted-foreground mt-1">Final amount depends on work complexity</p>
+            </>
+          )}
         </div>
 
 
@@ -103,14 +112,14 @@ const IncomingRequestPopup = ({ request, onAccept, onReject }: IncomingRequestPo
             onClick={onReject}
             className="py-4 rounded-2xl bg-muted text-foreground font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 border border-border"
           >
-            <X size={18} /> Decline
+            <X size={18} /> {isBroadcast ? "Skip" : "Decline"}
           </button>
           <button
             onClick={onAccept}
             className="py-4 rounded-2xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-primary/30 relative overflow-hidden group"
           >
             <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform" />
-            <Check size={18} /> Accept
+            <Check size={18} /> {isBroadcast ? "Provide Quote" : "Accept"}
           </button>
         </div>
       </div>

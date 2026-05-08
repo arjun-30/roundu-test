@@ -442,7 +442,7 @@ function reducer(state: State, action: Action): State {
         ] 
       };
     case "REMOVE_LIVE_BROADCAST":
-      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
+      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.broadcastId) };
     case "ADD_RECEIVED_QUOTE":
       return {
         ...state,
@@ -457,6 +457,9 @@ function reducer(state: State, action: Action): State {
       localStorage.removeItem("roundu_token");
       localStorage.removeItem("roundu_user");
       localStorage.removeItem("roundu_role");
+      if (socket.connected) {
+        socket.disconnect();
+      }
       return { ...initialState };
     default:
       return state;
@@ -580,6 +583,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
+      console.log("[socket] ✅ incoming_broadcast received:", broadcast);
       dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
       dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
     });
@@ -609,13 +613,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (state.isAuthenticated && state.user.id) {
-      socket.emit("register", { 
-        userId: state.user.id, 
+    if (!state.isAuthenticated || !state.user.id) return;
+
+    const doRegister = () => {
+      // serviceIds: prefer onboardingData, fallback to user.serviceId if available
+      const serviceIds: string[] =
+        (state.onboardingData?.serviceIds?.length
+          ? state.onboardingData.serviceIds
+          : (state.user as any).serviceId
+            ? [(state.user as any).serviceId]
+            : []);
+
+      console.log(`[socket] registering ${state.user.id} (${state.role}) services:`, serviceIds);
+      socket.emit("register", {
+        userId: state.user.id,
         role: state.role,
-        serviceIds: state.onboardingData?.serviceIds || []
+        serviceIds,
       });
+    };
+
+    // Register immediately if already connected
+    if (socket.connected) {
+      doRegister();
     }
+
+    // Re-register on every (re)connect to fix race condition
+    socket.on("connect", doRegister);
+
+    return () => {
+      socket.off("connect", doRegister);
+    };
   }, [state.isAuthenticated, state.user.id, state.role, state.onboardingData.serviceIds]);
 
   const addBooking = useCallback((booking: Booking) => {

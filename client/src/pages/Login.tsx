@@ -33,8 +33,12 @@ const Login = () => {
 
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
-        toast.success("OTP sent successfully!");
-        navigate("/otp"); // Note: changed from /otp-verify to /otp to match AppRoutes
+        if (response.data.devOtp) {
+          toast.success(`Dev OTP: ${response.data.devOtp}`, { duration: 10000 });
+        } else {
+          toast.success("OTP sent successfully!");
+        }
+        navigate("/otp", { state: { devOtp: response.data.devOtp } });
       } else {
         toast.error(response.data.message || "Failed to send OTP");
       }
