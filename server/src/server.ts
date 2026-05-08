@@ -137,6 +137,13 @@ async function main() {
 
     socket.on('broadcast_job', (data) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
+      
+      // Deduplicate: if this broadcastId was already emitted, skip
+      if (activeBroadcasts.has(data.broadcastId)) {
+        console.log(`[socket] duplicate broadcast_job skipped: ${data.broadcastId}`);
+        return;
+      }
+      
       const broadcastPayload = {
         broadcastId: data.broadcastId,
         customerId: data.customerId,
@@ -152,6 +159,9 @@ async function main() {
 
       // Store in active broadcasts
       activeBroadcasts.set(data.broadcastId, broadcastPayload);
+
+      // Auto-expire after 10 minutes
+      setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
 
       // Target only relevant service room
       const roomName = `service:${data.serviceId}`;

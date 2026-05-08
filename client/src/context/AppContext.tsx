@@ -449,6 +449,10 @@ function reducer(state: State, action: Action): State {
     case "SET_CURRENT_LOCATION":
       return { ...state, currentLocation: { lat: action.lat, lng: action.lng } };
     case "ADD_LIVE_BROADCAST":
+      // Deduplicate: if this exact broadcastId is already in the list, ignore
+      if (state.liveBroadcasts.some(b => b.broadcastId === action.broadcast.broadcastId)) {
+        return state;
+      }
       return { 
         ...state, 
         liveBroadcasts: [
