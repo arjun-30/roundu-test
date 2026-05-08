@@ -33,6 +33,7 @@ const Login = () => {
 
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
+        localStorage.setItem("roundu_pending_phone", data.phone);
         if (response.data.devOtp) {
           toast.success(`Dev OTP: ${response.data.devOtp}`, { duration: 10000 });
         } else {

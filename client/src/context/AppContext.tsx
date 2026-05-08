@@ -490,11 +490,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: "SET_AUTH", value: true });
         dispatch({ type: "SET_USER_ID", id: user.id });
         dispatch({ type: "SET_ROLE", role: savedRole as Role });
+        dispatch({ type: "SET_PHONE", phone: user.phone || "" });
         dispatch({ type: "UPDATE_USER", user: {
           name: user.name || "",
           email: user.email || "",
           address: user.address || "",
-          role: savedRole as any
+          role: savedRole as any,
+          phone: user.phone || ""
         }});
       } catch (e) {
         console.error("Session restore error", e);

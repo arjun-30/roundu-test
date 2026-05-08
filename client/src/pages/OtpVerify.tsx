@@ -19,9 +19,17 @@ const OtpVerify = () => {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!phone) navigate("/login", { replace: true });
+    if (!phone) {
+      const pendingPhone = localStorage.getItem("roundu_pending_phone");
+      if (pendingPhone) {
+        dispatch({ type: "SET_PHONE", phone: pendingPhone });
+      } else {
+        navigate("/login", { replace: true });
+        return;
+      }
+    }
     refs.current[0]?.focus();
-  }, [phone, navigate]);
+  }, [phone, navigate, dispatch]);
 
   const handleChange = (i: number, v: string) => {
     const digit = v.replace(/\D/g, "").slice(-1);
