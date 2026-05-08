@@ -49,22 +49,23 @@ async function main() {
         // Join service-specific rooms
         if (Array.isArray(data.serviceIds)) {
           data.serviceIds.forEach((serviceId: string) => {
-            socket.join(`service:${serviceId}`);
-            console.log(`[socket] provider ${data.userId} joined service room: service:${serviceId}`);
+            const roomName = `service:${serviceId}`;
+            socket.join(roomName);
+            console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
           });
         }
         
-        console.log(`[socket] provider ${data.userId} joined providers room via register`);
+        console.log(`[socket] provider ${data.userId} fully registered`);
       }
     });
 
     socket.on('join_provider', () => {
       socket.join('providers');
-      console.log(`[socket] ${socket.id} joined providers room via join_provider`);
+      console.log(`[socket] ${socket.id} joined generic providers room`);
     });
 
     socket.on('new_booking', async (data) => {
-      console.log(`[socket] new_booking received: ${data.id} for service: ${data.serviceId}`);
+      console.log(`[socket] new_booking: id=${data.id}, service=${data.serviceId}, target=${data.providerId}`);
       const payload = {
         id: `req-${data.id}`,
         customerName: data.customerName || "Customer",
@@ -81,31 +82,29 @@ async function main() {
         voiceNote: data.voice_note || false
       };
 
-      const providerSockets = await io.in('providers').fetchSockets();
-
-      if (providerSockets.length > 0) {
-        // 1. Specific provider targeted
-        if (data.providerId && data.providerId !== 'searching') {
-          const specificProvider = providerSockets.find(s => s.data.userId === data.providerId);
-          if (specificProvider) {
-            specificProvider.emit('incoming_request', payload);
-            return;
-          }
+      // 1. Direct Target
+      if (data.providerId && data.providerId !== 'searching') {
+        const sockets = await io.in('providers').fetchSockets();
+        const target = sockets.find(s => s.data.userId === data.providerId);
+        if (target) {
+          target.emit('incoming_request', payload);
+          console.log(`[socket] direct request sent to provider ${data.providerId}`);
+          return;
         }
-        
-        // 2. Broadcast to specific service room (e.g., only plumbers)
-        console.log(`[socket] broadcasting to room: service:${data.serviceId}`);
-        io.to(`service:${data.serviceId}`).emit('incoming_request', payload);
-      } else {
-        // Fallback for development/compatibility: broadcast to all others if no registered providers
-        socket.broadcast.emit('incoming_request', payload);
       }
+      
+      // 2. Room-based Broadcast
+      const roomName = `service:${data.serviceId}`;
+      console.log(`[socket] broadcasting request to room: ${roomName}`);
+      io.to(roomName).emit('incoming_request', payload);
+      
+      // 3. Optional: broadcast to 'providers' room as well if roomName might be empty
+      // but to avoid double notification we rely on service room.
     });
 
     socket.on('broadcast_job', (data) => {
-      console.log(`[socket] broadcast_job received for ${data.serviceId}`);
-      // Send to all providers
-      io.emit('incoming_broadcast', {
+      console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
+      const broadcastPayload = {
         broadcastId: data.broadcastId,
         customerId: data.customerId,
         customerName: data.customerName || "Customer",
@@ -116,7 +115,12 @@ async function main() {
         notes: data.notes,
         status: "active",
         createdAt: Date.now()
-      });
+      };
+
+      // Target only relevant service room
+      const roomName = `service:${data.serviceId}`;
+      console.log(`[socket] broadcasting job to room: ${roomName}`);
+      io.to(roomName).emit('incoming_broadcast', broadcastPayload);
     });
 
     socket.on('submit_quote', (data) => {
@@ -139,8 +143,18 @@ async function main() {
       socket.broadcast.emit('provider_location_update', data);
     });
 
-    socket.on('update_job_status', (data) => {
+    socket.on('update_job_status', async (data) => {
       console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}`);
+      
+      // Persist to DB
+      const dbId = data.bookingId.replace('req-', '');
+      try {
+        const { BookingModel } = require('./models/booking.model');
+        await BookingModel.updateStatus(dbId, data.status);
+      } catch (err) {
+        console.error('[socket] Failed to update booking status in DB:', err);
+      }
+
       io.emit('job_status_updated', {
         bookingId: data.bookingId,
         status: data.status,

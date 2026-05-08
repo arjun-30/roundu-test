@@ -29,5 +29,9 @@ export const BookingModel = {
   async findByProviderId(providerId: string): Promise<Booking[]> {
     const res = await getPool().query('SELECT * FROM bookings WHERE provider_id = $1 ORDER BY created_at DESC', [providerId]);
     return res.rows;
+  },
+
+  async updateStatus(id: string, status: string): Promise<void> {
+    await getPool().query('UPDATE bookings SET status = $1 WHERE id = $2', [status, id]);
   }
 };

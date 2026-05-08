@@ -95,6 +95,8 @@ const ProvidersPage = () => {
       service_id: serviceId,
       scheduled_at: `${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       address: user.address || "Client Address",
+      lat: currentLocation?.lat,
+      lng: currentLocation?.lng,
       price: list.find(p => p.id === id)?.pricePerHr || 299,
       notes: "Quick fix requested",
       voice_note: false,
@@ -105,7 +107,7 @@ const ProvidersPage = () => {
       if (res.success) {
         addBooking(res.data);
         toast.success("Booking confirmed!");
-        navigate(`/booking/success/${res.data.id}`);
+        navigate(`/tracking/${res.data.id}`);
       } else {
         toast.error("Failed to confirm booking.");
       }

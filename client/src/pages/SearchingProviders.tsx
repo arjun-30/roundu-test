@@ -104,6 +104,8 @@ const SearchingProviders = () => {
       status: "assigned",
       scheduled_at: new Date(Date.now() + quote.etaMin * 60000).toISOString(),
       address: user.address || "Client Address",
+      lat: currentLocation?.lat,
+      lng: currentLocation?.lng,
       price: quote.price,
       notes: "Quick fix requested",
       voice_note: false,

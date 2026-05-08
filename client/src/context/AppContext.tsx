@@ -9,6 +9,20 @@ import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
 import { toast } from "sonner";
 
+const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
+  const R = 6371;
+  const dLat = ((l2.lat - l1.lat) * Math.PI) / 180;
+  const dLng = ((l2.lng - l1.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((l1.lat * Math.PI) / 180) *
+      Math.cos((l2.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 type Role = "customer" | "provider" | null;
 
 export interface JobBroadcast {
@@ -254,6 +268,8 @@ function reducer(state: State, action: Action): State {
           price: booking.price,
           status: booking.status || "assigned",
           notes: booking.notes,
+          lat: booking.lat,
+          lng: booking.lng,
           voiceNote: booking.voice_note || false
         };
         setTimeout(() => toast.success("🎉 Your quote was accepted! Job added."), 100);
@@ -267,18 +283,20 @@ function reducer(state: State, action: Action): State {
       return state;
     }
     case "HANDLE_JOB_STATUS_UPDATED": {
+      const { bookingId, status } = action.data;
+      const normalizedId = bookingId.replace('req-', '');
       if (state.role === "customer") {
         return {
           ...state,
           bookings: state.bookings.map((b) =>
-            b.id === action.data.bookingId ? { ...b, status: action.data.status as any } : b
+            (b.id === normalizedId || b.id === bookingId) ? { ...b, status: status as any } : b
           ),
         };
       } else {
         return {
           ...state,
           providerRequests: state.providerRequests.map((r) =>
-            r.id === action.data.bookingId ? { ...r, status: action.data.status as any } : r
+            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any } : r
           ),
         };
       }
@@ -544,6 +562,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
       dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
+
+      // Auto-tracking for customer
+      if (state.role === "customer" && state.currentLocation) {
+        state.bookings.forEach((b) => {
+          const providerId = (b as any).provider_id || b.providerId;
+          if (providerId === data.id) {
+            const dist = getDistance(state.currentLocation!, { lat: data.lat, lng: data.lng });
+            if (b.status === "assigned" && dist < 5) {
+              socket.emit("update_job_status", { bookingId: b.id, status: "on_the_way" });
+            } else if (b.status === "on_the_way" && dist < 0.2) {
+              socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
+            }
+          }
+        });
+      }
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {

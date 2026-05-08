@@ -10,7 +10,7 @@ const GPSMonitor = () => {
   const navigate = useNavigate();
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(true);
 
-  const { user } = useApp();
+  const { user, providerRequests } = useApp();
 
   const toggleTracking = () => {
     setIsTrackingEnabled(!isTrackingEnabled);
@@ -28,10 +28,34 @@ const GPSMonitor = () => {
       (pos) => {
         const { latitude, longitude } = pos.coords;
         socket.emit("provider_location", {
-          id: user.phone,
+          id: user.id || user.phone,
           lat: latitude,
           lng: longitude,
           name: user.name
+        });
+
+        // Auto-status update for active jobs
+        providerRequests.forEach(req => {
+          if (req.lat && req.lng) {
+            // Re-calculate distance
+            const R = 6371;
+            const dLat = ((req.lat - latitude) * Math.PI) / 180;
+            const dLng = ((req.lng - longitude) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((latitude * Math.PI) / 180) *
+                Math.cos((req.lat * Math.PI) / 180) *
+                Math.sin(dLng / 2) *
+                Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const dist = R * c;
+
+            if (req.status === "assigned" && dist < 5) {
+              socket.emit("update_job_status", { bookingId: req.id, status: "on_the_way" });
+            } else if (req.status === "on_the_way" && dist < 0.2) {
+              socket.emit("update_job_status", { bookingId: req.id, status: "arrived" });
+            }
+          }
         });
       },
       (err) => console.error("GPS Error:", err),

@@ -77,20 +77,20 @@ const Job = () => {
       case "accepted":
       case "assigned":
         return (
-          <button onClick={markOnTheWay} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/30 transition-all">
-            <Car size={18} /> Mark as On The Way
-          </button>
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center animate-pulse">
+             <span className="text-xs font-bold text-primary flex items-center justify-center gap-2">
+               <Navigation size={14}/> Automatic Tracking Active
+             </span>
+             <p className="text-[10px] text-primary/70 mt-1">Status will update automatically as you drive</p>
+          </div>
         );
       case "on_the_way":
         return (
-          <div className="space-y-3">
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between">
-               <span className="text-xs font-semibold text-indigo-900 flex items-center gap-1"><Navigation size={14}/> ETA: 12 mins</span>
-               <span className="text-[10px] text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md">Location shared</span>
-            </div>
-            <button onClick={markArrived} className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
-              <MapPin size={18} /> Mark as Arrived
-            </button>
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center animate-pulse">
+             <span className="text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
+               <Car size={16}/> Heading to Customer
+             </span>
+             <p className="text-[10px] text-indigo-700 mt-1">System is tracking your arrival</p>
           </div>
         );
       case "arrived":
