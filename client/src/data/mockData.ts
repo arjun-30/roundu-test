@@ -27,6 +27,7 @@ export interface Provider {
   bio: string;
   tags: string[];
   available: boolean;
+  videoUrl?: string;
 }
 
 export interface Booking {
@@ -166,11 +167,11 @@ export const popularTasks: PopularTask[] = [
 ];
 
 const baseProviders: Omit<Provider, "id" | "serviceId">[] = [
-  { name: "Rajesh Kumar", rating: 4.9, reviews: 238, pricePerHr: 299, distanceKm: 1.2, etaMin: 30, experienceYrs: 8, avatar: "RK", verified: true, topRated: true, bio: "Certified expert with 8+ years of hands-on experience. Quick, clean and reliable.", tags: ["Verified", "Fast"], available: true },
-  { name: "Suresh Menon", rating: 4.7, reviews: 156, pricePerHr: 249, distanceKm: 2.5, etaMin: 45, experienceYrs: 5, avatar: "SM", verified: true, topRated: false, bio: "Friendly professional focused on quality work and customer satisfaction.", tags: ["Experienced"], available: true },
-  { name: "Deepak Jain", rating: 4.8, reviews: 312, pricePerHr: 349, distanceKm: 0.8, etaMin: 20, experienceYrs: 10, avatar: "DJ", verified: true, topRated: true, bio: "Top-rated specialist serving the city for over a decade.", tags: ["Verified", "Top Rated"], available: true },
-  { name: "Vikram Singh", rating: 4.6, reviews: 89, pricePerHr: 199, distanceKm: 3.1, etaMin: 50, experienceYrs: 3, avatar: "VS", verified: false, topRated: false, bio: "Affordable and dependable service for all your needs.", tags: ["Budget"], available: true },
-  { name: "Arun Patel", rating: 4.9, reviews: 421, pricePerHr: 399, distanceKm: 1.8, etaMin: 35, experienceYrs: 12, avatar: "AP", verified: true, topRated: true, bio: "Premium professional with years of expertise and outstanding reviews.", tags: ["Verified", "Premium"], available: true },
+  { name: "Rajesh Kumar", rating: 4.9, reviews: 238, pricePerHr: 299, distanceKm: 1.2, etaMin: 30, experienceYrs: 8, avatar: "RK", verified: true, topRated: true, bio: "Certified expert with 8+ years of hands-on experience. Quick, clean and reliable.", tags: ["Verified", "Fast"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+  { name: "Suresh Menon", rating: 4.7, reviews: 156, pricePerHr: 249, distanceKm: 2.5, etaMin: 45, experienceYrs: 5, avatar: "SM", verified: true, topRated: false, bio: "Friendly professional focused on quality work and customer satisfaction.", tags: ["Experienced"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+  { name: "Deepak Jain", rating: 4.8, reviews: 312, pricePerHr: 349, distanceKm: 0.8, etaMin: 20, experienceYrs: 10, avatar: "DJ", verified: true, topRated: true, bio: "Top-rated specialist serving the city for over a decade.", tags: ["Verified", "Top Rated"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+  { name: "Vikram Singh", rating: 4.6, reviews: 89, pricePerHr: 199, distanceKm: 3.1, etaMin: 50, experienceYrs: 3, avatar: "VS", verified: false, topRated: false, bio: "Affordable and dependable service for all your needs.", tags: ["Budget"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+  { name: "Arun Patel", rating: 4.9, reviews: 421, pricePerHr: 399, distanceKm: 1.8, etaMin: 35, experienceYrs: 12, avatar: "AP", verified: true, topRated: true, bio: "Premium professional with years of expertise and outstanding reviews.", tags: ["Verified", "Premium"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
 ];
 
 // Generate 5 providers per service

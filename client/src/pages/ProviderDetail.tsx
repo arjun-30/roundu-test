@@ -70,7 +70,21 @@ const ProviderDetail = () => {
           </div>
         </div>
 
-        <div>
+        {provider.videoUrl && (
+          <div className="animate-fade-in-up" style={{ opacity: 0, animationDelay: "0.1s" }}>
+            <h3 className="text-sm font-bold text-foreground mb-2">Introduction Video</h3>
+            <div className="rounded-2xl overflow-hidden border border-border shadow-card bg-black aspect-video flex items-center justify-center">
+              <video 
+                src={provider.videoUrl} 
+                controls 
+                className="w-full h-full object-cover"
+                poster="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=800&q=80"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="animate-fade-in-up" style={{ opacity: 0, animationDelay: "0.2s" }}>
           <h3 className="text-sm font-bold text-foreground mb-2">About</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">{provider.bio}</p>
         </div>
