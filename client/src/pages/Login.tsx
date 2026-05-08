@@ -81,6 +81,7 @@ const Login = () => {
             <input
               type="tel"
               {...register("phone")}
+              maxLength={10}
               placeholder="Enter your number"
               className={`w-full pl-24 pr-4 py-4 rounded-2xl bg-input border ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-border focus:ring-primary/30'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all text-base`}
             />
