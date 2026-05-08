@@ -7,6 +7,7 @@ import {
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, popularTasks } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
+import { LocationMap } from "@/components/ui/location-map";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -173,6 +174,14 @@ const Home = () => {
 
       {/* ─── Scrollable Content ─── */}
       <div className="flex-1 overflow-y-auto">
+
+        {/* ═══ LOCATION MAP ═══ */}
+        <div className="px-5 pt-2 pb-4 flex justify-center animate-fade-in" style={{ animationDelay: "0.07s" }}>
+          <LocationMap 
+            location={user.address || "Current Location"} 
+            coordinates="Live Tracking Active"
+          />
+        </div>
 
         {/* ═══ AI RECOMMENDATIONS ═══ */}
         <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
