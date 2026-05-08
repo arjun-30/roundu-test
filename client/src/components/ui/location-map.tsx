@@ -73,8 +73,8 @@ export function LocationMap({
           transformStyle: "preserve-3d",
         }}
         animate={{
-          width: isExpanded ? 360 : 240,
-          height: isExpanded ? 280 : 140,
+          width: isExpanded ? "100%" : "80%",
+          height: isExpanded ? 240 : 140,
         }}
         transition={{
           type: "spring",
@@ -235,12 +235,12 @@ export function LocationMap({
                   fill="none"
                   className="drop-shadow-lg"
                   style={{
-                    filter: "drop-shadow(0 0 10px rgba(52, 211, 153, 0.5))",
+                    filter: "drop-shadow(0 0 10px rgba(21, 46, 75, 0.5))",
                   }}
                 >
                   <path
                     d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-                    fill="#34D399"
+                    fill="#152E4B"
                   />
                   <circle cx="12" cy="9" r="2.5" className="fill-background" />
                 </svg>
@@ -299,11 +299,11 @@ export function LocationMap({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-emerald-400"
+                  className="text-[#152E4B]"
                   animate={{
                     filter: isHovered
-                      ? "drop-shadow(0 0 8px rgba(52, 211, 153, 0.6))"
-                      : "drop-shadow(0 0 4px rgba(52, 211, 153, 0.3))",
+                      ? "drop-shadow(0 0 8px rgba(21, 46, 75, 0.6))"
+                      : "drop-shadow(0 0 4px rgba(21, 46, 75, 0.3))",
                   }}
                   transition={{ duration: 0.3 }}
                 >
@@ -325,7 +325,7 @@ export function LocationMap({
               }}
               transition={{ duration: 0.2 }}
             >
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#152E4B]" />
               <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
                 Live
               </span>
@@ -360,7 +360,7 @@ export function LocationMap({
 
             {/* Animated underline */}
             <motion.div
-              className="h-px bg-linear-to-r from-emerald-500/50 via-emerald-400/30 to-transparent"
+              className="h-px bg-linear-to-r from-[#152E4B]/50 via-[#1C3D63]/30 to-transparent"
               initial={{ scaleX: 0, originX: 0 }}
               animate={{
                 scaleX: isHovered || isExpanded ? 1 : 0.3,
