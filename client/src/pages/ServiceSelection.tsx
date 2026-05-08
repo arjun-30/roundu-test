@@ -37,13 +37,6 @@ const ServiceSelection = () => {
 
   const toggleSelection = (problem: string) => {
     setSelectedProblem(problem);
-  };
-
-  const handleNext = () => {
-    if (!selectedProblem) {
-      toast.error("Please select an issue");
-      return;
-    }
     
     // Auto-navigate to the next page
     setIsLoading(true);
@@ -53,7 +46,7 @@ const ServiceSelection = () => {
       navigate(`/book-service/${service.id}`, { 
         state: { 
           serviceId: service.id,
-          issue: selectedProblem 
+          issue: problem 
         } 
       });
     }, 300);
@@ -71,7 +64,7 @@ const ServiceSelection = () => {
   const problemsList = getExtendedProblems();
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#EEF2F7] pb-[100px] font-sans text-[#030916]">
+    <div className="min-h-[100dvh] flex flex-col bg-[#EEF2F7] pb-6 font-sans text-[#030916]">
       {/* Header */}
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-[#EEF2F7] sticky top-0 z-20">
         <button 
@@ -155,25 +148,6 @@ const ServiceSelection = () => {
         </div>
       </div>
 
-      {/* Sticky Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[#EEF2F7] via-[#EEF2F7] to-transparent pt-12 z-10 pointer-events-none">
-        <button
-          onClick={handleNext}
-          className={`w-full pointer-events-auto flex items-center justify-center py-[16px] rounded-[20px] transition-all duration-200 active:scale-[0.98] shadow-sm ${
-            selectedProblem && !isLoading
-              ? "bg-[#152E4B] text-white hover:bg-[#1C3D63]" 
-              : "bg-gray-200 text-gray-400 cursor-pointer shadow-none"
-          }`}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2 font-extrabold text-[15.5px]">
-              <Loader2 className="animate-spin" size={20} /> Finding...
-            </span>
-          ) : (
-            <span className="font-extrabold text-[15.5px]">Find Specialists</span>
-          )}
-        </button>
-      </div>
     </div>
   );
 };
