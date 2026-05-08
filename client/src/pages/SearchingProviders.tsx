@@ -371,12 +371,6 @@ const SearchingProviders = () => {
 
           <div className="flex flex-col gap-3 w-full">
             <button
-              onClick={() => navigate(`/providers/${serviceId}`)}
-              className="text-[14px] font-[600] text-[#152E4B] hover:bg-[#F5F8FB] py-3 rounded-xl transition-colors border border-[#E1E8EF]"
-            >
-              Browse all providers manually
-            </button>
-            <button
               onClick={() => navigate(-1)}
               className="text-[13px] font-[600] text-[#7A8BA0] hover:text-[#152E4B] transition-colors pb-2"
             >
