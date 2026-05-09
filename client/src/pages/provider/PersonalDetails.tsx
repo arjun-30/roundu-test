@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronRight, Camera, MapPin } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 const EXPERIENCE_LEVELS = ["0-1", "1-3", "3-5", "5-10", "10+"];
-const RADIUS_OPTIONS = [2, 5, 10, 15, 25];
+const RADIUS_OPTIONS = [2, 5, 10, 15, 25, 50];
 const WORKING_HOURS = [
   "All day",
   "Morning (6AM-12PM)",

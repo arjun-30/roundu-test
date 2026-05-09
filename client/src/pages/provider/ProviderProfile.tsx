@@ -133,7 +133,7 @@ const ProviderProfile = () => {
             
             {isEditingRadius && (
               <div className="flex gap-2 mt-3 animate-fade-in">
-                {[2, 5, 10, 15, 25].map((rad) => (
+                {[2, 5, 10, 15, 25, 50].map((rad) => (
                   <button
                     key={rad}
                     onClick={() => handleUpdateRadius(rad)}
