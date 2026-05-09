@@ -9,6 +9,7 @@ import {
   useSpring,
   useTransform,
 } from "motion/react"
+import { toast } from "sonner";
 
 interface LocationMapProps {
   location?: string
@@ -24,6 +25,10 @@ export function LocationMap({
   const [isHovered, setIsHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const [currentLoc, setCurrentLoc] = useState(location);
+  const [currentCoords, setCurrentCoords] = useState(coordinates);
+  const [fetching, setFetching] = useState(false);
 
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
@@ -51,6 +56,37 @@ export function LocationMap({
 
   const handleClick = () => {
     setIsExpanded(!isExpanded)
+    
+    if (!isExpanded) {
+      setFetching(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setCurrentCoords(`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+          
+          try {
+            const query = await fetch(
+              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
+            );
+            const json = await query.json();
+            if (json.features && json.features.length > 0) {
+              setCurrentLoc(json.features[0].place_name);
+            }
+          } catch (err) {
+            console.error("Failed to reverse geocode:", err);
+            setCurrentLoc("Location found");
+          } finally {
+            setFetching(false);
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          toast.error("Failed to get location. Please enable GPS.");
+          setFetching(false);
+        }
+      );
+    }
   }
 
   return (
@@ -345,8 +381,8 @@ export function LocationMap({
             exit={{ opacity: 0, y: -10 }}
             className="mt-3 text-center"
           >
-            <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{location}</h3>
-            <p className="text-muted-foreground font-mono text-xs mt-0.5">{coordinates}</p>
+            <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{fetching ? "Fetching location..." : currentLoc}</h3>
+            <p className="text-muted-foreground font-mono text-xs mt-0.5">{currentCoords}</p>
           </motion.div>
         )}
       </AnimatePresence>
