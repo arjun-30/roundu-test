@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Navigation as NavIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation as NavIcon, Loader2, ArrowUpLeft, ArrowUpRight, ArrowUp } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -18,6 +18,7 @@ const Navigation = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(true);
+  const [steps, setSteps] = useState<any[]>([]);
 
   useEffect(() => {
     // Get current location
@@ -71,6 +72,7 @@ const Navigation = () => {
         if (json.routes && json.routes.length > 0) {
           const data = json.routes[0];
           const route = data.geometry.coordinates;
+          setSteps(data.legs[0].steps);
 
           // Add route to map
           map.current.addLayer({
@@ -132,8 +134,25 @@ const Navigation = () => {
     );
   }
 
+  const getManeuverIcon = (modifier: string) => {
+    switch (modifier) {
+      case 'left':
+      case 'slight left':
+      case 'sharp left':
+        return <ArrowUpLeft size={20} />;
+      case 'right':
+      case 'slight right':
+      case 'sharp right':
+        return <ArrowUpRight size={20} />;
+      case 'straight':
+        return <ArrowUp size={20} />;
+      default:
+        return <ArrowUp size={20} />;
+    }
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background relative">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in bg-card border-b border-border z-10">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
@@ -141,27 +160,46 @@ const Navigation = () => {
         <h1 className="text-lg font-bold text-foreground">Navigation</h1>
       </div>
 
-      <div ref={mapContainer} className="flex-1 w-full" style={{ minHeight: '300px' }} />
-
-      <div className="p-5 bg-card border-t border-border space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <MapPin size={20} />
+      {/* Floating Instruction Card at Top */}
+      {steps.length > 0 && (
+        <div className="absolute top-24 left-5 right-5 z-20 bg-background/90 backdrop-blur-md rounded-2xl p-4 border border-border shadow-lg flex items-center gap-4 animate-slide-in">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            {getManeuverIcon(steps[0].maneuver.modifier)}
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-medium">Destination</p>
-            <p className="text-sm font-bold text-foreground">{booking.address}</p>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground font-medium">In {Math.round(steps[0].distance)}m</p>
+            <p className="text-sm font-bold text-foreground">{steps[0].maneuver.instruction}</p>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success">
-            <NavIcon size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-medium">Instructions</p>
-            <p className="text-sm font-bold text-foreground">Follow the blue line on the map</p>
-          </div>
+      <div ref={mapContainer} className="flex-1 w-full" />
+
+      {/* Bottom section: Steps List */}
+      <div className="p-5 bg-card border-t border-border max-h-[40vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-foreground">Turn-by-Turn Directions</h2>
+          <span className="text-xs text-muted-foreground">{steps.length} steps</span>
+        </div>
+        
+        <div className="space-y-4">
+          {steps.map((step, index) => (
+            <div key={index} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+              <div className="w-8 h-8 rounded-lg bg-input flex items-center justify-center text-foreground">
+                {getManeuverIcon(step.maneuver.modifier)}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-foreground">{step.maneuver.instruction}</p>
+                <p className="text-xs text-muted-foreground">{Math.round(step.distance)}m</p>
+              </div>
+            </div>
+          ))}
+          
+          {steps.length === 0 && (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              Loading directions...
+            </div>
+          )}
         </div>
       </div>
     </div>
