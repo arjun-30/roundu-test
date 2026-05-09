@@ -21,9 +21,13 @@ const ProviderDetail = () => {
         { id: 1, title: "Previous Work 1", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
         { id: 2, title: "Previous Work 2", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
       ]);
-      setLoadingPortfolio(false);
-    }, 1000);
   }, [id]);
+
+  const handleCall = () => {
+    toast.info("Connecting via secure masked number...");
+    window.open("tel:+911234567890", "_self");
+  };
+
   if (!provider) {
     return (
       <div className="p-6">
@@ -158,10 +162,10 @@ const ProviderDetail = () => {
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border flex gap-2">
-        <button className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
+        <button onClick={handleCall} className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
           <Phone size={18} className="text-primary" />
         </button>
-        <button className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
+        <button onClick={() => navigate(`/chat/${provider.id}`)} className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
           <MessageCircle size={18} className="text-primary" />
         </button>
         <button

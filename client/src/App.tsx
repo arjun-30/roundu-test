@@ -18,6 +18,7 @@ import SearchPage from "@/pages/SearchPage";
 import ServicesPage from "@/pages/ServicesPage";
 import ProvidersPage from "@/pages/ProvidersPage";
 import ProviderDetail from "@/pages/ProviderDetail";
+import Chat from "@/pages/Chat";
 import BookingDate from "@/pages/BookingDate";
 import BookingTime from "@/pages/BookingTime";
 import BookingNotes from "@/pages/BookingNotes";
@@ -102,6 +103,7 @@ const AppRoutes = () => (
       <Route path="/booking/payment" element={<RequireAuth><BookingPayment /></RequireAuth>} />
       <Route path="/booking/success/:id" element={<RequireAuth><BookingSuccess /></RequireAuth>} />
       <Route path="/tracking/:id" element={<RequireAuth><Tracking /></RequireAuth>} />
+      <Route path="/chat/:id" element={<RequireAuth><Chat /></RequireAuth>} />
       <Route path="/rating/:id" element={<RequireAuth><Rating /></RequireAuth>} />
       <Route path="/bookings" element={<RequireAuth><Bookings /></RequireAuth>} />
       <Route path="/bookings/:id" element={<RequireAuth><BookingDetail /></RequireAuth>} />

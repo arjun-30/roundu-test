@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { toast } from "sonner";
@@ -75,6 +75,11 @@ const Job = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "completed" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "completed" });
     navigate(`/provider/job/${job.id}/report`);
+  };
+
+  const handleCall = () => {
+    toast.info("Connecting via secure masked number...");
+    window.open("tel:+911234567890", "_self");
   };
 
   const openNavigation = () => {
@@ -178,9 +183,14 @@ const Job = () => {
               <p className="text-base font-bold text-foreground">{job.customerName}</p>
               <p className="text-xs text-muted-foreground">{service?.label}</p>
             </div>
-            <button className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Phone size={16} className="text-primary-foreground" />
-            </button>
+            <div className="flex gap-2">
+              <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Phone size={16} className="text-primary-foreground" />
+              </button>
+              <button onClick={() => navigate(`/chat/${job.id}`)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
+                <MessageCircle size={16} className="text-foreground" />
+              </button>
+            </div>
           </div>
 
           <div className="h-px bg-border my-4" />
