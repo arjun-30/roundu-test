@@ -12,7 +12,7 @@ const RoleSelect = () => {
   const select = async (role: "customer" | "provider") => {
     dispatch({ type: "SET_ROLE", role });
     if (role === "customer") {
-      navigate("/home", { replace: true });
+      navigate("/onboarding", { replace: true });
     } else {
       // If local state says they are a provider, trust it
       if (user.role === "provider") {
