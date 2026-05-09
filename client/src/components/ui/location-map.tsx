@@ -72,10 +72,14 @@ export function LocationMap({
             const json = await query.json();
             if (json.features && json.features.length > 0) {
               setCurrentLoc(json.features[0].text || json.features[0].place_name);
+            } else {
+              setCurrentLoc("Address not found");
+              toast.error("No address found for these coordinates.");
             }
           } catch (err) {
             console.error("Failed to reverse geocode:", err);
-            setCurrentLoc("Location found");
+            setCurrentLoc("Error fetching address");
+            toast.error("Network error while fetching address.");
           } finally {
             setFetching(false);
           }
