@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getProviderDashboard, searchProviders, registerProvider } from '../controllers/provider.controller';
+import { getProviderDashboard, searchProviders, registerProvider, updateServiceRadius } from '../controllers/provider.controller';
 import { getPool } from '../config/database';
 
 const router = Router();
@@ -7,6 +7,7 @@ const router = Router();
 router.get('/dashboard', getProviderDashboard);
 router.get('/search', searchProviders);
 router.post('/register', registerProvider);
+router.post('/update-radius', updateServiceRadius);
 
 // Temporary debug endpoint - check user/provider status
 router.get('/debug-status', async (req: Request, res: Response) => {

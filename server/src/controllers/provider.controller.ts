@@ -62,3 +62,22 @@ export const registerProvider = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Failed to register provider' });
   }
 };
+
+export const updateServiceRadius = async (req: Request, res: Response) => {
+  try {
+    const { userId, serviceRadius } = req.body;
+    if (!userId || serviceRadius === undefined) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const success = await ProviderModel.updateServiceRadiusByUserId(userId, Number(serviceRadius));
+    if (!success) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+
+    res.json({ success: true, message: 'Service radius updated' });
+  } catch (error) {
+    console.error('Update service radius error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

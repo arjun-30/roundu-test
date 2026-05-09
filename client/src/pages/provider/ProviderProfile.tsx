@@ -1,12 +1,51 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchCamera, MapPin, Clock, Image as ImageIcon, FileText, Settings } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import { toast } from "sonner";
+import axios from "axios";
 
 const ProviderProfile = () => {
   const navigate = useNavigate();
   const { user, dispatch, completedJobs, providerStats, isOnline } = useApp();
+
+  const [isEditingRadius, setIsEditingRadius] = useState(false);
+  const [serviceRadius, setServiceRadius] = useState(15); // Default fallback
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
+        if (response.data.success && response.data.data.provider) {
+          setServiceRadius(response.data.data.provider.service_radius || 15);
+        }
+      } catch (error) {
+        console.error("Failed to fetch provider profile:", error);
+      }
+    };
+    if (user.id) {
+      fetchProfile();
+    }
+  }, [user.id]);
+
+  const handleUpdateRadius = async (radius: number) => {
+    try {
+      const response = await axios.post('/api/v1/providers/update-radius', {
+        userId: user.id,
+        serviceRadius: radius
+      });
+      
+      if (response.data.success) {
+        setServiceRadius(radius);
+        setIsEditingRadius(false);
+        toast.success("Service radius updated");
+      }
+    } catch (error) {
+      console.error("Failed to update radius:", error);
+      toast.error("Failed to update radius");
+    }
+  };
 
   const logout = () => {
     dispatch({ type: "LOGOUT" });
@@ -75,15 +114,40 @@ const ProviderProfile = () => {
             </div>
             <button className="text-xs text-primary font-bold">Edit</button>
           </div>
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600"><MapPin size={16} /></div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Service Radius</p>
-                <p className="text-[10px] text-muted-foreground">Up to 15 km</p>
+          <div className="px-4 py-3 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600"><MapPin size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Service Radius</p>
+                  <p className="text-[10px] text-muted-foreground">Up to {serviceRadius} km</p>
+                </div>
               </div>
+              <button 
+                onClick={() => setIsEditingRadius(!isEditingRadius)} 
+                className="text-xs text-primary font-bold"
+              >
+                {isEditingRadius ? "Cancel" : "Edit"}
+              </button>
             </div>
-            <button className="text-xs text-primary font-bold">Edit</button>
+            
+            {isEditingRadius && (
+              <div className="flex gap-2 mt-3 animate-fade-in">
+                {[2, 5, 10, 15, 25].map((rad) => (
+                  <button
+                    key={rad}
+                    onClick={() => handleUpdateRadius(rad)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                      serviceRadius === rad 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground border border-border hover:bg-card'
+                    }`}
+                  >
+                    {rad} km
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

@@ -18,6 +18,14 @@ export const ProviderModel = {
     return res.rows[0] || null;
   },
 
+  async updateServiceRadiusByUserId(userId: string, radius: number): Promise<boolean> {
+    const res = await getPool().query(
+      'UPDATE providers SET service_radius = $1 WHERE user_id = $2',
+      [radius, userId]
+    );
+    return res.rowCount > 0;
+  },
+
   async getStats(providerId: string): Promise<any> {
     const earningsRes = await getPool().query(
       "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
