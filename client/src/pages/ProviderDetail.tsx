@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase, MessageCircle, Phone } from "lucide-react";
 import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
@@ -7,8 +7,9 @@ import { useApp } from "@/context/AppContext";
 const ProviderDetail = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedDate, selectedTime, dispatch } = useApp();
-  const provider = getProviderById(id);
+  const provider = location.state?.provider || getProviderById(id);
   
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);

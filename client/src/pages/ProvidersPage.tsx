@@ -181,7 +181,7 @@ const ProvidersPage = () => {
                 provider={p}
                 onClick={() => {
                   dispatch({ type: "SELECT_PROVIDER", id: p.id });
-                  navigate(`/provider/${p.id}`);
+                  navigate(`/provider/${p.id}`, { state: { provider: p } });
                 }}
                 onBook={() => handleBook(p.id)}
               />
