@@ -10,7 +10,14 @@ const ProviderDetail = () => {
   const location = useLocation();
   const { selectedDate, selectedTime, dispatch } = useApp();
   const provider = location.state?.provider || getProviderById(id);
-  
+
+  const [notification, setNotification] = useState("");
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
+
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);
 
@@ -24,152 +31,83 @@ const ProviderDetail = () => {
       setLoadingPortfolio(false);
     }, 1000);
   }, [id]);
+
+  const handleCall = () => {
+    showNotification("Connecting via secure masked number...");
+    window.open("tel:+911234567890", "_self");
+  };
+
   if (!provider) {
     return (
-      <div className="p-6">
-        <button onClick={() => navigate(-1)} className="text-sm text-primary">← Back</button>
-        <p className="mt-4 text-muted-foreground">Provider not found.</p>
-      </div>
+      <div className="flex items-center justify-center h-screen">Provider not found</div>
     );
   }
-  const service = getServiceById(provider.serviceId);
 
   const handleBook = () => {
-    dispatch({ type: "SELECT_PROVIDER", id: provider.id });
-    dispatch({ type: "SELECT_SERVICE", id: provider.serviceId });
-    
-    // Set default date/time for Quick Fix if they weren't set in the schedule flow
-    if (!selectedDate) dispatch({ type: "SELECT_DATE", date: new Date().toISOString().slice(0, 10) });
-    if (!selectedTime) dispatch({ type: "SELECT_TIME", time: "ASAP" });
-
-    navigate("/booking/notes");
+    navigate(`/booking/${provider.id}`, { state: { provider } });
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-background pb-24">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center text-foreground active:scale-95"
-        >
+    <div className="pb-24">
+      <div className="relative h-64 bg-gray-200">
+        <img src={provider.image} alt={provider.name} className="w-full h-full object-cover" />
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 p-2 bg-white/50 rounded-full backdrop-blur-md">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-bold text-foreground">Provider</h1>
       </div>
 
-      <div className="px-5 flex-1 overflow-y-auto space-y-5">
-        <div className="bg-card border border-border rounded-2xl p-5 shadow-card animate-fade-in-up" style={{ opacity: 0 }}>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
-                {provider.avatar}
-              </div>
-              {provider.verified && (
-                <BadgeCheck size={22} className="absolute -top-1 -right-1 text-accent fill-card" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-extrabold text-foreground">{provider.name}</h2>
-              <p className="text-xs text-muted-foreground">{service?.label}</p>
-              <div className="flex items-center gap-1 mt-1">
-                <Star size={14} className="text-accent fill-accent" />
-                <span className="text-sm font-bold text-foreground">{provider.rating}</span>
-                <span className="text-xs text-muted-foreground">({provider.reviews})</span>
-              </div>
-            </div>
+      <div className="px-6 py-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              {provider.name}
+              <BadgeCheck className="text-blue-500" size={20} />
+            </h1>
+            <p className="text-muted-foreground">{provider.service}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-border">
-            <Stat icon={Briefcase} value={`${provider.experienceYrs}y`} label="Experience" />
-            <Stat icon={MapPin} value={`${provider.distanceKm}km`} label="Distance" />
-            <Stat icon={Clock} value={`${provider.etaMin}m`} label="ETA" />
+          <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
+            <Star size={16} className="text-yellow-500 fill-yellow-500" />
+            <span className="font-bold text-sm">{provider.rating}</span>
           </div>
         </div>
 
-        {provider.videoUrl && (
-          <div className="animate-fade-in-up" style={{ opacity: 0, animationDelay: "0.1s" }}>
-            <h3 className="text-sm font-bold text-foreground mb-2">Introduction Video</h3>
-            <div className="rounded-2xl overflow-hidden border border-border shadow-card bg-black aspect-video flex items-center justify-center">
-              <video 
-                src={provider.videoUrl} 
-                controls 
-                className="w-full h-full object-cover"
-                poster="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=800&q=80"
-              />
-            </div>
+        <div className="grid grid-cols-3 gap-4 my-8 p-4 bg-secondary/50 rounded-2xl">
+          <Stat icon={Briefcase} value={provider.experience} label="Years Exp" />
+          <Stat icon={Clock} value={provider.jobs} label="Jobs Done" />
+          <Stat icon={MapPin} value={provider.distance} label="Distance" />
+        </div>
+
+        <h3 className="font-bold mb-2">About</h3>
+        <p className="text-muted-foreground text-sm mb-6">{provider.about}</p>
+
+        <h3 className="font-bold mb-4">Portfolio</h3>
+        {loadingPortfolio ? (
+          <div className="h-32 bg-secondary animate-pulse rounded-2xl" />
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {portfolio.map((item) => (
+              <img key={item.id} src={item.image} className="w-32 h-32 object-cover rounded-2xl flex-shrink-0" />
+            ))}
           </div>
         )}
-
-        <div className="animate-fade-in-up" style={{ opacity: 0, animationDelay: "0.2s" }}>
-          <h3 className="text-sm font-bold text-foreground mb-2">About</h3>
-          <p className="text-xs text-muted-foreground leading-relaxed">{provider.bio}</p>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-bold text-foreground mb-2">Skills</h3>
-          <div className="flex gap-2 flex-wrap">
-            {provider.tags.map((t) => (
-              <span key={t} className="text-[11px] font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary">{t}</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <h3 className="text-sm font-bold text-foreground mb-2">Portfolio</h3>
-          {loadingPortfolio ? (
-            <p className="text-xs text-muted-foreground">Loading portfolio...</p>
-          ) : portfolio.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No portfolio items available.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {portfolio.map((item) => (
-                <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <img src={item.image} alt={item.title} className="w-full h-24 object-cover" />
-                  <div className="p-2">
-                    <p className="text-xs font-bold text-foreground">{item.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-sm font-bold text-foreground mb-2">Recent Reviews</h3>
-          <div className="space-y-2">
-            {[
-              { n: "Anita S.", r: 5, t: "On time, very professional. Highly recommend!" },
-              { n: "Karan M.", r: 4, t: "Great work and fair pricing." },
-            ].map((r) => (
-              <div key={r.n} className="bg-card border border-border rounded-2xl p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">{r.n}</span>
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: r.r }).map((_, i) => (
-                      <Star key={i} size={10} className="text-accent fill-accent" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">{r.t}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border flex gap-2">
-        <button className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
-          <Phone size={18} className="text-primary" />
-        </button>
-        <button className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
-          <MessageCircle size={18} className="text-primary" />
-        </button>
-        <button
-          onClick={handleBook}
-          className="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all"
-        >
-          Book Now — ₹{provider.pricePerHr}/hr
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        {notification && <div className="absolute -top-12 left-4 right-4 bg-primary text-primary-foreground p-2 rounded-lg text-sm text-center">{notification}</div>}
+        <div className="flex gap-3">
+          <button onClick={handleCall} className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
+            <Phone size={18} className="text-primary" />
+          </button>
+          <button onClick={() => navigate(`/chat/${provider.id}`)} className="w-12 h-12 rounded-2xl bg-input border border-border flex items-center justify-center">
+            <MessageCircle size={18} className="text-primary" />
+          </button>
+          <button
+            onClick={handleBook}
+            className="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all"
+          >
+            Book Now — ₹{provider.pricePerHr}/hr
+          </button>
+        </div>
       </div>
     </div>
   );

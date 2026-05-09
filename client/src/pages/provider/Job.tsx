@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
@@ -45,7 +45,7 @@ const Job = () => {
       // Job found — cancel any pending redirect
       if (notFoundTimer) clearTimeout(notFoundTimer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job, navigate]);
 
   if (!job) {
@@ -83,8 +83,17 @@ const Job = () => {
     navigate(`/provider/job/${job.id}/report`);
   };
 
+  const handleCall = () => {
+    showNotification("Connecting via secure masked number...");
+    window.open("tel:+911234567890", "_self");
+  };
+
   const openNavigation = () => {
-    navigate(`/provider/navigation/${job.id}`);
+    const destination = (job.lat && job.lng)
+      ? `${job.lat},${job.lng}`
+      : encodeURIComponent(job.address);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    window.open(url, "_blank");
   };
 
   const renderActionBar = () => {
@@ -103,10 +112,10 @@ const Job = () => {
         return (
           <div className="space-y-3">
             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
-               <span className="text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
-                 <Car size={16}/> Heading to Customer
-               </span>
-               <p className="text-[10px] text-indigo-700 mt-1">Status updates automatically when you arrive within 100m</p>
+              <span className="text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
+                <Car size={16} /> Heading to Customer
+              </span>
+              <p className="text-[10px] text-indigo-700 mt-1">Status updates automatically when you arrive within 100m</p>
             </div>
             <button
               onClick={openNavigation}
@@ -141,8 +150,8 @@ const Job = () => {
         return (
           <div className="space-y-3">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
-               <span className="text-xs font-semibold text-blue-900 flex items-center gap-1"><Timer size={14}/> Time Elapsed</span>
-               <span className="text-lg font-bold text-blue-700 font-mono">{mins.toString().padStart(2,'0')}:{secs.toString().padStart(2,'0')}</span>
+              <span className="text-xs font-semibold text-blue-900 flex items-center gap-1"><Timer size={14} /> Time Elapsed</span>
+              <span className="text-lg font-bold text-blue-700 font-mono">{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
             </div>
             <button
               onClick={openNavigation}
@@ -181,9 +190,14 @@ const Job = () => {
               <p className="text-base font-bold text-foreground">{job.customerName}</p>
               <p className="text-xs text-muted-foreground">{service?.label}</p>
             </div>
-            <button className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Phone size={16} className="text-primary-foreground" />
-            </button>
+            <div className="flex gap-2">
+              <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Phone size={16} className="text-primary-foreground" />
+              </button>
+              <button onClick={() => navigate(`/chat/${job.id}`)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
+                <MessageCircle size={16} className="text-foreground" />
+              </button>
+            </div>
           </div>
 
           <div className="h-px bg-border my-4" />
