@@ -81,6 +81,8 @@ const Login = () => {
             </div>
             <input
               type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
               {...register("phone")}
               maxLength={10}
               placeholder="Enter your number"

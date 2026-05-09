@@ -184,6 +184,7 @@ const DigiLockerKYC = () => {
               onChange={(e) => handleOtpChange(i, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(i, e)}
               inputMode="numeric"
+              pattern="[0-9]*"
               className="w-12 h-14 text-center text-2xl font-extrabold rounded-2xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
           ))}

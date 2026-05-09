@@ -133,6 +133,7 @@ const OtpVerify = () => {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             inputMode="numeric"
+            pattern="[0-9]*"
             className="w-11 h-14 text-center text-xl font-extrabold rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
         ))}
