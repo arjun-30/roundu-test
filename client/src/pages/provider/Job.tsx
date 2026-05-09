@@ -57,7 +57,6 @@ const Job = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
     toast.success("Customer notified that you are on the way!");
-    navigate(`/provider/navigation/${job.id}`);
   };
 
   const markArrived = () => {
@@ -79,7 +78,11 @@ const Job = () => {
   };
 
   const openNavigation = () => {
-    navigate(`/provider/navigation/${job.id}`);
+    const destination = (job.lat && job.lng) 
+      ? `${job.lat},${job.lng}` 
+      : encodeURIComponent(job.address);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    window.open(url, "_blank");
   };
 
   const renderActionBar = () => {
