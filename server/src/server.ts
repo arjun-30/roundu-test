@@ -135,7 +135,7 @@ async function main() {
       // but to avoid double notification we rely on service room.
     });
 
-    socket.on('broadcast_job', (data) => {
+    socket.on('broadcast_job', async (data) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
       
       // Deduplicate: if this broadcastId was already emitted, skip
@@ -163,10 +163,20 @@ async function main() {
       // Auto-expire after 10 minutes
       setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
 
-      // Target only relevant service room
+      // Emit to service-specific room first, then 'providers' room as fallback.
+      // Client deduplication (by broadcastId) handles double-delivery safely.
       const roomName = `service:${data.serviceId}`;
-      console.log(`[socket] broadcasting job to room: ${roomName}`);
-      io.to(roomName).emit('incoming_broadcast', broadcastPayload);
+      const serviceRoomSockets = await io.in(roomName).fetchSockets();
+      console.log(`[socket] room ${roomName} has ${serviceRoomSockets.length} sockets`);
+      
+      if (serviceRoomSockets.length > 0) {
+        io.to(roomName).emit('incoming_broadcast', broadcastPayload);
+        console.log(`[socket] broadcast sent to service room: ${roomName}`);
+      } else {
+        // Fallback: no one in service room, broadcast to all providers
+        io.to('providers').emit('incoming_broadcast', broadcastPayload);
+        console.log(`[socket] broadcast sent to providers room (fallback)`);
+      }
     });
 
     socket.on('accept_quote', (data) => {
