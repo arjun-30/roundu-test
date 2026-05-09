@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Navigation as NavIcon, Loader2, ArrowUpLeft, ArrowUp
 import { useApp } from "@/context/AppContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import api from "@/lib/api";
 import { toast } from "sonner";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -11,14 +12,33 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 const Navigation = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { providerRequests } = useApp();
-  const booking = providerRequests.find((r) => r.id === id);
-
+  const { providerRequests, user } = useApp();
+  const [booking, setBooking] = useState<any>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(true);
   const [steps, setSteps] = useState<any[]>([]);
+
+  useEffect(() => {
+    const found = providerRequests.find((r) => r.id === id);
+    if (found) {
+      setBooking(found);
+    } else if (user.id) {
+      const fetchBookings = async () => {
+        try {
+          const res = await api.get(`/bookings/provider/${user.id}`);
+          if (res.data.success) {
+            const b = res.data.data.find((x: any) => x.id === id);
+            setBooking(b);
+          }
+        } catch (err) {
+          console.error("Failed to fetch booking:", err);
+        }
+      };
+      fetchBookings();
+    }
+  }, [id, providerRequests, user.id]);
 
   useEffect(() => {
     // Get current location

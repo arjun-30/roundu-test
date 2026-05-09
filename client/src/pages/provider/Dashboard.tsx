@@ -46,12 +46,15 @@ const Dashboard = () => {
     const handleNewRequest = (request: any) => {
       // Show the popup at the top
       setActiveDirectRequest(request);
+      // Add to global state so it appears in the list without refresh!
+      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+      toast.success("New job request received!");
     };
     socket.on("incoming_request", handleNewRequest);
     return () => {
       socket.off("incoming_request", handleNewRequest);
     };
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (isCritical) {
@@ -123,10 +126,10 @@ const Dashboard = () => {
       providerName: user.name,
       providerAvatar: user.name.charAt(0),
       price: Number(quotePrice),
-      rating: providerStats.rating || 4.8,
-      distanceKm: 5, // Hardcoded for demo
+      rating: providerStats.rating || 0,
+      distanceKm: 0,
       etaMin: Number(quoteEta),
-      reviews: 120
+      reviews: 0
     });
     
     dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
@@ -345,7 +348,7 @@ const Dashboard = () => {
             <div>
               <p className="text-sm font-bold text-[#030916] mb-1">Smart Suggestion</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                You have 2 jobs in Indiranagar tomorrow afternoon. We recommend staying nearby to minimize travel time between bookings.
+                Stay online to receive real-time job requests and increase your earnings.
               </p>
             </div>
           </div>

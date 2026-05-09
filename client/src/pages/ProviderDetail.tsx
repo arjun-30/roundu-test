@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase, MessageCircle, Phone } from "lucide-react";
 import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
@@ -6,8 +7,23 @@ import { useApp } from "@/context/AppContext";
 const ProviderDetail = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedDate, selectedTime, dispatch } = useApp();
-  const provider = getProviderById(id);
+  const provider = location.state?.provider || getProviderById(id);
+  
+  const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(true);
+
+  useEffect(() => {
+    setLoadingPortfolio(true);
+    setTimeout(() => {
+      setPortfolio([
+        { id: 1, title: "Previous Work 1", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
+        { id: 2, title: "Previous Work 2", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
+      ]);
+      setLoadingPortfolio(false);
+    }, 1000);
+  }, [id]);
   if (!provider) {
     return (
       <div className="p-6">
@@ -96,6 +112,26 @@ const ProviderDetail = () => {
               <span key={t} className="text-[11px] font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary">{t}</span>
             ))}
           </div>
+        </div>
+
+        <div className="mb-4">
+          <h3 className="text-sm font-bold text-foreground mb-2">Portfolio</h3>
+          {loadingPortfolio ? (
+            <p className="text-xs text-muted-foreground">Loading portfolio...</p>
+          ) : portfolio.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No portfolio items available.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {portfolio.map((item) => (
+                <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                  <img src={item.image} alt={item.title} className="w-full h-24 object-cover" />
+                  <div className="p-2">
+                    <p className="text-xs font-bold text-foreground">{item.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

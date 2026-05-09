@@ -47,20 +47,18 @@ const ProvidersPage = () => {
     
     // Convert DB fields to frontend card fields if needed
     l = l.map(p => {
-      // Generate a consistent pseudo-random distance based on their name length so it stays stable
-      const nameHash = p.name ? p.name.charCodeAt(0) + p.name.length : 15;
-      const calculatedDistance = p.distance_km || (nameHash % 60) + 1; // 1 to 60 km
+      const calculatedDistance = p.distance_km || 0;
       
       return {
         ...p,
-        pricePerHr: p.price_per_hr || 299,
+        pricePerHr: p.price_per_hr || 0,
         rating: parseFloat(p.rating || "0"),
-        reviews: Math.floor(Math.random() * 200) + 50,
+        reviews: 0,
         distanceKm: calculatedDistance,
         etaMin: calculatedDistance * 3, // Roughly 3 mins per km
         available: p.is_online,
         avatar: p.avatar_url || p.name?.charAt(0) || "P",
-        tags: ["Verified", "Fast"]
+        tags: ["Verified"]
       };
     });
 
@@ -183,7 +181,7 @@ const ProvidersPage = () => {
                 provider={p}
                 onClick={() => {
                   dispatch({ type: "SELECT_PROVIDER", id: p.id });
-                  navigate(`/provider/${p.id}`);
+                  navigate(`/provider/${p.id}`, { state: { provider: p } });
                 }}
                 onBook={() => handleBook(p.id)}
               />
