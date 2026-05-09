@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Wrench, Droplets, Zap, Sparkles, Car, Paintbrush, Box, CheckCircle2, HelpCircle, ShieldCheck, Clock, ThumbsUp, Loader2 } from "lucide-react";
 import { getServiceById } from "@/data/mockData";
@@ -25,6 +25,13 @@ const ServiceSelection = () => {
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Acting Drivers has its own dedicated booking screen — redirect immediately
+  useEffect(() => {
+    if (serviceId === "drivers") {
+      navigate(`/book-driver/${serviceId}`, { replace: true });
+    }
+  }, [serviceId, navigate]);
+
   if (!service) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center p-10 text-center bg-[#EEF2F7]">
@@ -33,6 +40,9 @@ const ServiceSelection = () => {
       </div>
     );
   }
+
+  if (serviceId === "drivers") return null;
+
 
   const toggleSelection = (problem: string) => {
     setSelectedProblem(problem);

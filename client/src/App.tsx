@@ -25,6 +25,7 @@ import BookingPayment from "@/pages/BookingPayment";
 import BookingSuccess from "@/pages/BookingSuccess";
 import BookService from "@/pages/BookService";
 import SearchingProviders from "@/pages/SearchingProviders";
+import ActingDriverBooking from "@/pages/ActingDriverBooking";
 import Tracking from "@/pages/Tracking";
 import Rating from "@/pages/Rating";
 import Bookings from "@/pages/Bookings";
@@ -96,6 +97,7 @@ const AppRoutes = () => (
       <Route path="/provider/:id" element={<RequireAuth><ProviderDetail /></RequireAuth>} />
       <Route path="/book-service/:serviceId" element={<RequireAuth><BookService /></RequireAuth>} />
       <Route path="/searching-providers/:serviceId" element={<RequireAuth><SearchingProviders /></RequireAuth>} />
+      <Route path="/book-driver/:serviceId" element={<RequireAuth><ActingDriverBooking /></RequireAuth>} />
       <Route path="/booking/date" element={<RequireAuth><BookingDate /></RequireAuth>} />
       <Route path="/booking/time" element={<RequireAuth><BookingTime /></RequireAuth>} />
       <Route path="/booking/notes" element={<RequireAuth><BookingNotes /></RequireAuth>} />
