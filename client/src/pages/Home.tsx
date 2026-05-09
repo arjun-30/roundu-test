@@ -126,8 +126,11 @@ const Home = () => {
             <h1 className="text-xl font-extrabold text-[#030916]">
               Hi {user.name.split(" ")[0]}! 👋
             </h1>
-            <p className="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-              <MapPin size={11} className="text-[#152E4B]" /> {user.address}
+            <p 
+              onClick={() => navigate("/location")}
+              className="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary"
+            >
+              <MapPin size={11} className="text-[#152E4B]" /> {user.address || "Set Location"}
             </p>
           </div>
         </div>

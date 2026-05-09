@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, Navigation } from 'lucide-react';
-import { loadMap, geocode, MapInstance, LatLng } from '@/lib/mapProvider';
+import { loadMap, geocode, reverseGeocode, MapInstance, LatLng } from '@/lib/mapProvider';
+import { toast } from 'sonner';
 
 interface HybridMapProps {
   onLocationSelect?: (location: { lat: number; lng: number; address: string }) => void;
@@ -67,6 +68,36 @@ const HybridMap: React.FC<HybridMapProps> = ({
     }
   };
 
+  const fetchCurrentLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setCenter(coords, 16);
+          mapInstanceRef.current.addMarker({ position: coords, type: 'pin' });
+          
+          try {
+            const result = await reverseGeocode(coords.lat, coords.lng);
+            const displayAddress = (result.area && result.city) 
+              ? `${result.area}, ${result.city}` 
+              : result.address;
+            setAddress(displayAddress);
+            
+            if (onLocationSelect) {
+              onLocationSelect({ ...coords, address: displayAddress });
+            }
+          } catch (err) {
+            console.error("Reverse geocoding failed:", err);
+          }
+        }
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast.error("Failed to get GPS location.");
+      }
+    );
+  };
+
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* Search Bar */}
@@ -84,6 +115,17 @@ const HybridMap: React.FC<HybridMapProps> = ({
             className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/95 backdrop-blur-md border border-white/20 shadow-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium transition-all"
           />
         </div>
+      </div>
+
+      {/* GPS Button */}
+      <div className="absolute top-24 left-4 z-10">
+        <button
+          onClick={fetchCurrentLocation}
+          className="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-md border border-white/20 shadow-2xl flex items-center justify-center text-primary active:scale-95 transition-all"
+          title="Use Current Location"
+        >
+          <Navigation size={20} />
+        </button>
       </div>
 
       {/* Map Container */}
