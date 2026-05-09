@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import { toast } from "sonner";
 import { socket } from "@/lib/socket";
 
 const Job = () => {
@@ -14,6 +13,12 @@ const Job = () => {
 
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false); // kept for future use
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [notification, setNotification] = useState("");
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout | number;
@@ -56,20 +61,20 @@ const Job = () => {
   const markOnTheWay = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
-    toast.success("Customer notified that you are on the way!");
-    navigate(`/provider/navigation/${job.id}`);
+    showNotification("Customer notified that you are on the way!");
+    setTimeout(() => navigate(`/provider/navigation/${job.id}`), 1000);
   };
 
   const markArrived = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
-    toast.success("Customer notified that you have arrived!");
+    showNotification("Customer notified that you have arrived!");
   };
 
   const startService = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "in_progress" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "in_progress" });
-    toast.success("Service started! Customer has been notified.");
+    showNotification("Service started! Customer has been notified.");
   };
 
   const completeJob = () => {
@@ -113,7 +118,7 @@ const Job = () => {
               onClick={() => {
                 dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
                 socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
-                toast.success("Marked as arrived!");
+                showNotification("Marked as arrived!");
               }}
               className="w-full py-3 rounded-2xl bg-orange-500 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
             >
@@ -166,6 +171,7 @@ const Job = () => {
       </div>
 
       <div className="px-5 flex-1 space-y-4">
+        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold">

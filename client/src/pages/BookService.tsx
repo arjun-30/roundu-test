@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ImagePlus, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Volume2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
+
 import { getServiceById } from "@/data/mockData";
 
 const suggestions = [
@@ -19,23 +19,23 @@ const BookService = () => {
   const [scheduleType, setScheduleType] = useState<"now" | "later" | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [hasVoiceNote, setHasVoiceNote] = useState(false);
+  const [error, setError] = useState("");
 
   const toggleRecording = () => {
     if (isRecording) {
       setIsRecording(false);
       setHasVoiceNote(true);
-      toast.success("Voice note saved!");
     } else {
       setIsRecording(true);
-      toast.info("Recording... speak now");
     }
   };
   
   const handleScheduleSelect = (type: "now" | "later") => {
     if (!desc) {
-      toast.error("Please describe your issue first");
+      setError("Please describe your issue first");
       return;
     }
+    setError("");
     setScheduleType(type);
     
     if (type === "later") {
@@ -48,7 +48,6 @@ const BookService = () => {
       return;
     }
     
-    toast.info("Finding providers near you...");
     navigate(`/searching-providers/${serviceId}`);
   };
 
@@ -89,6 +88,7 @@ const BookService = () => {
                <Mic size={16} />
              </button>
            </div>
+           {error && <p className="text-red-500 text-xs mt-2 ml-1">{error}</p>}
 
            {hasVoiceNote && (
              <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-center justify-between border border-blue-100 animate-fade-in">

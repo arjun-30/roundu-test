@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
 
 interface Plan {
@@ -60,12 +59,10 @@ const Subscription = () => {
 
   const handleSubscribe = (planId: string) => {
     if (activePlan === planId) {
-      toast.info("Opening manage plan settings...");
       navigate('/subscriptions/manage');
       return;
     }
     setActivePlan(planId);
-    toast.success("Successfully subscribed!");
   };
 
   return (

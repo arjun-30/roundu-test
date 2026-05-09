@@ -5,7 +5,6 @@ import { useApp } from "@/context/AppContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import api from "@/lib/api";
-import { toast } from "sonner";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -19,6 +18,7 @@ const Navigation = () => {
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(true);
   const [steps, setSteps] = useState<any[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const found = providerRequests.find((r) => r.id === id);
@@ -49,7 +49,8 @@ const Navigation = () => {
       },
       (error) => {
         console.error("Error getting location:", error);
-        toast.error("Failed to get GPS location. Using default location.");
+        setError("Failed to get GPS location. Using default location.");
+        setTimeout(() => setError(""), 3000);
         // Fallback to Chennai coordinates
         setCurrentLocation([80.27, 13.08]);
         setLocating(false);
@@ -179,6 +180,12 @@ const Navigation = () => {
         </button>
         <h1 className="text-lg font-bold text-foreground">Navigation</h1>
       </div>
+
+      {error && (
+        <div className="absolute top-20 left-5 right-5 z-20 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold shadow-sm text-center">
+          {error}
+        </div>
+      )}
 
       {/* Floating Instruction Card at Top */}
       {steps.length > 0 && (

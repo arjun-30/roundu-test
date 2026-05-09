@@ -2,7 +2,7 @@ import { ArrowLeft, Camera, User, Mail, Phone, Briefcase } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
+
 import { services } from "@/data/mockData";
 
 const EditProfile = () => {
@@ -16,7 +16,6 @@ const EditProfile = () => {
 
   const handleSave = () => {
     // API call would go here
-    toast.success("Profile updated successfully!");
     navigate(-1);
   };
 

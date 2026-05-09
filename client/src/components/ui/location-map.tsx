@@ -9,7 +9,6 @@ import {
   useSpring,
   useTransform,
 } from "motion/react"
-import { toast } from "sonner";
 
 interface LocationMapProps {
   location?: string
@@ -29,6 +28,7 @@ export function LocationMap({
   const [currentLoc, setCurrentLoc] = useState(location);
   const [currentCoords, setCurrentCoords] = useState(coordinates);
   const [fetching, setFetching] = useState(false);
+  const [error, setError] = useState("");
 
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
@@ -92,7 +92,8 @@ export function LocationMap({
         },
         (error) => {
           console.error("Error getting location:", error);
-          toast.error("Failed to get location. Please enable GPS.");
+          setError("Failed to get location. Please enable GPS.");
+          setTimeout(() => setError(""), 3000);
           setFetching(false);
         }
       );
@@ -391,6 +392,7 @@ export function LocationMap({
             exit={{ opacity: 0, y: -10 }}
             className="mt-3 text-center"
           >
+            {error && <div className="text-red-500 text-xs font-semibold mb-1">{error}</div>}
             <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{fetching ? "Fetching location..." : currentLoc}</h3>
           </motion.div>
         )}

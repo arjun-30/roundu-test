@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Camera, Loader2, Landmark, FileText } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { toast } from 'sonner';
 
 // Verhoeff algorithm tables for Aadhaar validation
 const d = [
@@ -58,6 +57,18 @@ const DigiLockerKYC = () => {
   const [pan, setPan] = useState('');
   const [isScanningPan, setIsScanningPan] = useState(false);
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
+  const [notification, setNotification] = useState("");
+  const [error, setError] = useState("");
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setError(msg);
+    setTimeout(() => setError(""), 3000);
+  };
 
   useEffect(() => {
     if (showAadhaarOtp) {
@@ -67,14 +78,14 @@ const DigiLockerKYC = () => {
 
   const handleSendAadhaarOtp = () => {
     if (!/^[2-9]{1}[0-9]{11}$/.test(aadhaar)) {
-      toast.error('Invalid Aadhaar format. It must be 12 digits and cannot start with 0 or 1.');
+      showError('Invalid Aadhaar format. It must be 12 digits and cannot start with 0 or 1.');
       return;
     }
     if (!validateVerhoeff(aadhaar)) {
-      toast.error('Entered Aadhaar number is invalid. Check and try again.');
+      showError('Entered Aadhaar number is invalid. Check and try again.');
       return;
     }
-    toast.success('OTP sent to Aadhaar linked mobile');
+    showNotification('OTP sent to Aadhaar linked mobile');
     setShowAadhaarOtp(true);
     setAadhaarOtp(["", "", "", "", "", ""]);
   };
@@ -94,58 +105,58 @@ const DigiLockerKYC = () => {
 
   const verifyAadhaar = () => {
     if (aadhaarOtp.join("").length < 6) {
-      toast.error('Enter valid 6-digit OTP');
+      showError('Enter valid 6-digit OTP');
       return;
     }
     dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
-    toast.success('Aadhaar Verified Successfully');
+    showNotification('Aadhaar Verified Successfully');
     setShowAadhaarOtp(false);
     setActiveStep(2);
   };
 
   const verifyBank = () => {
     if (!/^[a-zA-Z\s]+$/.test(accName)) {
-      toast.error('Enter a valid Account Holder Name (only alphabets)');
+      showError('Enter a valid Account Holder Name (only alphabets)');
       return;
     }
     if (!/^\d{9,18}$/.test(accNum)) {
-      toast.error('Invalid Bank Account. Must be numeric and between 9 to 18 digits.');
+      showError('Invalid Bank Account. Must be numeric and between 9 to 18 digits.');
       return;
     }
     if (accNum !== accNumConfirm) {
-      toast.error('Account numbers do not match');
+      showError('Account numbers do not match');
       return;
     }
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      toast.error('Invalid IFSC Code. Example: SBIN0003994 (4 letters, 0, 6 alphanumeric characters)');
+      showError('Invalid IFSC Code. Example: SBIN0003994 (4 letters, 0, 6 alphanumeric characters)');
       return;
     }
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
-      toast.error('Invalid PAN format. Example: ABCDE1234F (5 letters, 4 numbers, 1 letter)');
+      showError('Invalid PAN format. Example: ABCDE1234F (5 letters, 4 numbers, 1 letter)');
       return;
     }
 
     dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
-    toast.success('Bank Account & PAN Verified Successfully');
+    showNotification('Bank Account & PAN Verified Successfully');
   };
 
   const scanPan = () => {
     setIsScanningPan(true);
-    toast.info("Accessing camera...");
+    showNotification("Accessing camera...");
     setTimeout(() => {
       setIsScanningPan(false);
       setPan("ABCDE1234F");
-      toast.success("PAN details extracted via OCR!");
+      showNotification("PAN details extracted via OCR!");
     }, 2500);
   };
 
   const verifyBankWithAnimation = () => {
     if (!accNum || !ifsc) {
-      toast.error("Enter bank details first");
+      showError("Enter bank details first");
       return;
     }
     setIsVerifyingBank(true);
-    toast.info("Sending ₹1 micro-deposit for verification...");
+    showNotification("Sending ₹1 micro-deposit for verification...");
     setTimeout(() => {
       setIsVerifyingBank(false);
       verifyBank();
@@ -218,6 +229,9 @@ const DigiLockerKYC = () => {
       </div>
 
       <div className="flex-1 p-5 pb-28 space-y-5 overflow-y-auto">
+        {notification && <div className="bg-blue-50 text-blue-600 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
+
         <div className="mb-2 animate-fade-in text-center space-y-4">
           <div className="bg-[#003876] rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
@@ -231,9 +245,9 @@ const DigiLockerKYC = () => {
               </p>
               <button 
                 onClick={() => {
-                  toast.info("Connecting to DigiLocker...");
+                  showNotification("Connecting to DigiLocker...");
                   setTimeout(() => {
-                    toast.success("DigiLocker linked successfully!");
+                    showNotification("DigiLocker linked successfully!");
                   }, 1500);
                 }}
                 className="mt-2 w-full py-3 bg-white text-[#003876] font-extrabold text-sm rounded-xl hover:bg-gray-100 transition-colors shadow-lg active:scale-95"
@@ -410,7 +424,7 @@ const DigiLockerKYC = () => {
             setIfsc('SBIN0003994');
             setPan('ABCDE1234F');
             dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, bankVerified: true, panVerified: true } });
-            toast.success('Autofilled and bypassed validations (Demo Only)');
+            showNotification('Autofilled and bypassed validations (Demo Only)');
           }}
           className="pointer-events-auto text-xs font-bold text-primary underline mx-auto hover:text-primary/80 transition-colors"
         >

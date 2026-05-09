@@ -4,7 +4,6 @@ import { ArrowLeft, MapPin, Phone, MessageCircle, Check, IndianRupee, CheckCircl
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { getProviderById } from "@/data/mockData";
-import { toast } from "sonner";
 
 const stages = ["assigned", "on_the_way", "arrived", "in_progress", "completed"] as const;
 const stageLabels: Record<string, { title: string; subtitle: string; color: string }> = {
@@ -23,6 +22,7 @@ const Tracking = () => {
   const [eta, setEta] = useState(15);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [pendingQuote, setPendingQuote] = useState<{ amount: number } | null>(null);
+  const [notification, setNotification] = useState("");
 
   // ETA countdown
   useEffect(() => {
@@ -42,16 +42,17 @@ const Tracking = () => {
 
       if (data.status === "quote_set" && data.quote) {
         setPendingQuote({ amount: data.quote });
-        toast.info(`💰 Provider sent a quote: ₹${data.quote}`);
+        setNotification(`💰 Provider sent a quote: ₹${data.quote}`);
       } else if (data.status === "on_the_way") {
-        toast.success("🚗 Your provider is on the way!");
+        setNotification("🚗 Your provider is on the way!");
       } else if (data.status === "arrived") {
-        toast.success("📍 Your provider has arrived!");
+        setNotification("📍 Your provider has arrived!");
       } else if (data.status === "in_progress") {
-        toast.success("🔧 Service has started!");
+        setNotification("🔧 Service has started!");
       } else if (data.status === "completed") {
-        toast.success("✅ Service completed!");
+        setNotification("✅ Service completed!");
       }
+      setTimeout(() => setNotification(""), 3000);
     };
 
     socket.on("job_status_updated", handleStatusUpdate);
@@ -62,12 +63,14 @@ const Tracking = () => {
     dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: id, status: "in_progress" as any });
     socket.emit("update_job_status", { bookingId: id, status: "in_progress" });
     setPendingQuote(null);
-    toast.success("Quote approved! Service is starting.");
+    setNotification("Quote approved! Service is starting.");
+    setTimeout(() => setNotification(""), 3000);
   };
 
   const handleRejectQuote = () => {
     setPendingQuote(null);
-    toast.info("Quote rejected. Provider will be notified.");
+    setNotification("Quote rejected. Provider will be notified.");
+    setTimeout(() => setNotification(""), 3000);
   };
 
   if (!booking) {
@@ -93,6 +96,12 @@ const Tracking = () => {
       </div>
 
       <div className="px-5 flex-1 space-y-5 overflow-y-auto">
+        {notification && (
+          <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold shadow-sm animate-fade-in text-center">
+            {notification}
+          </div>
+        )}
+
         {/* Map / ETA card */}
         <div className="relative w-full h-44 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-border overflow-hidden flex items-center justify-center">
           <div className="absolute inset-0 opacity-20"

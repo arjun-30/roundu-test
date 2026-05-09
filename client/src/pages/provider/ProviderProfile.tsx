@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchCamera, MapPin, Clock, Image as ImageIcon, FileText, Settings } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-import { toast } from "sonner";
 import axios from "axios";
 
 const ProviderProfile = () => {
@@ -12,6 +11,18 @@ const ProviderProfile = () => {
 
   const [isEditingRadius, setIsEditingRadius] = useState(false);
   const [serviceRadius, setServiceRadius] = useState(15); // Default fallback
+  const [notification, setNotification] = useState("");
+  const [error, setError] = useState("");
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setError(msg);
+    setTimeout(() => setError(""), 3000);
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -39,11 +50,11 @@ const ProviderProfile = () => {
       if (response.data.success) {
         setServiceRadius(radius);
         setIsEditingRadius(false);
-        toast.success("Service radius updated");
+        showNotification("Service radius updated");
       }
     } catch (error) {
       console.error("Failed to update radius:", error);
-      toast.error("Failed to update radius");
+      showError("Failed to update radius");
     }
   };
 
@@ -55,7 +66,6 @@ const ProviderProfile = () => {
   const switchToCustomer = () => {
     dispatch({ type: "SET_ROLE", role: "customer" });
     navigate("/home", { replace: true });
-    toast("Switched to Customer Mode");
   };
 
   return (
@@ -68,6 +78,8 @@ const ProviderProfile = () => {
       </div>
 
       <div className="px-5 flex-1 space-y-4">
+        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card text-center">
           <div className="w-20 h-20 rounded-2xl bg-primary mx-auto flex items-center justify-center text-primary-foreground text-xl font-extrabold relative">
             {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}

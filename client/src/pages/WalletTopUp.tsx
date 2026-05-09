@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, IndianRupee, Check, ShieldCheck, ChevronRight, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 import api, { loadRazorpay } from "@/lib/api";
 
 const WalletTopUp = () => {
@@ -10,21 +9,23 @@ const WalletTopUp = () => {
   const { dispatch, user } = useApp();
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const presets = ["200", "500", "1000", "2000"];
 
   const handleTopUp = async () => {
     const num = parseFloat(amount);
     if (!num || num < 10) {
-      toast.error("Minimum amount is ₹10");
+      setError("Minimum amount is ₹10");
       return;
     }
+    setError("");
 
     setLoading(true);
     const res = await loadRazorpay();
 
     if (!res) {
-      toast.error("Razorpay SDK failed to load. Are you online?");
+      setError("Payment gateway failed to load. Are you online?");
       setLoading(false);
       return;
     }
@@ -62,18 +63,17 @@ const WalletTopUp = () => {
             });
 
             if (!verifyRes.data.success) {
-              toast.error("Payment verification failed");
+              setError("Payment verification failed");
               return;
             }
 
             // 4. Update wallet
             dispatch({ type: "UPDATE_WALLET", amount: num });
             dispatch({ type: "ADD_NOTIFICATION", text: `₹${num} added to your wallet successfully!` });
-            toast.success("Wallet top-up successful!");
             navigate("/wallet", { replace: true });
           } catch (err) {
             console.error("Verification error:", err);
-            toast.error("Failed to verify payment");
+            setError("Failed to verify payment");
           } finally {
             setLoading(false);
           }
@@ -87,7 +87,7 @@ const WalletTopUp = () => {
         modal: {
           ondismiss: () => {
             setLoading(false);
-            toast.info("Payment cancelled");
+            setError("Payment cancelled");
           }
         }
       };
@@ -96,7 +96,7 @@ const WalletTopUp = () => {
       rzp.open();
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Failed to initialize payment");
+      setError("Failed to initialize payment");
       setLoading(false);
     }
   };
@@ -118,6 +118,7 @@ const WalletTopUp = () => {
       </div>
 
       <div className="px-6 space-y-8 flex-1 relative z-10">
+        {error && <div className="mt-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <div className="pt-4">
           <label className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest mb-4 block">Enter Amount</label>
           <div className="relative group">

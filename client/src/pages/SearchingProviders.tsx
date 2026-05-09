@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
-import { toast } from "sonner";
 
 /**
  * 🎨 DESIGN SYSTEM & SPEC-DRIVEN
@@ -39,6 +38,7 @@ const SearchingProviders = () => {
   const [statusIndex, setStatusIndex] = useState(0);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const [isLongWait, setIsLongWait] = useState(false);
+  const [error, setError] = useState("");
 
   const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes } = useApp();
   const hasTriggered = useRef(false);
@@ -117,10 +117,11 @@ const SearchingProviders = () => {
 
   const handleAcceptQuote = async (quote: any) => {
     if (!user || !user.id) {
-      toast.error("Please log in to confirm booking");
-      navigate("/auth", { replace: true });
+      setError("Please log in to confirm booking");
+      setTimeout(() => navigate("/auth", { replace: true }), 1500);
       return;
     }
+    setError("");
 
     const bookingData = {
       customer_id: user.id,
@@ -149,7 +150,6 @@ const SearchingProviders = () => {
           }
         };
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
-        toast.success("Quote accepted & Booking confirmed!");
         
         // Notify the winning provider & other providers the job is taken
         socket.emit("accept_quote", { 
@@ -166,11 +166,11 @@ const SearchingProviders = () => {
 
         navigate(`/tracking/${res.data.id}`);
       } else {
-        toast.error("Failed to confirm booking.");
+        setError("Failed to confirm booking.");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Error confirming quote. Check your connection.");
+      setError("Error confirming quote. Check your connection.");
     }
   };
 
@@ -305,6 +305,8 @@ const SearchingProviders = () => {
       {/* Bottom Panel */}
       <div className="bg-white rounded-t-[24px] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] px-6 pt-3 pb-8 relative z-20 transition-transform">
         <div className="w-[36px] h-1.5 bg-[#E1E8EF] rounded-full mx-auto mb-6" />
+
+        {error && <div className="text-red-500 text-sm font-semibold text-center mb-4">{error}</div>}
 
         <div className="flex flex-col items-center text-center">
 

@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Home, Users, Calendar, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { services } from "@/data/mockData";
-import { toast } from "sonner";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { dispatch, onboardingData } = useApp();
   const [step, setStep] = useState(1);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Step 1: Services
   const [selectedServices, setSelectedServices] = useState<string[]>(onboardingData.serviceIds);
@@ -26,17 +27,18 @@ const Onboarding = () => {
 
   const nextStep = () => {
     if (step === 1 && selectedServices.length === 0) {
-      toast.error("Please select at least one service");
+      setError("Please select at least one service");
       return;
     }
     if (step === 2 && (!homeType || !householdSize)) {
-      toast.error("Please select both home type and household size");
+      setError("Please select both home type and household size");
       return;
     }
     if (step === 3 && !frequency) {
-      toast.error("Please select your frequency");
+      setError("Please select your frequency");
       return;
     }
+    setError("");
     
     if (step < totalSteps) {
       setStep(step + 1);
@@ -56,8 +58,8 @@ const Onboarding = () => {
       },
     });
     dispatch({ type: "SET_NEW_USER", value: false });
-    toast.success("Profile personalized successfully!");
-    navigate("/home", { replace: true });
+    setSuccess("Profile personalized successfully!");
+    setTimeout(() => navigate("/home", { replace: true }), 1000);
   };
 
   const toggleService = (id: string) => {
@@ -109,6 +111,9 @@ const Onboarding = () => {
       </div>
 
       <div className="flex-1 px-6 pb-24 overflow-y-auto relative z-10">
+        {error && <div className="mt-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
+        {success && <div className="mt-4 bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold">{success}</div>}
+        
         {step === 1 && (
           <div className="animate-fade-in space-y-6 pt-4">
             <div>

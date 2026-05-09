@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Wrench, Droplets, Zap, Sparkles, Car, Paintbrush, Box, CheckCircle2, HelpCircle, ShieldCheck, Clock, ThumbsUp, Loader2 } from "lucide-react";
 import { getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 
 // Icon mapper
 const getProblemIcon = (str: string) => {

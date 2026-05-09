@@ -5,7 +5,6 @@ import {
   CheckCircle2, ChevronRight, Clock, FileText, Upload,
   Trash2, Plus, Sparkles, AlertCircle, Image as ImageIcon
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface PhotoPair {
   id: string;
@@ -26,6 +25,12 @@ const VideoPortfolio = () => {
   // Video state
   const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>('idle');
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const showError = (msg: string) => {
+    setError(msg);
+    setTimeout(() => setError(""), 3000);
+  };
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -46,7 +51,7 @@ const VideoPortfolio = () => {
         }
       }, 100);
     } catch (err) {
-      toast.error('Could not access camera. Please check permissions.');
+      showError('Could not access camera. Please check permissions.');
     }
   };
 
@@ -81,7 +86,7 @@ const VideoPortfolio = () => {
       setIsRecording(true);
       setRecordingTime(0);
     } catch (e) {
-      toast.error('Failed to start recording');
+      showError('Failed to start recording');
     }
   };
 
@@ -118,13 +123,13 @@ const VideoPortfolio = () => {
     const validExts = ['mp4', 'mov', '3gp'];
 
     if (!validTypes.includes(file.type) && !validExts.includes(ext || '')) {
-      toast.error('Invalid format. Only .mp4, .mov, .3gp are allowed.');
+      showError('Invalid format. Only .mp4, .mov, .3gp are allowed.');
       e.target.value = '';
       return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
-      toast.error('Video must be less than 15MB.');
+      showError('Video must be less than 15MB.');
       e.target.value = '';
       return;
     }
@@ -167,13 +172,13 @@ const VideoPortfolio = () => {
     const validExts = ['jpg', 'jpeg', 'heic', 'webp'];
 
     if (!validTypes.includes(file.type) && !validExts.includes(ext || '')) {
-      toast.error('Invalid format. Only .jpg, .jpeg, .heic, .webp are allowed.');
+      showError('Invalid format. Only .jpg, .jpeg, .heic, .webp are allowed.');
       e.target.value = '';
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Photo must be less than 5MB.');
+      showError('Photo must be less than 5MB.');
       e.target.value = '';
       return;
     }
@@ -191,7 +196,7 @@ const VideoPortfolio = () => {
 
   const addPhotoPair = () => {
     if (photoPairs.length >= 5) {
-      toast.error('You can upload up to 5 before/after photo pairs.');
+      showError('You can upload up to 5 before/after photo pairs.');
       return;
     }
     const id = Date.now().toString();
@@ -217,7 +222,7 @@ const VideoPortfolio = () => {
 
   const addCertificate = () => {
     if (certificates.length >= 5) {
-      toast.error('You can upload up to 5 certificates.');
+      showError('You can upload up to 5 certificates.');
       return;
     }
     const id = Date.now().toString();
@@ -233,13 +238,13 @@ const VideoPortfolio = () => {
     const validExts = ['jpg', 'jpeg', 'heic', 'webp', 'pdf'];
 
     if (!validTypes.includes(file.type) && !validExts.includes(ext || '')) {
-      toast.error('Invalid format. Only .jpg, .jpeg, .heic, .webp, .pdf are allowed.');
+      showError('Invalid format. Only .jpg, .jpeg, .heic, .webp, .pdf are allowed.');
       e.target.value = '';
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File must be less than 5MB.');
+      showError('File must be less than 5MB.');
       e.target.value = '';
       return;
     }
@@ -288,6 +293,7 @@ const VideoPortfolio = () => {
       </div>
 
       <div className="flex-1 p-5 pb-20 space-y-8 overflow-y-auto">
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         {/* ═══ SECTION 1: VIDEO INTRODUCTION ═══ */}
         <section>
           <div className="flex items-center gap-3 mb-3.5">

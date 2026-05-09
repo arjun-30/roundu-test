@@ -2,7 +2,6 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 
 const HelpSupport = () => {
   const navigate = useNavigate();

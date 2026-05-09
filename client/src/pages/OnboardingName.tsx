@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, User } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 import { updateUser } from "@/lib/api";
 
 const OnboardingName = () => {
@@ -10,21 +9,24 @@ const OnboardingName = () => {
   const { user, dispatch } = useApp();
   const [name, setName] = useState(user.name || "");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleContinue = async () => {
     if (name.trim().length < 2) {
-      toast.error("Please enter a valid name");
+      setError("Please enter a valid name");
       return;
     }
+    setError("");
     
     setLoading(true);
     try {
       await updateUser(user.id, { name });
       dispatch({ type: "UPDATE_USER", user: { name } });
-      toast.success(`Welcome, ${name.split(" ")[0]}!`);
-      navigate("/role", { replace: true });
+      setSuccess(`Welcome, ${name.split(" ")[0]}!`);
+      setTimeout(() => navigate("/role", { replace: true }), 1000);
     } catch (error) {
-      toast.error("Failed to save name");
+      setError("Failed to save name");
     } finally {
       setLoading(false);
     }
@@ -41,6 +43,9 @@ const OnboardingName = () => {
           Enter your name for a personalized experience
         </p>
       </div>
+
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">{error}</div>}
+      {success && <div className="bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold mb-4">{success}</div>}
 
       <div className="animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">

@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, ChevronRight, Search } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { services } from '@/data/mockData';
-import { toast } from 'sonner';
 
 const SelectService = () => {
   const navigate = useNavigate();
   const { providerRegistrationDraft, dispatch } = useApp();
   
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
   
   const filteredServices = useMemo(() => {
     return services.filter(s => s.label.toLowerCase().includes(search.toLowerCase()) || s.desc.toLowerCase().includes(search.toLowerCase()));
@@ -25,7 +25,8 @@ const SelectService = () => {
       });
     } else {
       if (selectedIds.length >= 4) {
-        toast.error('You can select 1 primary and up to 3 secondary services.');
+        setError('You can select 1 primary and up to 3 secondary services.');
+        setTimeout(() => setError(''), 3000);
         return;
       }
       dispatch({ 
@@ -63,6 +64,8 @@ const SelectService = () => {
             Choose your main expertise and up to 3 additional services you can provide.
           </p>
         </div>
+
+        {error && <div className="mb-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
 
         {/* Search */}
         <div className="relative mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>

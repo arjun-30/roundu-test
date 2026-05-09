@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowLeft, ImagePlus, ChevronDown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 
 const CATEGORIES = [
   "Booking Issue",
@@ -20,20 +19,23 @@ const ReportIssue = () => {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = () => {
     if (!description.trim()) {
-      toast.error("Please provide a description of the issue.");
+      setError("Please provide a description of the issue.");
       return;
     }
+    setError("");
 
     setIsSubmitting(true);
     
     // Simulate API Call: supportApi.createTicket()
     setTimeout(() => {
       setIsSubmitting(false);
-      toast.success("Your issue has been submitted. Our team will contact you soon.");
-      navigate(-1);
+      setSuccess("Your issue has been submitted. Our team will contact you soon.");
+      setTimeout(() => navigate(-1), 1500);
     }, 1500);
   };
 
@@ -50,6 +52,8 @@ const ReportIssue = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-24 space-y-5">
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
+        {success && <div className="bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold">{success}</div>}
         
         {/* Category Dropdown */}
         <div>

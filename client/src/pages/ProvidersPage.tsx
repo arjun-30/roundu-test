@@ -6,7 +6,7 @@ import { useApp } from "@/context/AppContext";
 import ProviderCard from "@/components/ProviderCard";
 import FilterModal, { FilterValues } from "@/components/FilterModal";
 import EmptyState from "@/components/EmptyState";
-import { toast } from "sonner";
+
 import api, { createBooking } from "@/lib/api";
 
 const tabs = ["All", "Top Rated", "Nearest", "Budget", "Fastest"];
@@ -23,6 +23,7 @@ const ProvidersPage = () => {
   const [filters, setFilters] = useState<FilterValues>(defaultFilters);
   const [providers, setProviders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -33,7 +34,7 @@ const ProvidersPage = () => {
           setProviders(res.data.data);
         }
       } catch (err) {
-        toast.error("Failed to fetch providers");
+        setError("Failed to fetch providers");
       } finally {
         setLoading(false);
       }
@@ -78,10 +79,11 @@ const ProvidersPage = () => {
 
   const handleBook = async (id: string) => {
     if (!user || !user.id) {
-      toast.error("Please log in to book a service");
+      setError("Please log in to book a service");
       navigate("/auth", { replace: true });
       return;
     }
+    setError("");
 
     dispatch({ type: "SELECT_PROVIDER", id });
     dispatch({ type: "SELECT_SERVICE", id: serviceId });
@@ -104,19 +106,19 @@ const ProvidersPage = () => {
       const res = await createBooking(bookingData);
       if (res.success) {
         addBooking(res.data);
-        toast.success("Booking confirmed!");
         navigate(`/tracking/${res.data.id}`);
       } else {
-        toast.error("Failed to confirm booking.");
+        setError("Failed to confirm booking.");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Error creating booking. Check your connection.");
+      setError("Error creating booking. Check your connection.");
     }
   };
 
   return (
     <div className="min-h-full flex flex-col bg-background">
+      {error && <div className="bg-red-500 text-white p-2 text-center text-sm">{error}</div>}
       <div className="px-5 pt-6 pb-2 animate-fade-in">
         <div className="flex items-center gap-3 mb-4">
           <button

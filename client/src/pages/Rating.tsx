@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Star } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
+
 
 const Rating = () => {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ const Rating = () => {
   const booking = bookings.find((b) => b.id === id);
   const [stars, setStars] = useState(0);
   const [review, setReview] = useState("");
+  const [error, setError] = useState("");
 
   if (!booking) {
     navigate("/home", { replace: true });
@@ -19,11 +20,11 @@ const Rating = () => {
 
   const submit = () => {
     if (stars === 0) {
-      toast.error("Please select a rating");
+      setError("Please select a rating");
       return;
     }
+    setError("");
     dispatch({ type: "UPDATE_BOOKING", id: booking.id, patch: { rating: stars, review } });
-    toast.success("Thanks for your feedback!");
     navigate("/bookings", { replace: true });
   };
 
@@ -61,6 +62,7 @@ const Rating = () => {
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border">
+        {error && <p className="text-red-500 text-xs mb-2 text-center">{error}</p>}
         <button
           onClick={submit}
           className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98]"

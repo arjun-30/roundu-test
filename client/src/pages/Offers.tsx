@@ -1,7 +1,6 @@
 import { ArrowLeft, Copy, Tag, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { toast } from "sonner";
 
 const offers = [
   { id: 1, promo: "WELCOME50", title: "Flat 50% Off", max: "₹200", expiry: "Ends in 2 days", desc: "Valid on your first booking" },
@@ -16,7 +15,6 @@ const Offers = () => {
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopied(code);
-    toast.success(`Code ${code} copied to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
   };
 

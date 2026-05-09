@@ -12,7 +12,6 @@ import EmptyState from "@/components/EmptyState";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
-import { toast } from "sonner";
 import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
@@ -32,7 +31,6 @@ const Dashboard = () => {
 
   const toggleOnline = () => {
     dispatch({ type: "SET_ONLINE", value: !isOnline });
-    toast(isOnline ? "You are now offline. You won't receive new requests." : "You are online and visible to customers!");
   };
 
   const [showPip, setShowPip] = useState(false);
@@ -48,7 +46,6 @@ const Dashboard = () => {
       setActiveDirectRequest(request);
       // Add to global state so it appears in the list without refresh!
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      toast.success("New job request received!");
     };
     socket.on("incoming_request", handleNewRequest);
     return () => {
@@ -65,7 +62,6 @@ const Dashboard = () => {
   useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
       dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: data.broadcastId });
-      toast.info("A job you were viewing or quoted on was assigned to someone else.");
     };
     socket.on("job_taken", handleJobTaken);
     return () => {
@@ -88,7 +84,6 @@ const Dashboard = () => {
       status: string;
     }) => {
       console.log("[socket] quote_accepted received:", data);
-      toast.success("🎉 Your quote was accepted! Heading to job...");
       
       // Add to providerRequests so Job.tsx can find it
       dispatch({ 
@@ -135,7 +130,6 @@ const Dashboard = () => {
     dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
     setQuotePrice("");
-    toast.success("Quote submitted to customer!");
   };
 
   return (
@@ -150,7 +144,6 @@ const Dashboard = () => {
           onCommit={() => {
             setShowPip(false);
             dispatch({ type: "UPDATE_STATS", patch: { rating: 4.5, responseRate: 90 } });
-            toast.success("Commitment recorded. Your stats have been reset for this demo.");
           }}
         />
       )}
@@ -449,7 +442,6 @@ const Dashboard = () => {
                       <button
                         onClick={() => {
                           dispatch({ type: "ACCEPT_REQUEST", id: r.id });
-                          toast.success("Job accepted!");
                           navigate(`/provider/job/${r.id}`);
                         }}
                         className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
@@ -465,7 +457,6 @@ const Dashboard = () => {
                       <button
                         onClick={() => {
                           dispatch({ type: "REJECT_REQUEST", id: r.id });
-                          toast("Request rejected");
                         }}
                         className="flex-1 py-2.5 rounded-xl bg-input border border-border text-foreground text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
                       >
@@ -637,7 +628,6 @@ const Dashboard = () => {
               <button
                 onClick={() => {
                   dispatch({ type: "REJECT_REQUEST", id: selectedJob.id });
-                  toast("Request rejected");
                   setSelectedJob(null);
                 }}
                 className="flex-1 py-3.5 rounded-xl bg-input border border-border text-foreground text-sm font-bold active:scale-95 transition-transform"
@@ -647,7 +637,6 @@ const Dashboard = () => {
               <button
                 onClick={() => {
                   dispatch({ type: "ACCEPT_REQUEST", id: selectedJob.id });
-                  toast.success("Job accepted!");
                   navigate(`/provider/job/${selectedJob.id}`);
                 }}
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform shadow-md"
@@ -670,7 +659,6 @@ const Dashboard = () => {
             dispatch({ type: "ACCEPT_REQUEST", id: req.id });
             if (simulatedRequest) setSimulatedRequest(null);
             if (activeDirectRequest) setActiveDirectRequest(null);
-            toast.success("Job accepted!");
             navigate(`/provider/job/${req.id}`);
           }}
           onReject={() => {
@@ -678,7 +666,6 @@ const Dashboard = () => {
             dispatch({ type: "REJECT_REQUEST", id: req.id });
             if (simulatedRequest) setSimulatedRequest(null);
             if (activeDirectRequest) setActiveDirectRequest(null);
-            toast("Request declined.");
           }}
         />
       )}

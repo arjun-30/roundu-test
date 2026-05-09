@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Wallet, Smartphone, Check } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Booking } from "@/data/mockData";
-import { toast } from "sonner";
+
 import api, { createBooking, loadRazorpay } from "@/lib/api";
 
 const BookingPayment = () => {
@@ -23,6 +23,7 @@ const BookingPayment = () => {
   
   const [method, setMethod] = useState<"wallet" | "upi">("wallet");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Fix: Move navigate to useEffect
   useEffect(() => {
@@ -44,10 +45,11 @@ const BookingPayment = () => {
     const res = await loadRazorpay();
 
     if (!res) {
-      toast.error("Razorpay SDK failed to load. Are you online?");
+      setError("Payment gateway failed to load. Are you online?");
       setLoading(false);
       return;
     }
+    setError("");
 
     try {
       // 1. Create order on backend
@@ -82,7 +84,7 @@ const BookingPayment = () => {
             });
 
             if (!verifyRes.data.success) {
-              toast.error("Payment verification failed. Please contact support.");
+              setError("Payment verification failed. Please contact support.");
               return;
             }
 
@@ -103,12 +105,11 @@ const BookingPayment = () => {
             if (bookingRes.success) {
               addBooking(bookingRes.data);
               dispatch({ type: "RESET_BOOKING_DRAFT" });
-              toast.success("Payment Successful!");
               navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
             }
           } catch (err) {
             console.error("Verification/Booking error:", err);
-            toast.error("Failed to complete booking. Please check your internet.");
+            setError("Failed to complete booking. Please check your internet.");
           } finally {
             setLoading(false);
           }
@@ -122,7 +123,7 @@ const BookingPayment = () => {
         modal: {
           ondismiss: () => {
             setLoading(false);
-            toast.info("Payment cancelled");
+            setError("Payment cancelled");
           }
         }
       };
@@ -131,7 +132,7 @@ const BookingPayment = () => {
       rzp.open();
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Failed to initialize payment");
+      setError("Failed to initialize payment");
     } finally {
       setLoading(false);
     }
@@ -147,6 +148,11 @@ const BookingPayment = () => {
       </div>
 
       <div className="flex-1 px-5 space-y-5">
+        {error && (
+          <div className="bg-destructive/10 text-destructive text-xs font-bold p-3 rounded-xl border border-destructive/20">
+            {error}
+          </div>
+        )}
         <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
           <h3 className="text-xs font-bold text-foreground mb-3">Price Breakdown</h3>
           <Row label="Service charge" value={`₹${base}`} />

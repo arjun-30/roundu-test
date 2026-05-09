@@ -2,23 +2,24 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Navigation, ShieldCheck, Info } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-import { toast } from "sonner";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 
 const GPSMonitor = () => {
   const navigate = useNavigate();
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(true);
+  const [notification, setNotification] = useState("");
 
   const { user, providerRequests } = useApp();
 
   const toggleTracking = () => {
     setIsTrackingEnabled(!isTrackingEnabled);
     if (!isTrackingEnabled) {
-      toast.success("Background tracking enabled");
+      setNotification("Background tracking enabled");
     } else {
-      toast.warning("Tracking disabled. You won't receive job requests.");
+      setNotification("Tracking disabled. You won't receive job requests.");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   useEffect(() => {
@@ -77,6 +78,12 @@ const GPSMonitor = () => {
       </div>
 
       <div className="flex-1 flex flex-col">
+        {notification && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-md whitespace-nowrap">
+            {notification}
+          </div>
+        )}
+
         {/* Map Placeholder */}
         <div className="flex-1 bg-muted relative overflow-hidden flex items-center justify-center">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80')] bg-cover bg-center opacity-40 mix-blend-multiply" />

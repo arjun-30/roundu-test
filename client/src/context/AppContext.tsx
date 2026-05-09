@@ -7,7 +7,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
-import { toast } from "sonner";
 
 const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
   const R = 6371;
@@ -285,8 +284,6 @@ function reducer(state: State, action: Action): State {
           lng: booking.lng,
           voiceNote: booking.voice_note || false
         };
-        setTimeout(() => toast.success("🎉 Your quote was accepted! Job added."), 100);
-        
         return {
           ...state,
           providerRequests: [mappedRequest, ...state.providerRequests],

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Info, ChevronDown, CheckCircle2 } from "lucide-react";
-import { toast } from "sonner";
+
 
 const Cancellation = () => {
   const navigate = useNavigate();
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState("");
 
   const refundSlabs = [
     { label: "48h+", refund: "100%", status: "available" },
@@ -19,12 +20,12 @@ const Cancellation = () => {
 
   const handleConfirm = () => {
     if (!reason) {
-      toast.error("Please select a reason");
+      setError("Please select a reason");
       return;
     }
+    setError("");
     setConfirmed(true);
     setTimeout(() => {
-      toast.success("Booking cancelled and ₹375 refunded to wallet");
       navigate("/home", { replace: true });
     }, 2000);
   };
@@ -96,6 +97,7 @@ const Cancellation = () => {
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={18} />
            </div>
+           {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
         </div>
 
         {/* Warning card */}

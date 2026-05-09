@@ -1,22 +1,23 @@
 import { ArrowLeft, Crown, Calendar, Settings2, PauseCircle, PlayCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { toast } from "sonner";
 
 const ManageSubscriptions = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"active" | "paused">("active");
+  const [notification, setNotification] = useState("");
 
   const handleAction = (action: string) => {
     if (action === "pause") {
       setStatus("paused");
-      toast.success("Subscription paused successfully.");
+      setNotification("Subscription paused successfully.");
     } else if (action === "resume") {
       setStatus("active");
-      toast.success("Subscription resumed successfully.");
+      setNotification("Subscription resumed successfully.");
     } else if (action === "cancel") {
-      toast.success("Subscription cancelled. You will have access until the end of billing cycle.");
+      setNotification("Subscription cancelled. You will have access until the end of billing cycle.");
     }
+    setTimeout(() => setNotification(""), 3000);
   };
 
   return (
@@ -29,6 +30,11 @@ const ManageSubscriptions = () => {
       </div>
 
       <div className="px-5 pt-6 space-y-5">
+        {notification && (
+          <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-4 text-center">
+            {notification}
+          </div>
+        )}
         <div className="bg-white rounded-[20px] p-6 border-[2px] border-blue-500 shadow-[0_8px_30px_rgba(59,130,246,0.12)] relative">
           <div className={`absolute top-5 right-5 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-md ${status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
             {status}

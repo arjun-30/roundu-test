@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Check, Zap, Clock, ShieldCheck, CreditCard, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
+
 
 const ProCard = () => {
   const navigate = useNavigate();
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   const handleSubscribe = () => {
-    toast.success(isSubscribed ? "Subscription cancelled" : "Welcome to ProCard!");
     setIsSubscribed(!isSubscribed);
   };
 

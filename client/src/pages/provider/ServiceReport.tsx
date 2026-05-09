@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Camera, Upload, AlertTriangle, FileText, Activity, Wrench } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 
 const ServiceReport = () => {
   const navigate = useNavigate();
@@ -17,6 +16,8 @@ const ServiceReport = () => {
   const [requiresFollowUp, setRequiresFollowUp] = useState(false);
   const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
+  const [notification, setNotification] = useState("");
+  const [error, setError] = useState("");
 
   if (!job) {
     navigate("/provider", { replace: true });
@@ -24,23 +25,25 @@ const ServiceReport = () => {
   }
 
   const handleSimulateUpload = (setter: React.Dispatch<React.SetStateAction<string | null>>) => {
-    toast("Uploading photo...");
+    setNotification("Uploading photo...");
     setTimeout(() => {
       setter("https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=200&h=200&fit=crop");
-      toast.success("Photo uploaded successfully");
+      setNotification("Photo uploaded successfully");
+      setTimeout(() => setNotification(""), 3000);
     }, 1500);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (description.length < 20) {
-      toast.error("Description must be at least 20 characters long.");
+      setError("Description must be at least 20 characters long.");
+      setTimeout(() => setError(""), 3000);
       return;
     }
     
     dispatch({ type: "COMPLETE_REQUEST", id: job.id });
-    toast.success(`Job completed! ₹${job.quote || job.price} added to your earnings.`);
-    navigate("/provider/dashboard", { replace: true });
+    setNotification(`Job completed! ₹${job.quote || job.price} added to your earnings.`);
+    setTimeout(() => navigate("/provider/dashboard", { replace: true }), 1500);
   };
 
   return (
@@ -56,6 +59,8 @@ const ServiceReport = () => {
       </div>
 
       <div className="p-5 flex-1">
+        {notification && <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {error && <div className="mb-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Root Cause */}
           <div className="space-y-2">

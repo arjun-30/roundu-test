@@ -4,7 +4,6 @@ import { ArrowLeft, Phone, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
 import { API_BASE_URL } from "@/config/env";
-import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,6 +18,8 @@ const Login = () => {
   const navigate = useNavigate();
   const { dispatch } = useApp();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const { register, handleSubmit, formState: { errors, isValid } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -35,17 +36,17 @@ const Login = () => {
         dispatch({ type: "SET_PHONE", phone: data.phone });
         localStorage.setItem("roundu_pending_phone", data.phone);
         if (response.data.devOtp) {
-          toast.success(`Dev OTP: ${response.data.devOtp}`, { duration: 10000 });
+          setSuccess(`Dev OTP: ${response.data.devOtp}`);
         } else {
-          toast.success("OTP sent successfully!");
+          setSuccess("OTP sent successfully!");
         }
-        navigate("/otp", { state: { devOtp: response.data.devOtp } });
+        setTimeout(() => navigate("/otp", { state: { devOtp: response.data.devOtp } }), 500);
       } else {
-        toast.error(response.data.message || "Failed to send OTP");
+        setError(response.data.message || "Failed to send OTP");
       }
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
-      toast.error(err.response?.data?.error || "Failed to send OTP. Please try again.");
+      setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,6 +68,9 @@ const Login = () => {
         </h1>
         <p className="text-muted-foreground mt-3 text-sm">Enter your phone number to continue</p>
       </div>
+      
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">{error}</div>}
+      {success && <div className="bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold mb-4">{success}</div>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>

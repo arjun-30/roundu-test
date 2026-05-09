@@ -54,9 +54,12 @@ export interface ProviderRequest {
   date: string;
   time: string;
   price: number;
-  status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
+  status: "pending" | "accepted" | "rejected" | "assigned" | "on_the_way" | "arrived" | "in_progress" | "completed" | "cancelled";
   notes?: string;
   voiceNote?: boolean;
+  lat?: number;
+  lng?: number;
+  quote?: number;
 }
 
 export const services: Service[] = [

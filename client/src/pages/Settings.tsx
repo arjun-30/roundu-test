@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
-import { toast } from "sonner";
 import { API_BASE_URL } from "@/config/env";
 import {
   AlertDialog,
@@ -25,6 +24,7 @@ const Settings = () => {
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [promosEnabled, setPromosEnabled] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
 
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
@@ -34,14 +34,13 @@ const Settings = () => {
       const response = await axios.delete(`${API_BASE_URL}/users/${user.id}`);
 
       if (response.data.success) {
-        toast.success("Account deleted successfully");
         localStorage.removeItem("roundu_token");
         dispatch({ type: "SET_AUTH", value: false });
         navigate("/splash", { replace: true });
       }
     } catch (err: any) {
       console.error("Delete Account Error:", err);
-      toast.error(err.response?.data?.message || "Failed to delete account");
+      setError(err.response?.data?.message || "Failed to delete account");
     } finally {
       setDeleting(false);
     }
@@ -144,6 +143,7 @@ const Settings = () => {
         {/* Danger Zone */}
         <div>
           <h2 className="text-xs font-extrabold text-red-300 uppercase tracking-widest pl-1 mb-3">Account</h2>
+          {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
           
           <AlertDialog>
             <AlertDialogTrigger asChild>

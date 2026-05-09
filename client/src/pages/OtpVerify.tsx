@@ -3,7 +3,6 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 import { API_BASE_URL } from "@/config/env";
 
 const OtpVerify = () => {
@@ -16,6 +15,7 @@ const OtpVerify = () => {
     return ["", "", "", "", "", ""];
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -47,9 +47,10 @@ const OtpVerify = () => {
   const handleVerify = async () => {
     const otpCode = otp.join("");
     if (otpCode.length < 6) {
-      toast.error("Enter the 6-digit code");
+      setError("Enter the 6-digit code");
       return;
     }
+    setError("");
     
     setLoading(true);
     
@@ -79,8 +80,6 @@ const OtpVerify = () => {
           role: user.role || "customer"
         }});
 
-        toast.success("Verified successfully");
-        
         // Check if onboarding is needed
         if (user.name) {
           if (user.role === "provider") {
@@ -96,7 +95,7 @@ const OtpVerify = () => {
       }
     } catch (err: any) {
       console.error("Verify Error:", err);
-      toast.error(err.response?.data?.error || "Verification failed. Check the code.");
+      setError(err.response?.data?.error || "Verification failed. Check the code.");
     } finally {
       setLoading(false);
     }
@@ -117,6 +116,8 @@ const OtpVerify = () => {
           We sent a 6-digit code to <span className="font-semibold text-foreground">+91 {phone}</span>
         </p>
       </div>
+
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">{error}</div>}
 
       {devOtp && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center">

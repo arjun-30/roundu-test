@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
-import { toast } from 'sonner';
 import { registerProvider } from '@/lib/api';
 
 const PendingApproval = () => {
@@ -13,10 +11,13 @@ const PendingApproval = () => {
   // We'll add a secret simulation feature for demo purposes: 
   // clicking the clock 5 times automatically "approves" the application.
   const [clicks, setClicks] = useState(0);
+  const [notification, setNotification] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (clicks >= 5) {
-      toast.success("Application Approved (Simulation)!");
+      setNotification("Application Approved (Simulation)!");
       setTimeout(() => navigate('/provider'), 1000);
     }
   }, [clicks, navigate]);
@@ -37,6 +38,8 @@ const PendingApproval = () => {
       </div>
 
       <div className="space-y-4 max-w-[320px]">
+        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-2">{notification}</div>}
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-2">{error}</div>}
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight animate-fade-in">
           Verification <br /><span className="text-accent">In Progress</span>
         </h1>
@@ -81,12 +84,15 @@ const PendingApproval = () => {
 
       <div className="flex flex-col w-full max-w-[320px] gap-3 mb-8 relative z-10">
         <button 
+          disabled={isLoading}
           onClick={async () => {
             if (!user?.id) {
-              toast.error("User not authenticated");
+              setError("User not authenticated");
+              setTimeout(() => setError(""), 3000);
               return;
             }
-            const promise = async () => {
+            setIsLoading(true);
+            try {
               const res = await registerProvider({
                 userId: user.id,
                 bio: providerRegistrationDraft.bio,
@@ -98,22 +104,19 @@ const PendingApproval = () => {
               if (!res.success) throw new Error(res.message || "Registration failed");
               dispatch({ type: "SET_ROLE", role: "provider" });
               dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
-              return res;
-            };
-
-            toast.promise(promise(), {
-              loading: 'Submitting registration securely to database...',
-              success: () => {
-                setTimeout(() => navigate('/provider'), 1000);
-                return "Registration successful! Redirecting to Dashboard...";
-              },
-              error: (err) => err.message || 'Connection failed',
-            });
+              setNotification("Registration successful! Redirecting to Dashboard...");
+              setTimeout(() => navigate('/provider'), 1000);
+            } catch (err: any) {
+              setError(err.message || 'Connection failed');
+              setTimeout(() => setError(""), 3000);
+            } finally {
+              setIsLoading(false);
+            }
           }}
-          className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-black text-sm flex items-center justify-center gap-3 shadow-xl shadow-accent/20 active:scale-[0.98] transition-all"
+          className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-black text-sm flex items-center justify-center gap-3 shadow-xl shadow-accent/20 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <CheckCircle2 size={20} strokeWidth={2.5} />
-          Complete Registration
+          {isLoading ? "Submitting..." : "Complete Registration"}
         </button>
       </div>
 

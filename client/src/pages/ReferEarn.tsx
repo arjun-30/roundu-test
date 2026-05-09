@@ -1,18 +1,19 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Gift, Share2, Copy, Users, Wallet, ChevronRight, Award } from "lucide-react";
-import { toast } from "sonner";
 
 const ReferEarn = () => {
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
   const referralCode = "ROUNDU750";
 
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
-    toast.success("Referral code copied!");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = () => {
-    toast.success("Opening share menu...");
+    // Sharing logic
   };
 
   return (
@@ -52,11 +53,11 @@ const ReferEarn = () => {
           <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.2em]">Your Referral Code</p>
           <div className="flex items-center justify-center gap-4">
              <span className="text-3xl font-black text-primary tracking-tighter">{referralCode}</span>
-             <button 
+              <button 
                 onClick={copyCode}
                 className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary active:scale-90 transition-all"
              >
-               <Copy size={18} />
+               {copied ? <Check size={18} /> : <Copy size={18} />}
              </button>
           </div>
           <button 

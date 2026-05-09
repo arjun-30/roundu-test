@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, AlertCircle, ChevronRight, FileText, Landmark, UserCheck, ShieldCheck } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-import { toast } from "sonner";
 
 const Documents = () => {
   const navigate = useNavigate();
@@ -14,7 +13,7 @@ const Documents = () => {
   ];
 
   const handleDocClick = (label: string) => {
-    toast.info(`Viewing ${label}`);
+    // viewing document
   };
 
   return (

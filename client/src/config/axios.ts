@@ -1,5 +1,4 @@
 import axios from "axios";
-import { toast } from "sonner";
 import { API_BASE_URL } from "@/config/env";
 
 const api = axios.create({
@@ -30,11 +29,11 @@ api.interceptors.response.use(
       localStorage.removeItem("roundu_token");
       // Don't toast on every 401 if it's a silent check
     } else if (error.response?.status === 500) {
-      toast.error("Server error. Please try again later.");
+      console.error("Server error. Please try again later.");
     } else if (error.code === "ECONNABORTED") {
-      toast.error("Request timed out. Please check your internet.");
+      console.error("Request timed out. Please check your internet.");
     } else if (!error.response) {
-      toast.error("Network error. Please check your connection.");
+      console.error("Network error. Please check your connection.");
     }
 
     return Promise.reject(error);

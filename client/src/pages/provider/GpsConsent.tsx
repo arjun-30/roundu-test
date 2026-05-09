@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Check, ShieldAlert, Navigation, Settings } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { toast } from 'sonner';
 
 const GpsConsent = () => {
   const navigate = useNavigate();
@@ -11,6 +10,7 @@ const GpsConsent = () => {
   const [agreed, setAgreed] = useState(false);
   const [denied, setDenied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const requestLocation = () => {
     if (!agreed) return;
@@ -22,7 +22,6 @@ const GpsConsent = () => {
       const isGranted = Math.random() > 0.1;
       
       if (isGranted) {
-        toast.success("Application Submitted Successfully!");
         navigate('/provider/pending-approval', { replace: true });
       } else {
         setDenied(true);
@@ -32,7 +31,7 @@ const GpsConsent = () => {
   };
 
   const openSettings = () => {
-    toast.info("Please enable GPS in your device settings and try again.");
+    setError("Please enable GPS in your device settings and try again.");
     setDenied(false); // Reset to let them try again
   };
 
@@ -59,6 +58,8 @@ const GpsConsent = () => {
             </div>
           </div>
         </div>
+
+        {error && <div className="text-red-500 text-sm font-semibold text-center mb-4">{error}</div>}
 
         <h2 className="text-2xl font-extrabold text-foreground text-center mb-2 animate-fade-in-up">
           Enable 24/7 location tracking

@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Image as ImageIcon, Play } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-import { toast } from "sonner";
+
+import { useState } from "react";
 
 const Portfolio = () => {
   const navigate = useNavigate();
-
+  const [notification, setNotification] = useState("");
   const mockPortfolio = [
     { id: 1, title: "AC Repair", date: "22 Oct 2023", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
     { id: 2, title: "Electrical Wiring", date: "15 Oct 2023", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
@@ -16,7 +17,8 @@ const Portfolio = () => {
   ];
 
   const handleUpload = () => {
-    toast.info("Upload functionality coming soon!");
+    setNotification("Upload functionality coming soon!");
+    setTimeout(() => setNotification(""), 3000);
   };
 
   return (
@@ -32,6 +34,11 @@ const Portfolio = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {notification && (
+          <div className="bg-blue-50 text-blue-700 p-3 m-5 rounded-xl text-sm font-semibold text-center mb-0">
+            {notification}
+          </div>
+        )}
         {/* Video Introduction Section */}
         <div className="p-5">
            <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden group">
