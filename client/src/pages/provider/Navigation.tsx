@@ -11,8 +11,8 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 const Navigation = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { bookings } = useApp();
-  const booking = bookings.find((b) => b.id === id);
+  const { providerRequests } = useApp();
+  const booking = providerRequests.find((r) => r.id === id);
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
