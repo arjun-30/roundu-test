@@ -221,6 +221,24 @@ export async function geocode(address: string): Promise<LatLng> {
   return { lat, lng };
 }
 
+export async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; area: string; city: string }> {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Mapbox reverse geocoding HTTP ${res.status}`);
+  const data = await res.json();
+  const feature = data.features?.[0];
+  if (!feature) throw new Error("Mapbox reverse geocoding: no results");
+  
+  const city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text || "";
+  const area = feature.text || "";
+  
+  return { 
+    address: feature.place_name,
+    area: area,
+    city: city
+  };
+}
+
 export async function getDirections(
   origin: LatLng,
   destination: LatLng
