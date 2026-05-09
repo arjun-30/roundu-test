@@ -31,9 +31,31 @@ const Job = () => {
     return () => clearInterval(timer);
   }, [job?.status]);
 
+  // Don't redirect immediately — state from ADD_REQUEST may not have propagated yet.
+  // Wait up to 3 seconds before giving up and going back to dashboard.
+  const [notFoundTimer, setNotFoundTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!job) {
+      const t = setTimeout(() => {
+        navigate("/provider", { replace: true });
+      }, 3000);
+      setNotFoundTimer(t);
+      return () => clearTimeout(t);
+    } else {
+      // Job found — cancel any pending redirect
+      if (notFoundTimer) clearTimeout(notFoundTimer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job, navigate]);
+
   if (!job) {
-    navigate("/provider", { replace: true });
-    return null;
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center gap-3 bg-background">
+        <Loader2 size={32} className="animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading job details...</p>
+      </div>
+    );
   }
   const service = getServiceById(job.serviceId);
 
