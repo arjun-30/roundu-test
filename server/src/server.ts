@@ -193,6 +193,8 @@ async function main() {
           serviceId,
           customerName,
           address,
+          lat: data.lat || null,
+          lng: data.lng || null,
           price: data.price || 0,
           date: new Date().toISOString().slice(0, 10),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

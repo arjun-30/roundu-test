@@ -563,15 +563,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
       dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
 
-      // Auto-tracking for customer
+      // Auto-update status to 'arrived' when provider is within 100m of customer
       if (state.role === "customer" && state.currentLocation) {
         state.bookings.forEach((b) => {
           const providerId = (b as any).provider_id || b.providerId;
-          if (providerId === data.id) {
+          if (providerId === data.id && b.status === "on_the_way") {
             const dist = getDistance(state.currentLocation!, { lat: data.lat, lng: data.lng });
-            if (b.status === "assigned" && dist < 5) {
-              socket.emit("update_job_status", { bookingId: b.id, status: "on_the_way" });
-            } else if (b.status === "on_the_way" && dist < 0.2) {
+            if (dist < 0.1) { // 100 metres
               socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
             }
           }

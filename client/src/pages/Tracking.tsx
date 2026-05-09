@@ -6,12 +6,11 @@ import { socket } from "@/lib/socket";
 import { getProviderById } from "@/data/mockData";
 import { toast } from "sonner";
 
-const stages = ["assigned", "on_the_way", "arrived", "quote_set", "in_progress", "completed"] as const;
+const stages = ["assigned", "on_the_way", "arrived", "in_progress", "completed"] as const;
 const stageLabels: Record<string, { title: string; subtitle: string; color: string }> = {
   assigned:    { title: "Provider Assigned",     subtitle: "Your provider has been confirmed",     color: "bg-blue-500" },
   on_the_way:  { title: "On the Way",            subtitle: "Your provider is heading to you",      color: "bg-indigo-500" },
   arrived:     { title: "Arrived",               subtitle: "Your provider has reached you",         color: "bg-orange-500" },
-  quote_set:   { title: "Quote Received",        subtitle: "Provider sent you a price estimate",    color: "bg-amber-500" },
   in_progress: { title: "Service in Progress",   subtitle: "Work is being done",                   color: "bg-primary" },
   completed:   { title: "Completed",             subtitle: "Service has been completed ✅",         color: "bg-green-500" },
 };

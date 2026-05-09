@@ -155,11 +155,13 @@ const SearchingProviders = () => {
         socket.emit("accept_quote", { 
           broadcastId: broadcastIdRef.current, 
           acceptedProviderId: quote.providerId,
-          bookingId: res.data.id,           // ← critical: let server relay this to the provider
+          bookingId: res.data.id,
           customerName: user.name,
           address: user.address || "Customer Location",
           serviceId: serviceId,
           price: quote.price,
+          lat: currentLocation?.lat,
+          lng: currentLocation?.lng,
         });
 
         navigate(`/tracking/${res.data.id}`);

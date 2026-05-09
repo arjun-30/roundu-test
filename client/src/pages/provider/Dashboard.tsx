@@ -77,6 +77,8 @@ const Dashboard = () => {
       serviceId: string; 
       customerName: string; 
       address: string;
+      lat?: number;
+      lng?: number;
       price: number;
       date: string;
       time: string;
@@ -93,6 +95,8 @@ const Dashboard = () => {
           customerName: data.customerName || "Customer",
           serviceId: data.serviceId,
           address: data.address || "Customer Location",
+          lat: data.lat,
+          lng: data.lng,
           status: "assigned",
           date: data.date || new Date().toISOString().slice(0, 10),
           time: data.time || "Now",
