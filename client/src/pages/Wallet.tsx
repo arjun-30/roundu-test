@@ -45,7 +45,7 @@ const Wallet = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => navigate("/wallet/topup")}
-                className="flex-1 py-3 rounded-2xl bg-white text-[#152E4B] font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+                className="flex-1 py-3 rounded-2xl bg-white text-primary font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
               >
                 <Plus size={16} strokeWidth={3} /> Add Money
               </button>

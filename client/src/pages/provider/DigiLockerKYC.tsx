@@ -229,7 +229,7 @@ const DigiLockerKYC = () => {
       </div>
 
       <div className="flex-1 p-5 pb-28 space-y-5 overflow-y-auto">
-        {notification && <div className="bg-blue-50 text-blue-600 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {notification && <div className="bg-secondary/10 text-secondary p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
 
         <div className="mb-2 animate-fade-in text-center space-y-4">

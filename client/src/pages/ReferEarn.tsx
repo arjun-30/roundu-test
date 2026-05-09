@@ -71,7 +71,7 @@ const ReferEarn = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
           <div className="bg-card border border-border p-5 rounded-3xl flex flex-col items-center text-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-secondary/100/10 flex items-center justify-center">
               <Users size={24} className="text-blue-500" />
             </div>
             <div>

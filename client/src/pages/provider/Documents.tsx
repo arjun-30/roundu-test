@@ -6,7 +6,7 @@ const Documents = () => {
   const navigate = useNavigate();
 
   const docs = [
-    { id: "aadhaar", label: "Aadhaar Card", status: "verified", icon: UserCheck, color: "text-blue-600", bg: "bg-blue-100" },
+    { id: "aadhaar", label: "Aadhaar Card", status: "verified", icon: UserCheck, color: "text-secondary", bg: "bg-blue-100" },
     { id: "pan", label: "PAN Card", status: "verified", icon: FileText, color: "text-indigo-600", bg: "bg-indigo-100" },
     { id: "bank", label: "Bank Account Details", status: "verified", icon: Landmark, color: "text-emerald-600", bg: "bg-emerald-100" },
     { id: "license", label: "Professional License", status: "pending", icon: CheckCircle2, color: "text-orange-600", bg: "bg-orange-100" },

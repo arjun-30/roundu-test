@@ -64,7 +64,7 @@ const Chat = () => {
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {notification && (
-              <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-2">
+              <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-2">
                 {notification}
               </div>
             )}

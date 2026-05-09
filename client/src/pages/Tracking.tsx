@@ -7,7 +7,7 @@ import { getProviderById } from "@/data/mockData";
 
 const stages = ["assigned", "on_the_way", "arrived", "in_progress", "completed"] as const;
 const stageLabels: Record<string, { title: string; subtitle: string; color: string }> = {
-  assigned:    { title: "Provider Assigned",     subtitle: "Your provider has been confirmed",     color: "bg-blue-500" },
+  assigned:    { title: "Provider Assigned",     subtitle: "Your provider has been confirmed",     color: "bg-secondary/100" },
   on_the_way:  { title: "On the Way",            subtitle: "Your provider is heading to you",      color: "bg-indigo-500" },
   arrived:     { title: "Arrived",               subtitle: "Your provider has reached you",         color: "bg-orange-500" },
   in_progress: { title: "Service in Progress",   subtitle: "Work is being done",                   color: "bg-primary" },
@@ -103,7 +103,7 @@ const Tracking = () => {
 
       <div className="px-5 flex-1 space-y-5 overflow-y-auto">
         {notification && (
-          <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold shadow-sm animate-fade-in text-center">
+          <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold shadow-sm animate-fade-in text-center">
             {notification}
           </div>
         )}

@@ -263,11 +263,11 @@ const Dashboard = () => {
                   <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
                     <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 shadow-sm">
                         {service && <service.icon size={18} className="text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[#030916]">{b.customerName}</p>
+                        <p className="text-sm font-bold text-foreground">{b.customerName}</p>
                         <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
                           <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
@@ -278,7 +278,7 @@ const Dashboard = () => {
                         <div className="flex gap-2 mt-3">
                           <button 
                             onClick={() => setQuotingBroadcast(b)}
-                            className="flex-1 py-2 bg-[#F59E0B] text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                            className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
                           >
                             Provide Quote
                           </button>
@@ -339,7 +339,7 @@ const Dashboard = () => {
               <Lightbulb size={20} className="text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#030916] mb-1">Smart Suggestion</p>
+              <p className="text-sm font-bold text-foreground mb-1">Smart Suggestion</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Stay online to receive real-time job requests and increase your earnings.
               </p>
@@ -359,7 +359,7 @@ const Dashboard = () => {
                 <ClipboardCheck size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Jobs</p>
+                <p className="text-sm font-bold text-foreground">My Jobs</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
               </div>
             </button>
@@ -372,7 +372,7 @@ const Dashboard = () => {
                 <Wallet size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Earnings</p>
+                <p className="text-sm font-bold text-foreground">My Earnings</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">₹{earnings} earned</p>
               </div>
             </button>
@@ -385,7 +385,7 @@ const Dashboard = () => {
                 <Images size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Portfolio</p>
+                <p className="text-sm font-bold text-foreground">My Portfolio</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Showcase work</p>
               </div>
             </button>
@@ -398,7 +398,7 @@ const Dashboard = () => {
                 <FileText size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Documents</p>
+                <p className="text-sm font-bold text-foreground">My Documents</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">KYC & Verification</p>
               </div>
             </button>
@@ -484,7 +484,7 @@ const Dashboard = () => {
                 <button
                   key={r.id}
                   onClick={() => navigate(`/provider/job/${r.id}`)}
-                  className="w-full bg-[#152E4B] rounded-2xl p-4 text-left active:scale-[0.98] shadow-md flex items-center justify-between"
+                  className="w-full bg-primary rounded-2xl p-4 text-left active:scale-[0.98] shadow-md flex items-center justify-between"
                 >
                   <div>
                     <p className="text-xs text-blue-200/80 mb-0.5">{r.date} at {r.time}</p>
@@ -695,7 +695,7 @@ const Dashboard = () => {
       {quotingBroadcast && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 animate-fade-in backdrop-blur-sm">
           <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
-            <h3 className="text-lg font-bold text-[#030916] mb-1">Submit Your Quote</h3>
+            <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
             
             <div className="space-y-4">

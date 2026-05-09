@@ -34,9 +34,9 @@ const ServiceSelection = () => {
 
   if (!service) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center p-10 text-center bg-[#EEF2F7]">
-        <h2 className="text-lg font-bold text-[#030916] mb-2">Service not found</h2>
-        <button onClick={() => navigate("/home")} className="text-[#152E4B] font-bold">Go back home</button>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center p-10 text-center bg-background">
+        <h2 className="text-lg font-bold text-foreground mb-2">Service not found</h2>
+        <button onClick={() => navigate("/home")} className="text-primary font-bold">Go back home</button>
       </div>
     );
   }
@@ -73,18 +73,18 @@ const ServiceSelection = () => {
   const problemsList = getExtendedProblems();
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#EEF2F7] pb-6 font-sans text-[#030916]">
+    <div className="min-h-[100dvh] flex flex-col bg-background pb-6 font-sans text-foreground">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-[#EEF2F7] sticky top-0 z-20">
+      <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-background sticky top-0 z-20">
         <button 
           onClick={() => navigate("/home")} 
           className="w-10 h-10 rounded-full bg-white flex flex-shrink-0 items-center justify-center shadow-sm active:scale-95 transition-transform"
         >
-          <ArrowLeft size={20} className="text-[#152E4B]" />
+          <ArrowLeft size={20} className="text-primary" />
         </button>
         <div>
-          <h1 className="text-[20px] font-extrabold text-[#030916] leading-tight">{service.label}</h1>
-          <p className="text-[13px] text-gray-500 font-medium">Fine-tune your request</p>
+          <h1 className="text-[20px] font-extrabold text-foreground leading-tight">{service.label}</h1>
+          <p className="text-[13px] text-muted-foreground font-medium">Fine-tune your request</p>
         </div>
       </div>
 
@@ -92,8 +92,8 @@ const ServiceSelection = () => {
         
         {/* Section Title */}
         <div>
-           <h2 className="text-[18px] font-extrabold text-[#030916]">What's the problem?</h2>
-            <p className="text-[12px] text-gray-500 mt-1 leading-snug">Choose an issue to help us match the right expert</p>
+           <h2 className="text-[18px] font-extrabold text-foreground">What's the problem?</h2>
+            <p className="text-[12px] text-muted-foreground mt-1 leading-snug">Choose an issue to help us match the right expert</p>
         </div>
 
         {/* Dynamic Grid */}
@@ -114,11 +114,11 @@ const ServiceSelection = () => {
                   }`}
                 >
                   {/* SVG Icon Top */}
-                  <IconComponent size={24} className={`mb-3 ${isActive ? 'text-[#152E4B]' : 'text-[#152E4B]/70'}`} strokeWidth={1.8} />
+                  <IconComponent size={24} className={`mb-3 ${isActive ? 'text-primary' : 'text-primary/70'}`} strokeWidth={1.8} />
                   
                   {/* Label */}
                   <span className={`text-[13.5px] font-bold leading-tight ${
-                    isActive ? "text-[#152E4B]" : "text-[#030916]"
+                    isActive ? "text-primary" : "text-foreground"
                   }`}>
                     {problem}
                   </span>
@@ -126,7 +126,7 @@ const ServiceSelection = () => {
                   {/* Active Indicator Checkmark */}
                   {isActive && (
                      <div className="absolute top-[14px] right-[14px] animate-fade-in">
-                        <CheckCircle2 size={18} className="text-[#F59E0B] fill-[#F59E0B]/20" strokeWidth={2.5} />
+                        <CheckCircle2 size={18} className="text-accent fill-[#F59E0B]/20" strokeWidth={2.5} />
                      </div>
                   )}
                 </button>
@@ -137,13 +137,13 @@ const ServiceSelection = () => {
 
         {/* Helper Section */}
         <div className="bg-white rounded-[20px] p-5 shadow-sm border border-transparent flex items-start gap-3 mt-8">
-           <div className="w-12 h-12 rounded-full bg-[#152E4B]/5 flex items-center justify-center flex-shrink-0">
-               <HelpCircle size={22} className="text-[#A95D06]" strokeWidth={2.5} />
+           <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center flex-shrink-0">
+               <HelpCircle size={22} className="text-secondary" strokeWidth={2.5} />
            </div>
            <div className="flex-1">
-               <h3 className="text-[15px] font-extrabold text-[#030916]">Not sure what's wrong?</h3>
-               <p className="text-[11px] text-gray-500 mt-1 mb-4 leading-relaxed">Our experts can help you identify the issue</p>
-               <button className="bg-[#152E4B]/5 text-[#152E4B] text-[12px] font-extrabold tracking-wide uppercase px-4 py-2.5 rounded-xl active:scale-95 transition-all">
+               <h3 className="text-[15px] font-extrabold text-foreground">Not sure what's wrong?</h3>
+               <p className="text-[11px] text-muted-foreground mt-1 mb-4 leading-relaxed">Our experts can help you identify the issue</p>
+               <button className="bg-primary/5 text-primary text-[12px] font-extrabold tracking-wide uppercase px-4 py-2.5 rounded-xl active:scale-95 transition-all">
                   Get Help
                </button>
            </div>
@@ -151,9 +151,9 @@ const ServiceSelection = () => {
 
         {/* Trust Bar */}
         <div className="flex gap-4 items-end justify-between opacity-80 px-2 pt-2">
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-gray-500 text-center uppercase tracking-wide"><ShieldCheck size={26} className="text-[#A95D06] mb-1" strokeWidth={1.5}/> Verified Experts</span>
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-gray-500 text-center uppercase tracking-wide"><Clock size={26} className="text-[#152E4B] mb-1" strokeWidth={1.5}/> On-time Service</span>
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-gray-500 text-center uppercase tracking-wide"><ThumbsUp size={26} className="text-[#F59E0B] mb-1" strokeWidth={1.5}/> 100% Satisfaction</span>
+            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><ShieldCheck size={26} className="text-secondary mb-1" strokeWidth={1.5}/> Verified Experts</span>
+            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><Clock size={26} className="text-primary mb-1" strokeWidth={1.5}/> On-time Service</span>
+            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><ThumbsUp size={26} className="text-accent mb-1" strokeWidth={1.5}/> 100% Satisfaction</span>
         </div>
       </div>
 

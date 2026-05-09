@@ -35,7 +35,7 @@ const Portfolio = () => {
 
       <div className="flex-1 overflow-y-auto">
         {notification && (
-          <div className="bg-blue-50 text-blue-700 p-3 m-5 rounded-xl text-sm font-semibold text-center mb-0">
+          <div className="bg-secondary/10 text-blue-700 p-3 m-5 rounded-xl text-sm font-semibold text-center mb-0">
             {notification}
           </div>
         )}

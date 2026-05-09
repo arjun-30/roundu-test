@@ -59,7 +59,7 @@ const ServiceReport = () => {
       </div>
 
       <div className="p-5 flex-1">
-        {notification && <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {notification && <div className="mb-4 bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="mb-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Root Cause */}

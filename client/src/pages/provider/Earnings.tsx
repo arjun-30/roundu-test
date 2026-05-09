@@ -85,7 +85,7 @@ const Earnings = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Stat label="Jobs Done" value={String(completedJobs.length)} color="text-blue-600" />
+          <Stat label="Jobs Done" value={String(completedJobs.length)} color="text-secondary" />
           <Stat label="Earned" value={`₹${weekTotal}`} color="text-emerald-600" />
         </div>
       </div>

@@ -119,7 +119,7 @@ const Job = () => {
             </div>
             <button
               onClick={openNavigation}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Navigation size={16} /> Open Navigation
             </button>
@@ -139,7 +139,7 @@ const Job = () => {
         return (
           <button
             onClick={startService}
-            className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
+            className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
           >
             <Play size={18} /> Start Service
           </button>
@@ -149,13 +149,13 @@ const Job = () => {
         const secs = elapsedSeconds % 60;
         return (
           <div className="space-y-3">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
+            <div className="bg-secondary/10 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
               <span className="text-xs font-semibold text-blue-900 flex items-center gap-1"><Timer size={14} /> Time Elapsed</span>
               <span className="text-lg font-bold text-blue-700 font-mono">{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
             </div>
             <button
               onClick={openNavigation}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Navigation size={16} /> Open Navigation
             </button>
@@ -180,7 +180,7 @@ const Job = () => {
       </div>
 
       <div className="px-5 flex-1 space-y-4">
-        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold">

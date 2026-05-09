@@ -346,7 +346,7 @@ export function LocationMap({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-[#152E4B]"
+                  className="text-primary"
                   animate={{
                     filter: isHovered
                       ? "drop-shadow(0 0 8px rgba(21, 46, 75, 0.6))"
@@ -372,7 +372,7 @@ export function LocationMap({
               }}
               transition={{ duration: 0.2 }}
             >
-              <div className="h-1.5 w-1.5 rounded-full bg-[#152E4B]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
               <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
                 Live
               </span>
@@ -393,7 +393,7 @@ export function LocationMap({
             className="mt-3 text-center"
           >
             {error && <div className="text-red-500 text-xs font-semibold mb-1">{error}</div>}
-            <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{fetching ? "Fetching location..." : currentLoc}</h3>
+            <h3 className="text-primary text-sm font-bold tracking-tight">{fetching ? "Fetching location..." : currentLoc}</h3>
           </motion.div>
         )}
       </AnimatePresence>
