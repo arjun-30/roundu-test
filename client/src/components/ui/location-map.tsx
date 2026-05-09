@@ -382,7 +382,6 @@ export function LocationMap({
             className="mt-3 text-center"
           >
             <h3 className="text-[#152E4B] text-sm font-bold tracking-tight">{fetching ? "Fetching location..." : currentLoc}</h3>
-            <p className="text-muted-foreground font-mono text-xs mt-0.5">{currentCoords}</p>
           </motion.div>
         )}
       </AnimatePresence>
