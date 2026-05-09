@@ -52,7 +52,7 @@ const BookService = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#F5F6FA] font-sans">
+    <div className="min-h-[100dvh] flex flex-col bg-background font-sans pb-6">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] sticky top-0 z-20">
         <button 
           onClick={() => navigate(-1)}

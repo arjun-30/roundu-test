@@ -72,7 +72,7 @@ const BookingDetail = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border flex gap-2">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex gap-2">
         {booking.status !== "completed" && (
           <button
             onClick={() => navigate(`/tracking/${booking.id}`)}

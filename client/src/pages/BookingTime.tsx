@@ -37,7 +37,7 @@ const BookingTime = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-background pb-24">
+    <div className="min-h-full flex flex-col bg-background pb-28">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
@@ -71,7 +71,7 @@ const BookingTime = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
         <button
           onClick={handleNext}
           disabled={!time}

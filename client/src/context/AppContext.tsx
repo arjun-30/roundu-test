@@ -313,8 +313,6 @@ function reducer(state: State, action: Action): State {
     }
     case "SET_PROVIDER_REQUESTS":
       return { ...state, providerRequests: action.requests };
-    case "ADD_REQUEST":
-      return { ...state, providerRequests: [action.request, ...state.providerRequests] };
     case "SET_PHONE":
       return { ...state, phone: action.phone, user: { ...state.user, phone: action.phone } };
     case "SET_USER_ID":
@@ -392,7 +390,7 @@ function reducer(state: State, action: Action): State {
           r.id === action.id ? { ...r, ...action.patch } : r
         ),
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, ...action.patch } : b
+          b.id === action.id.replace('req-', '') ? { ...b, ...(action.patch as any) } : b
         )
       };
     case "COMPLETE_REQUEST": {
@@ -485,6 +483,7 @@ function reducer(state: State, action: Action): State {
 interface Ctx extends State {
   dispatch: React.Dispatch<Action>;
   selectedProvider: Provider | null;
+  addBooking: (booking: Booking) => void;
 }
 
 const AppContext = createContext<Ctx | null>(null);

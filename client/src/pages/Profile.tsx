@@ -13,7 +13,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-[#F5F6FA] pb-24 font-sans">
+    <div className="min-h-full flex flex-col bg-background pb-28 font-sans">
       <div className="bg-white px-5 pt-6 pb-4 shadow-sm sticky top-0 z-10 flex items-center">
         <h1 className="text-xl font-extrabold text-[#030916]">Profile</h1>
       </div>

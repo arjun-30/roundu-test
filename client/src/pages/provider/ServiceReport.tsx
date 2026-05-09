@@ -183,7 +183,7 @@ const ServiceReport = () => {
         </form>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-white border-t border-border shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
         <button
           onClick={handleSubmit}
           disabled={description.length < 20 || !rootCause}

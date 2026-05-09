@@ -13,7 +13,7 @@ const Wallet = () => {
   ];
 
   return (
-    <div className="min-h-full flex flex-col bg-background pb-10">
+    <div className="min-h-full flex flex-col bg-background pb-28">
       {/* Header */}
       <div className="px-6 pt-8 pb-4 flex items-center gap-4">
         <button

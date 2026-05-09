@@ -160,11 +160,11 @@ const SelectService = () => {
       </div>
 
       {/* Footer / Continue button */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
         <button
           onClick={handleNext}
           disabled={!canProceed}
-          className={`w-full max-w-[390px] mx-auto pointer-events-auto flex items-center justify-center gap-2 py-4 rounded-2xl transition-all shadow-lg ${
+          className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl transition-all shadow-lg ${
             canProceed 
               ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
               : 'bg-muted text-muted-foreground cursor-not-allowed opacity-80 shadow-none'

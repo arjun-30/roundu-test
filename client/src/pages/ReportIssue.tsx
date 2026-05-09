@@ -114,11 +114,11 @@ const ReportIssue = () => {
 
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[#F5F6FA] via-[#F5F6FA] to-transparent pt-10 pointer-events-none z-10">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border z-10">
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`w-full pointer-events-auto flex items-center justify-center py-[16px] rounded-[16px] transition-all shadow-sm ${
+          className={`w-full flex items-center justify-center py-[16px] rounded-[16px] transition-all shadow-sm ${
             isSubmitting 
               ? "bg-[#E2E8F0] text-gray-400 cursor-not-allowed" 
               : "bg-[#152E4B] text-white hover:bg-[#1C3D63] active:scale-[0.98] shadow-[#152E4B]/20 shadow-lg"

@@ -12,7 +12,7 @@ const ProviderBottomNav = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border px-2 pt-2 pb-6 z-50">
+    <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-card border-t border-border px-2 pt-2 pb-6 z-50">
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.path || (item.id === "dashboard" && pathname === "/provider");

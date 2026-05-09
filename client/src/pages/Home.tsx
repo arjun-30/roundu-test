@@ -34,7 +34,7 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-full flex flex-col bg-[#F5F6FA] pb-24 relative">
+    <div className="min-h-full flex flex-col bg-background pb-28 relative">
 
       {/* ═══════ SLIDE-OUT MENU OVERLAY ═══════ */}
       <div

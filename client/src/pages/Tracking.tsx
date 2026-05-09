@@ -79,7 +79,8 @@ const Tracking = () => {
   }
 
   const handleCall = () => {
-    toast.info("Connecting via secure masked number...");
+    setNotification("Connecting via secure masked number...");
+    setTimeout(() => setNotification(""), 3000);
     window.open("tel:+911234567890", "_self");
   };
 
@@ -201,7 +202,7 @@ const Tracking = () => {
       </div>
 
       {currentStatus === "completed" && (
-        <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
           <button
             onClick={() => {
               if (!(booking as any).paid) {
