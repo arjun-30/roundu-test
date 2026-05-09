@@ -67,7 +67,7 @@ export function LocationMap({
           
           try {
             const query = await fetch(
-              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
+              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=poi,address&access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
             );
             const json = await query.json();
             if (json.features && json.features.length > 0) {
