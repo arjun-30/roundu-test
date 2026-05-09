@@ -81,7 +81,8 @@ export function LocationMap({
               
               setCurrentLoc(featureToUse.text || featureToUse.place_name);
             } else {
-              setCurrentLoc("Location found");
+              setCurrentLoc(`No address found for (${lat.toFixed(2)}, ${lng.toFixed(2)})`);
+              toast.error(`No address found for coordinates: ${lat.toFixed(2)}, ${lng.toFixed(2)}`);
             }
           } catch (err) {
             console.error("Failed to reverse geocode:", err);
