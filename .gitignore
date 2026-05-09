@@ -8,3 +8,15 @@ build/
 .idea/
 .vscode/
 *.log
+
+# Project specific
+implementation_plan.md
+scratch/
+debug_user.mjs
+
+# Common temporary / OS files
+.DS_Store
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
