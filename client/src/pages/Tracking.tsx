@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, Phone, MessageCircle, Check, IndianRupee, CheckCircle2, XCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { getProviderById } from "@/data/mockData";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const stages = ["assigned", "on_the_way", "arrived", "in_progress", "completed"] as const;
 const stageLabels: Record<string, { title: string; subtitle: string; color: string }> = {
@@ -19,6 +23,9 @@ const Tracking = () => {
   const { id = "" } = useParams();
   const { bookings, dispatch } = useApp();
   const booking = bookings.find((b) => b.id === id);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const providerMarker = useRef<mapboxgl.Marker | null>(null);
   const [eta, setEta] = useState(15);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [pendingQuote, setPendingQuote] = useState<{ amount: number } | null>(null);
@@ -28,6 +35,59 @@ const Tracking = () => {
   useEffect(() => {
     const t = setInterval(() => setEta((e) => Math.max(0, e - 1)), 60000);
     return () => clearInterval(t);
+  }, []);
+
+  // Join job-scoped socket room so we receive location updates for this job only
+  useEffect(() => {
+    if (!id) return;
+    socket.emit('join_job_room', { jobId: id });
+  }, [id]);
+
+  // Initialize Mapbox map once booking data is available
+  useEffect(() => {
+    if (!mapContainer.current || !booking || map.current) return;
+
+    const destLng = (booking as any).lng || 80.27;
+    const destLat = (booking as any).lat || 13.08;
+    const center: [number, number] = [destLng, destLat];
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center,
+      zoom: 13,
+    });
+
+    // Red marker — job/destination location
+    new mapboxgl.Marker({ color: 'red' })
+      .setLngLat(center)
+      .addTo(map.current);
+
+    // Blue marker — provider's live position (starts at destination until first update)
+    providerMarker.current = new mapboxgl.Marker({ color: 'blue' })
+      .setLngLat(center)
+      .addTo(map.current);
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, [booking]);
+
+  // Listen for live provider location updates and move the blue marker
+  useEffect(() => {
+    const handleLocationUpdate = (data: { lat: number; lng: number }) => {
+      const lngLat: [number, number] = [data.lng, data.lat];
+      if (providerMarker.current) {
+        providerMarker.current.setLngLat(lngLat);
+      }
+      if (map.current) {
+        map.current.easeTo({ center: lngLat, duration: 800 });
+      }
+    };
+
+    socket.on('provider_location_update', handleLocationUpdate);
+    return () => { socket.off('provider_location_update', handleLocationUpdate); };
   }, []);
 
   // Listen for real-time status updates from provider
@@ -108,27 +168,15 @@ const Tracking = () => {
           </div>
         )}
 
-        {/* Map / ETA card */}
-        <div className="relative w-full h-44 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-border overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
-              backgroundSize: "20px 20px",
-            }}
-          />
-          <div className="relative text-center">
-            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center mx-auto mb-2 animate-pulse shadow-card">
-              <MapPin size={20} className="text-primary-foreground" />
-            </div>
-            <p className="text-xs font-bold text-foreground">
-              {currentStatus === "assigned" ? `ETA: ${eta} min` :
-               currentStatus === "on_the_way" ? "Provider is on the way 🚗" :
-               currentStatus === "arrived" ? "Provider has arrived 📍" :
-               currentStatus === "in_progress" ? "Service in progress 🔧" :
-               currentStatus === "completed" ? "Service complete ✅" : `ETA: ${eta} min`}
-            </p>
-          </div>
-        </div>
+        {/* Live Mapbox map */}
+        <div ref={mapContainer} className="w-full h-44 rounded-2xl overflow-hidden border border-border" />
+        <p className="text-xs font-semibold text-muted-foreground text-center -mt-2">
+          {currentStatus === "assigned" ? `ETA: ${eta} min` :
+           currentStatus === "on_the_way" ? "Provider is on the way 🚗" :
+           currentStatus === "arrived" ? "Provider has arrived 📍" :
+           currentStatus === "in_progress" ? "Service in progress 🔧" :
+           currentStatus === "completed" ? "Service complete ✅" : `ETA: ${eta} min`}
+        </p>
 
         {/* Provider card */}
         {provider && (

@@ -1,6 +1,6 @@
 /// <reference path="./types/express.d.ts" />
 import http from 'http';
-import { Server as SocketServer } from 'socket.io';
+import { Server } from 'socket.io';
 import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
@@ -22,7 +22,7 @@ async function main() {
     console.log(`[server] Allowed CORS origins: ${env.corsOrigins.join(', ')}`);
   });
 
-  const io = new SocketServer(httpServer, {
+  const io = new Server(httpServer, {
     path: "/socket.io/",
     cors: { 
       origin: true, // Echo origin to bypass CORS
@@ -36,12 +36,12 @@ async function main() {
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
       console.log(`[socket] client connected: ${socket.id}`);
     }
 
-    socket.on('register', async (data) => {
+    socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
       
@@ -97,7 +97,13 @@ async function main() {
       console.log(`[socket] ${socket.id} joined generic providers room`);
     });
 
-    socket.on('new_booking', async (data) => {
+    socket.on('join_job_room', (data: { jobId: string }) => {
+      const room = `job:${data.jobId}`;
+      socket.join(room);
+      console.log(`[socket] ${socket.id} joined room: ${room}`);
+    });
+
+    socket.on('new_booking', async (data: any) => {
       console.log(`[socket] new_booking: id=${data.id}, service=${data.serviceId}, target=${data.providerId}`);
       const payload = {
         id: `req-${data.id}`,
@@ -118,7 +124,7 @@ async function main() {
       // 1. Direct Target
       if (data.providerId && data.providerId !== 'searching') {
         const sockets = await io.in('providers').fetchSockets();
-        const target = sockets.find(s => s.data.userId === data.providerId);
+        const target = sockets.find((s: any) => s.data.userId === data.providerId);
         if (target) {
           target.emit('incoming_request', payload);
           console.log(`[socket] direct request sent to provider ${data.providerId}`);
@@ -135,7 +141,7 @@ async function main() {
       // but to avoid double notification we rely on service room.
     });
 
-    socket.on('broadcast_job', async (data) => {
+    socket.on('broadcast_job', async (data: any) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
       
       // Deduplicate: if this broadcastId was already emitted, skip
@@ -179,7 +185,7 @@ async function main() {
       }
     });
 
-    socket.on('accept_quote', (data) => {
+    socket.on('accept_quote', (data: any) => {
       console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}, bookingId=${data.bookingId}`);
       
       const broadcast = activeBroadcasts.get(data.broadcastId);
@@ -220,7 +226,7 @@ async function main() {
       }
     });
 
-    socket.on('submit_quote', (data) => {
+    socket.on('submit_quote', (data: any) => {
       console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
       io.emit('quote_received', {
         broadcastId: data.broadcastId,
@@ -236,11 +242,12 @@ async function main() {
       });
     });
 
-    socket.on('provider_location', (data) => {
-      socket.broadcast.emit('provider_location_update', data);
+    socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {
+      const room = `job:${data.jobId}`;
+      socket.to(room).emit('provider_location_update', { lat: data.lat, lng: data.lng });
     });
 
-    socket.on('update_job_status', async (data) => {
+    socket.on('update_job_status', async (data: any) => {
       console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}`);
       
       // Persist to DB

@@ -89,11 +89,7 @@ const Job = () => {
   };
 
   const openNavigation = () => {
-    const destination = (job.lat && job.lng)
-      ? `${job.lat},${job.lng}`
-      : encodeURIComponent(job.address);
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-    window.open(url, "_blank");
+    navigate(`/provider/navigation/${job.id}`);
   };
 
   const renderActionBar = () => {
