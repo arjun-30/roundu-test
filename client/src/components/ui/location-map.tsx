@@ -67,19 +67,25 @@ export function LocationMap({
           
           try {
             const query = await fetch(
-              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=poi,address&access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
+              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
             );
             const json = await query.json();
             if (json.features && json.features.length > 0) {
-              setCurrentLoc(json.features[0].text || json.features[0].place_name);
+              // Find the first feature that is a POI or address
+              const bestFeature = json.features.find((f: any) => 
+                f.place_type && (f.place_type.includes('poi') || f.place_type.includes('address'))
+              );
+              
+              // Fallback to the most specific feature available (usually index 0, like neighborhood or city)
+              const featureToUse = bestFeature || json.features[0];
+              
+              setCurrentLoc(featureToUse.text || featureToUse.place_name);
             } else {
-              setCurrentLoc("Address not found");
-              toast.error("No address found for these coordinates.");
+              setCurrentLoc("Location found");
             }
           } catch (err) {
             console.error("Failed to reverse geocode:", err);
             setCurrentLoc("Error fetching address");
-            toast.error("Network error while fetching address.");
           } finally {
             setFetching(false);
           }
