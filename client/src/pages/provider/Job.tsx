@@ -84,13 +84,17 @@ const Job = () => {
   };
 
   const openNavigation = () => {
+    let url = '';
     if (job.lat && job.lng) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}&travelmode=driving`, '_blank');
+      url = `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}&travelmode=driving`;
     } else if (job.address) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}&travelmode=driving`, '_blank');
+      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}&travelmode=driving`;
     } else {
       toast.error("No address available for navigation");
+      return;
     }
+    // '_system' opens in device's Google Maps app (Capacitor), '_blank' for browser
+    window.open(url, '_system');
   };
 
   const renderActionBar = () => {
@@ -107,11 +111,23 @@ const Job = () => {
         );
       case "on_the_way":
         return (
-          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center animate-pulse">
-             <span className="text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
-               <Car size={16}/> Heading to Customer
-             </span>
-             <p className="text-[10px] text-indigo-700 mt-1">Status updates automatically when you arrive within 100m</p>
+          <div className="space-y-3">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
+               <span className="text-xs font-bold text-indigo-900 flex items-center justify-center gap-2">
+                 <Car size={16}/> Heading to Customer
+               </span>
+               <p className="text-[10px] text-indigo-700 mt-1">Status updates automatically when you arrive within 100m</p>
+            </div>
+            <button
+              onClick={() => {
+                dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
+                socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
+                toast.success("Marked as arrived!");
+              }}
+              className="w-full py-3 rounded-2xl bg-orange-500 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <MapPin size={16} /> Mark as Arrived (Manual)
+            </button>
           </div>
         );
       case "arrived":

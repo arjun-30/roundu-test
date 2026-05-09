@@ -50,9 +50,8 @@ const GPSMonitor = () => {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const dist = R * c;
 
-            if (req.status === "assigned" && dist < 5) {
-              socket.emit("update_job_status", { bookingId: req.id, status: "on_the_way" });
-            } else if (req.status === "on_the_way" && dist < 0.2) {
+            // Auto-arrive: update status when within 100m
+            if (req.status === "on_the_way" && dist < 0.1) {
               socket.emit("update_job_status", { bookingId: req.id, status: "arrived" });
             }
           }
