@@ -71,7 +71,7 @@ export function LocationMap({
             );
             const json = await query.json();
             if (json.features && json.features.length > 0) {
-              setCurrentLoc(json.features[0].place_name);
+              setCurrentLoc(json.features[0].text || json.features[0].place_name);
             }
           } catch (err) {
             console.error("Failed to reverse geocode:", err);
