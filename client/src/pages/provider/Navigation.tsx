@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Navigation as NavIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation as NavIcon, Loader2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -17,17 +17,21 @@ const Navigation = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(true);
 
   useEffect(() => {
     // Get current location
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+        setLocating(false);
       },
       (error) => {
         console.error("Error getting location:", error);
-        // Fallback or alert
-        toast.error("Failed to get current location. Please enable GPS.");
+        toast.error("Failed to get GPS location. Using default location.");
+        // Fallback to Chennai coordinates
+        setCurrentLocation([80.27, 13.08]);
+        setLocating(false);
       }
     );
   }, []);
@@ -119,8 +123,17 @@ const Navigation = () => {
     );
   }
 
+  if (locating) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center bg-background p-6">
+        <Loader2 size={32} className="animate-spin text-primary" />
+        <p className="text-muted-foreground mt-2">Acquiring GPS location...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-full flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in bg-card border-b border-border z-10">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
