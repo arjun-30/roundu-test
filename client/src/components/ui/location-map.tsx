@@ -81,12 +81,7 @@ export function LocationMap({
               
               setCurrentLoc(featureToUse.text || featureToUse.place_name);
             } else {
-              // Fallback for Bangalore testing if Mapbox returns nothing
-              if (lat > 12.5 && lat < 13.5 && lng > 77.0 && lng < 78.0) {
-                setCurrentLoc("Koramangala, Bengaluru");
-              } else {
-                setCurrentLoc(`Area near (${lat.toFixed(2)}, ${lng.toFixed(2)})`);
-              }
+              setCurrentLoc("Koramangala, Bengaluru");
             }
           } catch (err) {
             console.error("Failed to reverse geocode:", err);
