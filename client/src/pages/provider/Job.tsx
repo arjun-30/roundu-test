@@ -104,6 +104,12 @@ const Job = () => {
                <p className="text-[10px] text-indigo-700 mt-1">Status updates automatically when you arrive within 100m</p>
             </div>
             <button
+              onClick={openNavigation}
+              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <Navigation size={16} /> Open Navigation
+            </button>
+            <button
               onClick={() => {
                 dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
                 socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
@@ -133,6 +139,12 @@ const Job = () => {
                <span className="text-xs font-semibold text-blue-900 flex items-center gap-1"><Timer size={14}/> Time Elapsed</span>
                <span className="text-lg font-bold text-blue-700 font-mono">{mins.toString().padStart(2,'0')}:{secs.toString().padStart(2,'0')}</span>
             </div>
+            <button
+              onClick={openNavigation}
+              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <Navigation size={16} /> Open Navigation
+            </button>
             <button onClick={completeJob} className="w-full py-4 rounded-2xl bg-green-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-green-600/30 transition-all">
               <CheckCircle2 size={18} /> Complete Job
             </button>
