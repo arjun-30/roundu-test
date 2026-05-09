@@ -76,6 +76,28 @@ export function createApp(deps: AppDeps): Application {
   });
   // ────────────────────────────────────────────────────────────────────────
 
+  app.get('/api/fix-radius', async (_req: Request, res: Response) => {
+    try {
+      const constraints = await deps.db.query(`
+        SELECT conname, pg_get_constraintdef(c.oid) 
+        FROM pg_constraint c 
+        JOIN pg_namespace n ON n.oid = c.connamespace 
+        WHERE n.nspname = 'public' AND c.conrelid = 'providers'::regclass;
+      `);
+      
+      const constraint = constraints.rows.find((r: any) => r.pg_get_constraintdef.includes('service_radius'));
+      
+      if (constraint) {
+        await deps.db.query(`ALTER TABLE providers DROP CONSTRAINT ${constraint.conname}`);
+        res.json({ success: true, message: `Dropped constraint ${constraint.conname}` });
+      } else {
+        res.json({ success: true, message: 'No constraint found on service_radius' });
+      }
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   app.use('/api/v1', apiRouter);
 
   app.use(notFoundHandler);
