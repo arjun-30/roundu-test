@@ -75,6 +75,11 @@ const Tracking = () => {
     return null;
   }
 
+  const handleCall = () => {
+    toast.info("Connecting via secure masked number...");
+    window.open("tel:+911234567890", "_self");
+  };
+
   const currentStatus = liveStatus || booking.status;
   const provider = (booking as any).providerDetails || getProviderById(booking.providerId);
   const currentIdx = stages.indexOf(currentStatus as any);
@@ -127,10 +132,10 @@ const Tracking = () => {
               <p className="text-sm font-bold text-foreground">{provider.name}</p>
               <p className="text-[10px] text-muted-foreground">{provider.rating} ★ · {provider.experienceYrs} yrs experience</p>
             </div>
-            <button className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
+            <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <Phone size={16} className="text-primary" />
             </button>
-            <button className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
+            <button onClick={() => navigate(`/chat/${provider.id}`)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <MessageCircle size={16} className="text-primary" />
             </button>
           </div>
