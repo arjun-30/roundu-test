@@ -1,16 +1,49 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
 import { Wallet } from "lucide-react";
+import axios from "axios";
 
 const Earnings = () => {
   const navigate = useNavigate();
-  const { completedJobs } = useApp();
-  const total = completedJobs.reduce((s, j) => s + j.price, 0);
-  const thisWeek = completedJobs.filter((j) => Date.now() - new Date(j.date).getTime() < 7 * 86400000);
-  const weekTotal = thisWeek.reduce((s, j) => s + j.price, 0);
+  const { user } = useApp();
+  
+  const [balance, setBalance] = useState(0);
+  const [completedJobs, setCompletedJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEarnings = async () => {
+      try {
+        const dashboardRes = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
+        if (dashboardRes.data.success) {
+          setBalance(dashboardRes.data.data.wallet?.balance || 0);
+          
+          const providerId = dashboardRes.data.data.provider.id;
+          
+          const bookingsRes = await axios.get(`/api/v1/bookings/provider/${providerId}`);
+          if (bookingsRes.data.success) {
+            const completed = bookingsRes.data.data.filter((b: any) => b.status === 'completed');
+            setCompletedJobs(completed);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch earnings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user.id) {
+      fetchEarnings();
+    }
+  }, [user.id]);
+
+  const total = completedJobs.reduce((s, j) => s + (j.price || 0), 0);
+  const thisWeek = completedJobs.filter((j) => Date.now() - new Date(j.scheduled_at || j.date).getTime() < 7 * 86400000);
+  const weekTotal = thisWeek.reduce((s, j) => s + (j.price || 0), 0);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
@@ -26,7 +59,7 @@ const Earnings = () => {
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-colors" />
           <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Available Balance</p>
           <div className="flex items-end gap-2 mt-2">
-            <p className="text-4xl font-extrabold text-white">₹12,400</p>
+            <p className="text-4xl font-extrabold text-white">₹{balance.toLocaleString('en-IN')}</p>
             <div className="mb-1.5 flex items-center gap-1 text-emerald-400 text-xs font-bold bg-emerald-400/10 px-2 py-0.5 rounded-full">
               <TrendingUp size={12} /> +12%
             </div>

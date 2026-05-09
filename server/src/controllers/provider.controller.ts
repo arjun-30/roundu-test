@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { ProviderModel } from '../models/provider.model';
+import { getPool } from '../config/database';
+import { WalletModel } from '../models/wallet.model';
 
 export const getProviderDashboard = async (req: Request, res: Response) => {
   try {
@@ -10,12 +12,19 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
     const stats = await ProviderModel.getStats(provider.id);
+    
+    const walletModel = new WalletModel(getPool());
+    const wallet = await walletModel.findOrCreate(userId as string);
 
     res.json({
       success: true,
       data: {
         provider,
-        stats
+        stats,
+        wallet: {
+          balance: wallet.balance / 100, // Convert paise to rupees
+          currency: wallet.currency
+        }
       }
     });
   } catch (error) {

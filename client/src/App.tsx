@@ -58,6 +58,7 @@ import PendingApproval from "@/pages/provider/PendingApproval";
 import Portfolio from "@/pages/provider/Portfolio";
 import Documents from "@/pages/provider/Documents";
 import GPSMonitor from "@/pages/provider/GPSMonitor";
+import Navigation from "@/pages/provider/Navigation";
 import ServiceSelection from "@/pages/ServiceSelection";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
@@ -129,6 +130,7 @@ const AppRoutes = () => (
       <Route path="/provider/gps-consent" element={<RequireAuth><GpsConsent /></RequireAuth>} />
       <Route path="/provider/pending-approval" element={<RequireAuth><PendingApproval /></RequireAuth>} />
       <Route path="/provider/job/:id" element={<RequireAuth><ProviderJob /></RequireAuth>} />
+      <Route path="/provider/navigation/:id" element={<RequireAuth><Navigation /></RequireAuth>} />
       <Route path="/provider/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
       <Route path="/provider/earnings" element={<RequireAuth><ProviderEarnings /></RequireAuth>} />
       <Route path="/provider/profile" element={<RequireAuth><ProviderProfile /></RequireAuth>} />

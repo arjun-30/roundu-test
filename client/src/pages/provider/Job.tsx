@@ -57,12 +57,7 @@ const Job = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
     toast.success("Customer notified that you are on the way!");
-    // Open Google Maps navigation to customer location
-    if (job.lat && job.lng) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`, '_blank');
-    } else if (job.address) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`, '_blank');
-    }
+    navigate(`/provider/navigation/${job.id}`);
   };
 
   const markArrived = () => {
@@ -84,17 +79,7 @@ const Job = () => {
   };
 
   const openNavigation = () => {
-    let url = '';
-    if (job.lat && job.lng) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}&travelmode=driving`;
-    } else if (job.address) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}&travelmode=driving`;
-    } else {
-      toast.error("No address available for navigation");
-      return;
-    }
-    // '_system' opens in device's Google Maps app (Capacitor), '_blank' for browser
-    window.open(url, '_system');
+    navigate(`/provider/navigation/${job.id}`);
   };
 
   const renderActionBar = () => {
