@@ -36,6 +36,11 @@ async function main() {
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
 
+  // Version endpoint — confirms which code Railway is running
+  app.get('/version', (_req: any, res: any) => {
+    res.json({ version: 'v2-echo-sender', providers_room: true, sender_echo: true, ts: Date.now() });
+  });
+
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
       console.log(`[socket] client connected: ${socket.id}`);
@@ -170,11 +175,12 @@ async function main() {
       setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
 
       // Always emit to BOTH the service room AND the providers room.
-      // Client-side broadcastId deduplication handles double-delivery safely.
       const roomName = `service:${data.serviceId}`;
       io.to(roomName).emit('incoming_broadcast', broadcastPayload);
       io.to('providers').emit('incoming_broadcast', broadcastPayload);
-      console.log(`[socket] broadcast sent to ${roomName} + providers room`);
+      // Also echo directly back to sender (for debug/test)
+      socket.emit('incoming_broadcast', broadcastPayload);
+      console.log(`[socket] broadcast sent to ${roomName} + providers room + sender echo`);
     });
 
     socket.on('accept_quote', (data: any) => {
