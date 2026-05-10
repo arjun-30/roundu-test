@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
@@ -41,7 +41,7 @@ const Dashboard = () => {
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
   const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  const seenBroadcastIds = useState<Set<string>>(() => new Set())[0];
+  const seenBroadcastIds = useRef(new Set<string>());
 
   // Track socket connection for debug
   useEffect(() => {
@@ -66,8 +66,8 @@ const Dashboard = () => {
   useEffect(() => {
     const handleBroadcast = (broadcast: any) => {
       console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
-      if (seenBroadcastIds.has(broadcast.broadcastId)) return; // deduplicate
-      seenBroadcastIds.add(broadcast.broadcastId);
+      if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+      seenBroadcastIds.current.add(broadcast.broadcastId);
       setActiveBroadcast(broadcast);
     };
     socket.on("incoming_broadcast", handleBroadcast);
@@ -252,9 +252,9 @@ const Dashboard = () => {
       }`}>
         <span>🔌 Socket: {socketConnected ? `CONNECTED (${socketId?.slice(0,8)})` : 'DISCONNECTED'}</span>
         <span>👤 User: {user.id || 'NOT SET'} | Role: {role || 'none'}</span>
-        <span>📡 Live Broadcasts: {liveBroadcasts.length}</span>
+        <span>📡 activeBroadcast: {activeBroadcast ? `YES — ${activeBroadcast.broadcastId?.slice(0,16)}` : 'none'}</span>
         <button
-          onClick={() => dispatch({ type: "ADD_LIVE_BROADCAST", broadcast: {
+          onClick={() => setActiveBroadcast({
             broadcastId: `test-${Date.now()}`,
             customerId: "test-customer",
             customerName: "Test Customer",
@@ -265,7 +265,7 @@ const Dashboard = () => {
             notes: "Test broadcast",
             status: "active",
             createdAt: Date.now()
-          }})}
+          })}
           className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-[10px] font-bold"
         >
           🧪 Simulate Broadcast (Test Popup)
@@ -283,7 +283,6 @@ const Dashboard = () => {
               time: "Now",
               notes: "Testing server delivery",
             });
-            alert(`Fired broadcast_job: ${testId}\nWatch if Live Broadcasts count increases`);
           }}
           className="mt-1 bg-orange-500 text-white px-2 py-1 rounded text-[10px] font-bold"
         >
