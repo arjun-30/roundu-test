@@ -7,7 +7,7 @@ import { services } from "@/data/mockData";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { user, providerRegistrationDraft } = useApp();
+  const { user, providerRegistrationDraft, dispatch } = useApp();
 
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || "hello@roundu.in");
@@ -15,7 +15,13 @@ const EditProfile = () => {
   const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
 
   const handleSave = () => {
-    // API call would go here
+    dispatch({ type: "UPDATE_USER", user: { name, email, phone } });
+    if (user.role === "provider" && providerRegistrationDraft) {
+      dispatch({ 
+        type: "UPDATE_REGISTRATION_DRAFT", 
+        patch: { serviceIds: [serviceId] } 
+      });
+    }
     navigate(-1);
   };
 
