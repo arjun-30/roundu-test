@@ -39,6 +39,9 @@ const Dashboard = () => {
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+  // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
+  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
+  const seenBroadcastIds = useState<Set<string>>(() => new Set())[0];
 
   // Track socket connection for debug
   useEffect(() => {
@@ -52,16 +55,24 @@ const Dashboard = () => {
   // Alert provider when a new direct request arrives
   useEffect(() => {
     const handleNewRequest = (request: any) => {
-      // Show the popup at the top
       setActiveDirectRequest(request);
-      // Add to global state so it appears in the list without refresh!
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
     };
     socket.on("incoming_request", handleNewRequest);
-    return () => {
-      socket.off("incoming_request", handleNewRequest);
-    };
+    return () => { socket.off("incoming_request", handleNewRequest); };
   }, [dispatch]);
+
+  // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
+  useEffect(() => {
+    const handleBroadcast = (broadcast: any) => {
+      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
+      if (seenBroadcastIds.has(broadcast.broadcastId)) return; // deduplicate
+      seenBroadcastIds.add(broadcast.broadcastId);
+      setActiveBroadcast(broadcast);
+    };
+    socket.on("incoming_broadcast", handleBroadcast);
+    return () => { socket.off("incoming_broadcast", handleBroadcast); };
+  }, [seenBroadcastIds]);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -188,13 +199,13 @@ const Dashboard = () => {
         />
       )}
 
-      {/* ✅ Incoming Broadcast Popup — shown when a customer requests a service */}
-      {liveBroadcasts.length > 0 && !quotingBroadcast && (
+      {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
+      {activeBroadcast && !quotingBroadcast && (
         <IncomingRequestPopup
-          request={liveBroadcasts[0]}
+          request={activeBroadcast}
           isBroadcast={true}
-          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
+          onAccept={() => setQuotingBroadcast(activeBroadcast)}
+          onReject={() => setActiveBroadcast(null)}
         />
       )}
 
