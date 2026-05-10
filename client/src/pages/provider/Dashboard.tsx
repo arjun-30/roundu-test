@@ -327,6 +327,14 @@ const Dashboard = () => {
                            <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
                         </div>
                         {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
+                        {b.voiceNoteUrl && (
+                          <div className="mt-2 bg-white/50 rounded-lg p-2 border border-[#FFD966]/50">
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
+                               <Mic size={10} /> Voice Note Attached
+                             </div>
+                             <audio src={b.voiceNoteUrl} controls className="w-full h-7" />
+                          </div>
+                        )}
                         
                         <div className="flex gap-2 mt-3">
                           <button 
