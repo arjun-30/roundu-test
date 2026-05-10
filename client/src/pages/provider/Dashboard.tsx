@@ -172,6 +172,7 @@ const Dashboard = () => {
     
     dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
+    setActiveBroadcast(null);
     setQuotePrice("");
   };
 
