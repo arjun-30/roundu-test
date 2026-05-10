@@ -30,11 +30,16 @@ async function main() {
       methods: ["GET", "POST"]
     },
     allowEIO3: true,
-    transports: ['polling', 'websocket']
+    transports: ['websocket']   // websocket-only: no sticky sessions on Railway
   });
 
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
+
+  // Version endpoint — confirms which code Railway is running
+  app.get('/version', (_req: any, res: any) => {
+    res.json({ version: 'v2-echo-sender', providers_room: true, sender_echo: true, ts: Date.now() });
+  });
 
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
@@ -141,7 +146,7 @@ async function main() {
       // but to avoid double notification we rely on service room.
     });
 
-    socket.on('broadcast_job', async (data: any) => {
+    socket.on('broadcast_job', (data: any) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
       
       // Deduplicate: if this broadcastId was already emitted, skip
@@ -169,20 +174,13 @@ async function main() {
       // Auto-expire after 10 minutes
       setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
 
-      // Emit to service-specific room first, then 'providers' room as fallback.
-      // Client deduplication (by broadcastId) handles double-delivery safely.
+      // Always emit to BOTH the service room AND the providers room.
       const roomName = `service:${data.serviceId}`;
-      const serviceRoomSockets = await io.in(roomName).fetchSockets();
-      console.log(`[socket] room ${roomName} has ${serviceRoomSockets.length} sockets`);
-      
-      if (serviceRoomSockets.length > 0) {
-        io.to(roomName).emit('incoming_broadcast', broadcastPayload);
-        console.log(`[socket] broadcast sent to service room: ${roomName}`);
-      } else {
-        // Fallback: no one in service room, broadcast to all providers
-        io.to('providers').emit('incoming_broadcast', broadcastPayload);
-        console.log(`[socket] broadcast sent to providers room (fallback)`);
-      }
+      io.to(roomName).emit('incoming_broadcast', broadcastPayload);
+      io.to('providers').emit('incoming_broadcast', broadcastPayload);
+      // Also echo directly back to sender (for debug/test)
+      socket.emit('incoming_broadcast', broadcastPayload);
+      console.log(`[socket] broadcast sent to ${roomName} + providers room + sender echo`);
     });
 
     socket.on('accept_quote', (data: any) => {

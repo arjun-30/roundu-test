@@ -16,10 +16,12 @@ import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts } = useApp();
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, role } = useApp() as any;
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
+  const [socketConnected, setSocketConnected] = useState(socket.connected);
+  const [socketId, setSocketId] = useState(socket.id || "");
   
   const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
   const [quotePrice, setQuotePrice] = useState("");
@@ -37,20 +39,40 @@ const Dashboard = () => {
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+  // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
+  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
+  const seenBroadcastIds = useState<Set<string>>(() => new Set())[0];
+
+  // Track socket connection for debug
+  useEffect(() => {
+    const onConnect = () => { setSocketConnected(true); setSocketId(socket.id || ""); };
+    const onDisconnect = () => { setSocketConnected(false); setSocketId(""); };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    return () => { socket.off("connect", onConnect); socket.off("disconnect", onDisconnect); };
+  }, []);
 
   // Alert provider when a new direct request arrives
   useEffect(() => {
     const handleNewRequest = (request: any) => {
-      // Show the popup at the top
       setActiveDirectRequest(request);
-      // Add to global state so it appears in the list without refresh!
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
     };
     socket.on("incoming_request", handleNewRequest);
-    return () => {
-      socket.off("incoming_request", handleNewRequest);
-    };
+    return () => { socket.off("incoming_request", handleNewRequest); };
   }, [dispatch]);
+
+  // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
+  useEffect(() => {
+    const handleBroadcast = (broadcast: any) => {
+      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
+      if (seenBroadcastIds.has(broadcast.broadcastId)) return; // deduplicate
+      seenBroadcastIds.add(broadcast.broadcastId);
+      setActiveBroadcast(broadcast);
+    };
+    socket.on("incoming_broadcast", handleBroadcast);
+    return () => { socket.off("incoming_broadcast", handleBroadcast); };
+  }, [seenBroadcastIds]);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -176,6 +198,17 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
+      {activeBroadcast && !quotingBroadcast && (
+        <IncomingRequestPopup
+          request={activeBroadcast}
+          isBroadcast={true}
+          onAccept={() => setQuotingBroadcast(activeBroadcast)}
+          onReject={() => setActiveBroadcast(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
         <div>
@@ -211,6 +244,51 @@ const Dashboard = () => {
             {pending.length > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
         </div>
+      </div>
+
+      {/* 🔍 DEBUG BAR — remove after fixing */}
+      <div className={`mx-4 mt-2 mb-1 px-3 py-2 rounded-xl text-[10px] font-mono flex flex-col gap-0.5 border ${
+        socketConnected ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+      }`}>
+        <span>🔌 Socket: {socketConnected ? `CONNECTED (${socketId?.slice(0,8)})` : 'DISCONNECTED'}</span>
+        <span>👤 User: {user.id || 'NOT SET'} | Role: {role || 'none'}</span>
+        <span>📡 Live Broadcasts: {liveBroadcasts.length}</span>
+        <button
+          onClick={() => dispatch({ type: "ADD_LIVE_BROADCAST", broadcast: {
+            broadcastId: `test-${Date.now()}`,
+            customerId: "test-customer",
+            customerName: "Test Customer",
+            serviceId: "plumber",
+            address: "123 Test Street",
+            date: new Date().toISOString().slice(0,10),
+            time: "Now",
+            notes: "Test broadcast",
+            status: "active",
+            createdAt: Date.now()
+          }})}
+          className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-[10px] font-bold"
+        >
+          🧪 Simulate Broadcast (Test Popup)
+        </button>
+        <button
+          onClick={() => {
+            const testId = `server-test-${Date.now()}`;
+            socket.emit("broadcast_job", {
+              broadcastId: testId,
+              customerId: "server-test",
+              customerName: "Server Test",
+              serviceId: "plumber",
+              address: "Server Round-trip Test",
+              date: new Date().toISOString().slice(0,10),
+              time: "Now",
+              notes: "Testing server delivery",
+            });
+            alert(`Fired broadcast_job: ${testId}\nWatch if Live Broadcasts count increases`);
+          }}
+          className="mt-1 bg-orange-500 text-white px-2 py-1 rounded text-[10px] font-bold"
+        >
+          🔥 Fire broadcast_job → Server Test
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
