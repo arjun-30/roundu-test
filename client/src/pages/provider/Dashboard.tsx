@@ -175,23 +175,23 @@ const Dashboard = () => {
         />
       )}
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
+      <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
         <div>
           <p className="text-xs text-muted-foreground font-medium">Provider Dashboard</p>
           <h1 className="text-xl font-extrabold text-foreground mt-0.5">Hi, {user.name.split(" ")[0]}</h1>
         </div>
         <div className="flex gap-2 items-center">
           {/* Online/Offline Toggle */}
-          <div className="flex items-center gap-2 mr-2">
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
+          <div className="flex flex-col items-center gap-1 mr-2 mt-1">
             <button 
               onClick={toggleOnline}
               className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${isOnline ? 'bg-success' : 'bg-muted-foreground/30'}`}
             >
               <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
           </div>
           <button 
             onClick={() => navigate("/provider/profile")}
@@ -199,16 +199,6 @@ const Dashboard = () => {
             title="Provider Profile"
           >
             <User size={18} className="text-foreground" />
-          </button>
-          <button 
-            onClick={() => {
-              dispatch({ type: "LOGOUT" });
-              navigate("/login", { replace: true });
-            }}
-            className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center relative hover:bg-red-100 transition-colors"
-            title="Log Out"
-          >
-            <LogOut size={18} className="text-red-500" />
           </button>
           <button 
             onClick={() => navigate("/notifications")}
@@ -326,7 +316,7 @@ const Dashboard = () => {
         )}
 
         {/* Stats Row */}
-        <div className="px-5 mb-6">
+        <div className="px-5 mb-6 mt-6">
           <div className="flex overflow-x-auto pb-2 gap-3 no-scrollbar -mx-5 px-5">
             <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[130px] shadow-card flex-shrink-0">
               <div className="flex items-center gap-1.5 mb-2 text-emerald-600">

@@ -167,7 +167,7 @@ const ProviderProfile = () => {
           onClick={switchToCustomer}
           className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-card"
         >
-          <SwitchCamera size={18} /> Switch to Customer Mode
+          <SwitchCamera size={18} /> Switch as Customer
         </button>
 
         <button

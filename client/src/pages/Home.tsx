@@ -114,7 +114,7 @@ const Home = () => {
       </div>
 
       {/* ─── Header ─── */}
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between animate-fade-in bg-white">
+      <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-white">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMenuOpen(true)}
@@ -135,15 +135,6 @@ const Home = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              dispatch({ type: "LOGOUT" });
-              navigate("/login", { replace: true });
-            }}
-            className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center relative active:scale-95 transition-transform shadow-sm"
-          >
-            <LogOut size={18} className="text-red-500" />
-          </button>
           <button
             onClick={() => navigate("/wallet")}
             className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"
