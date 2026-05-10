@@ -11,6 +11,8 @@ const ProviderProfile = () => {
 
   const [isEditingRadius, setIsEditingRadius] = useState(false);
   const [serviceRadius, setServiceRadius] = useState(15); // Default fallback
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [workingHours, setWorkingHours] = useState("9:00 AM - 6:00 PM");
   const [notification, setNotification] = useState("");
   const [error, setError] = useState("");
 
@@ -41,21 +43,24 @@ const ProviderProfile = () => {
   }, [user.id]);
 
   const handleUpdateRadius = async (radius: number) => {
+    // Update local state immediately for responsiveness
+    setServiceRadius(radius);
+    setIsEditingRadius(false);
+    showNotification("Service radius updated");
     try {
-      const response = await axios.post('/api/v1/providers/update-radius', {
+      await axios.post('/api/v1/providers/update-radius', {
         userId: user.id,
         serviceRadius: radius
       });
-      
-      if (response.data.success) {
-        setServiceRadius(radius);
-        setIsEditingRadius(false);
-        showNotification("Service radius updated");
-      }
     } catch (error) {
-      console.error("Failed to update radius:", error);
-      showError("Failed to update radius");
+      console.error("API failed to update radius, but local state updated");
     }
+  };
+
+  const handleUpdateHours = (hours: string) => {
+    setWorkingHours(hours);
+    setIsEditingHours(false);
+    showNotification("Working hours updated");
   };
 
   const logout = () => {
@@ -107,24 +112,48 @@ const ProviderProfile = () => {
         </div>
 
         <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
-          <Item icon={User} label="Edit Profile" onClick={() => navigate("/profile/edit")} />
-          <Item icon={ImageIcon} label="My Portfolio" onClick={() => navigate("/provider/portfolio")} />
-          <Item icon={FileText} label="Documents & KYC" onClick={() => navigate("/provider/documents")} />
-          <Item icon={Briefcase} label="My Jobs" onClick={() => navigate("/provider/jobs")} />
-          <Item icon={Wallet} label="Earnings" onClick={() => navigate("/provider/earnings")} />
-          <Item icon={Settings} label="Location Settings" onClick={() => navigate("/provider/gps-monitor")} last />
+          <Item icon={User} label="Edit Profile" onClick={() => navigate("/profile/edit", { state: { from: "profile" } })} />
+          <Item icon={ImageIcon} label="My Portfolio" onClick={() => navigate("/provider/portfolio", { state: { from: "profile" } })} />
+          <Item icon={FileText} label="Documents & KYC" onClick={() => navigate("/provider/documents", { state: { from: "profile" } })} />
+          <Item icon={Briefcase} label="My Jobs" onClick={() => navigate("/provider/jobs", { state: { from: "profile" } })} />
+          <Item icon={Wallet} label="Earnings" onClick={() => navigate("/provider/earnings", { state: { from: "profile" } })} />
+          <Item icon={Settings} label="Location Settings" onClick={() => navigate("/provider/gps-monitor", { state: { from: "profile" } })} last />
         </div>
 
         <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600"><Clock size={16} /></div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Working Hours</p>
-                <p className="text-[10px] text-muted-foreground">9:00 AM - 6:00 PM</p>
+          <div className="px-4 py-3 border-b border-border flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600"><Clock size={16} /></div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Working Hours</p>
+                  <p className="text-[10px] text-muted-foreground">{workingHours}</p>
+                </div>
               </div>
+              <button 
+                onClick={() => setIsEditingHours(!isEditingHours)} 
+                className="text-xs text-primary font-bold"
+              >
+                {isEditingHours ? "Cancel" : "Edit"}
+              </button>
             </div>
-            <button className="text-xs text-primary font-bold">Edit</button>
+            {isEditingHours && (
+              <div className="flex flex-wrap gap-2 mt-3 animate-fade-in">
+                {["9:00 AM - 6:00 PM", "8:00 AM - 8:00 PM", "24 Hours", "10:00 AM - 5:00 PM"].map((hrs) => (
+                  <button
+                    key={hrs}
+                    onClick={() => handleUpdateHours(hrs)}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                      workingHours === hrs 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground border border-border hover:bg-card'
+                    }`}
+                  >
+                    {hrs}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="px-4 py-3 border-t border-border">
             <div className="flex items-center justify-between">

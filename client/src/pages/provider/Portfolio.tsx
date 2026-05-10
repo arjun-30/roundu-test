@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, Image as ImageIcon, Play } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 
@@ -6,7 +6,16 @@ import { useState } from "react";
 
 const Portfolio = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [notification, setNotification] = useState("");
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
   const mockPortfolio = [
     { id: 1, title: "AC Repair", date: "22 Oct 2023", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
     { id: 2, title: "Electrical Wiring", date: "15 Oct 2023", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
@@ -43,7 +52,7 @@ const Portfolio = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-24">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-white sticky top-0 z-10 border-b border-border shadow-sm">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform">
           <ArrowLeft size={20} />
         </button>
         <div>

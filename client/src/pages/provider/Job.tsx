@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
@@ -7,8 +7,19 @@ import { socket } from "@/lib/socket";
 
 const Job = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id = "" } = useParams();
   const { providerRequests, dispatch } = useApp();
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else if (location.state?.from === "jobs") {
+      navigate("/provider/jobs");
+    } else {
+      navigate("/provider");
+    }
+  };
   const job = providerRequests.find((r) => r.id === id);
 
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false); // kept for future use
@@ -178,7 +189,7 @@ const Job = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-28">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
-        <button onClick={() => navigate("/provider")} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">Active Job</h1>

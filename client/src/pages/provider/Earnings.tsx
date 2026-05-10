@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
@@ -9,12 +9,21 @@ import axios from "axios";
 
 const Earnings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useApp();
   
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("This Week");
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
 
   useEffect(() => {
     const fetchEarnings = async () => {
@@ -55,7 +64,7 @@ const Earnings = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">Earnings</h1>
