@@ -188,7 +188,14 @@ const Tracking = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground">{provider.name}</p>
-              <p className="text-[10px] text-muted-foreground">{provider.rating} ★ · {provider.experienceYrs} yrs experience</p>
+              <p className="text-[10px] text-muted-foreground">
+                {provider.rating === 0 ? (
+                  <span className="bg-yellow-100 text-yellow-700 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mr-1">New</span>
+                ) : (
+                  `${provider.rating} ★ · `
+                )}
+                {provider.experienceYrs} yrs experience
+              </p>
             </div>
             <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <Phone size={16} className="text-primary" />

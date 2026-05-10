@@ -66,8 +66,14 @@ const ProviderDetail = () => {
             <p className="text-muted-foreground">{provider.service}</p>
           </div>
           <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
-            <Star size={16} className="text-yellow-500 fill-yellow-500" />
-            <span className="font-bold text-sm">{provider.rating}</span>
+            {provider.rating === 0 ? (
+              <span className="font-bold text-sm text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">New</span>
+            ) : (
+              <>
+                <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                <span className="font-bold text-sm">{provider.rating}</span>
+              </>
+            )}
           </div>
         </div>
 

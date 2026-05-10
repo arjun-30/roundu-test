@@ -346,7 +346,11 @@ const SearchingProviders = () => {
                       <div>
                         <h4 className="text-[15px] font-[600] text-foreground">{q.providerName}</h4>
                         <div className="flex items-center gap-2 text-[11px] text-[#7A8BA0] mt-0.5">
-                          <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                          {q.rating === 0 ? (
+                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-[600] text-[10px] uppercase">New</span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                          )}
                           <span>• {q.distanceKm}km away</span>
                         </div>
                       </div>

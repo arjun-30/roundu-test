@@ -34,8 +34,7 @@ const Dashboard = () => {
   };
 
   const [showPip, setShowPip] = useState(false);
-
-  const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
+  const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
 
@@ -54,10 +53,30 @@ const Dashboard = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isCritical) {
-      setShowPip(true);
+    const today = new Date().toISOString().slice(0, 10);
+    if (providerStats.rating === 0) {
+      const hasSeenNewSignup = localStorage.getItem("has_seen_new_signup");
+      if (!hasSeenNewSignup) {
+        setPipType("new_signup");
+        setShowPip(true);
+      }
+    } else {
+      if (providerStats.rating < 3.5) {
+        localStorage.setItem("is_in_pip", "true");
+      } else if (providerStats.rating >= 3.7) {
+        localStorage.setItem("is_in_pip", "false");
+      }
+
+      const isInPip = localStorage.getItem("is_in_pip") === "true";
+      if (isInPip) {
+        const lastSeenLowRating = localStorage.getItem("last_seen_low_rating");
+        if (lastSeenLowRating !== today) {
+          setPipType("low_rating");
+          setShowPip(true);
+        }
+      }
     }
-  }, [isCritical]);
+  }, [providerStats.rating]);
 
   useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
@@ -135,15 +154,23 @@ const Dashboard = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
       {/* PIP Modal */}
-      {isCritical && showPip && (
+      {showPip && pipType && (
         <PIPModal 
-          reasons={[
-            providerStats.rating < 4.0 ? "Low Customer Rating (< 4.0)" : "",
-            providerStats.responseRate < 50 ? "Critically Low Response Rate (< 50%)" : ""
-          ].filter(Boolean)} 
-          onCommit={() => {
+          type={pipType}
+          rating={providerStats.rating}
+          onClose={pipType === "low_rating" ? () => {
+            const today = new Date().toISOString().slice(0, 10);
+            localStorage.setItem("last_seen_low_rating", today);
             setShowPip(false);
-            dispatch({ type: "UPDATE_STATS", patch: { rating: 4.5, responseRate: 90 } });
+          } : undefined}
+          onCommit={() => {
+            if (pipType === "new_signup") {
+              localStorage.setItem("has_seen_new_signup", "true");
+            } else {
+              const today = new Date().toISOString().slice(0, 10);
+              localStorage.setItem("last_seen_low_rating", today);
+            }
+            setShowPip(false);
           }}
         />
       )}
