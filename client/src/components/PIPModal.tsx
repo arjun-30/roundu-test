@@ -47,7 +47,13 @@ const PIPModal = ({ type, rating, onCommit, onClose }: PIPModalProps) => {
             </p>
           </div>
 
-          <label className="flex items-start gap-3 mt-4 cursor-pointer group">
+          <label 
+            onClick={(e) => {
+              e.preventDefault();
+              setIsChecked(!isChecked);
+            }} 
+            className="flex items-start gap-3 mt-4 cursor-pointer group"
+          >
             <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${isChecked ? 'bg-primary border-primary' : 'border-muted-foreground group-hover:border-primary'}`}>
               {isChecked && <CheckCircle2 size={16} className="text-primary-foreground" />}
             </div>
