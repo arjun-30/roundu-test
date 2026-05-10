@@ -20,8 +20,6 @@ const Dashboard = () => {
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
-  const [socketConnected, setSocketConnected] = useState(socket.connected);
-  const [socketId, setSocketId] = useState(socket.id || "");
   
   const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
   const [quotePrice, setQuotePrice] = useState("");
@@ -42,15 +40,6 @@ const Dashboard = () => {
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
   const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
   const seenBroadcastIds = useRef(new Set<string>());
-
-  // Track socket connection for debug
-  useEffect(() => {
-    const onConnect = () => { setSocketConnected(true); setSocketId(socket.id || ""); };
-    const onDisconnect = () => { setSocketConnected(false); setSocketId(""); };
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    return () => { socket.off("connect", onConnect); socket.off("disconnect", onDisconnect); };
-  }, []);
 
   // Alert provider when a new direct request arrives
   useEffect(() => {
@@ -245,50 +234,6 @@ const Dashboard = () => {
             {pending.length > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
         </div>
-      </div>
-
-      {/* 🔍 DEBUG BAR — remove after fixing */}
-      <div className={`mx-4 mt-2 mb-1 px-3 py-2 rounded-xl text-[10px] font-mono flex flex-col gap-0.5 border ${
-        socketConnected ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
-      }`}>
-        <span>🔌 Socket: {socketConnected ? `CONNECTED (${socketId?.slice(0,8)})` : 'DISCONNECTED'}</span>
-        <span>👤 User: {user.id || 'NOT SET'} | Role: {role || 'none'}</span>
-        <span>📡 activeBroadcast: {activeBroadcast ? `YES — ${activeBroadcast.broadcastId?.slice(0,16)}` : 'none'}</span>
-        <button
-          onClick={() => setActiveBroadcast({
-            broadcastId: `test-${Date.now()}`,
-            customerId: "test-customer",
-            customerName: "Test Customer",
-            serviceId: "plumber",
-            address: "123 Test Street",
-            date: new Date().toISOString().slice(0,10),
-            time: "Now",
-            notes: "Test broadcast",
-            status: "active",
-            createdAt: Date.now()
-          })}
-          className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-[10px] font-bold"
-        >
-          🧪 Simulate Broadcast (Test Popup)
-        </button>
-        <button
-          onClick={() => {
-            const testId = `server-test-${Date.now()}`;
-            socket.emit("broadcast_job", {
-              broadcastId: testId,
-              customerId: "server-test",
-              customerName: "Server Test",
-              serviceId: "plumber",
-              address: "Server Round-trip Test",
-              date: new Date().toISOString().slice(0,10),
-              time: "Now",
-              notes: "Testing server delivery",
-            });
-          }}
-          className="mt-1 bg-orange-500 text-white px-2 py-1 rounded text-[10px] font-bold"
-        >
-          🔥 Fire broadcast_job → Server Test
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
