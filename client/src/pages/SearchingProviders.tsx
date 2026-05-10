@@ -69,11 +69,8 @@ const SearchingProviders = () => {
     };
   };
 
-  const broadcastIdRef = useRef(sessionStorage.getItem("current_broadcast_id") || `bc-${Date.now()}`);
-  
-  useEffect(() => {
-    sessionStorage.setItem("current_broadcast_id", broadcastIdRef.current);
-  }, []);
+  // Always generate a fresh ID — reusing sessionStorage ID causes server to silently drop it as duplicate
+  const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
 
   // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
