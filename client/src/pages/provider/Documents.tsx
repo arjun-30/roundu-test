@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { ArrowLeft, CheckCircle2, AlertCircle, ChevronRight, FileText, Landmark, UserCheck, ShieldCheck } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 
@@ -18,11 +19,36 @@ const Documents = () => {
     { id: "aadhaar", label: "Aadhaar Card", status: "verified", icon: UserCheck, color: "text-secondary", bg: "bg-blue-100" },
     { id: "pan", label: "PAN Card", status: "verified", icon: FileText, color: "text-indigo-600", bg: "bg-indigo-100" },
     { id: "bank", label: "Bank Account Details", status: "verified", icon: Landmark, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { id: "license", label: "Professional License", status: "pending", icon: CheckCircle2, color: "text-orange-600", bg: "bg-orange-100" },
   ];
+
+  const [certificates, setCertificates] = useState([
+    { id: 1, name: "Electrician License (Level 1)", date: "12 Oct 2023", status: "Valid" },
+    { id: 2, name: "Professional License", date: "15 Oct 2023", status: "Under Review" }
+  ]);
+  const [selectedCert, setSelectedCert] = useState<any>(null);
 
   const handleDocClick = (label: string) => {
     // viewing document
+  };
+
+  const handleAddCert = () => {
+    const newCert = {
+      id: Date.now(),
+      name: "New Certificate",
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: "Under Review"
+    };
+    setCertificates([...certificates, newCert]);
+  };
+
+  const handleUpdateCert = (id: number) => {
+    setCertificates(certificates.map(c => c.id === id ? { ...c, date: "Just now", status: "Under Review" } : c));
+    setSelectedCert(null);
+  };
+
+  const handleDeleteCert = (id: number) => {
+    setCertificates(certificates.filter(c => c.id !== id));
+    setSelectedCert(null);
   };
 
   return (
@@ -83,17 +109,30 @@ const Documents = () => {
         <div className="space-y-3">
            <div className="flex items-center justify-between px-1">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Certificates & Licenses</p>
-              <button className="text-primary text-[10px] font-bold">+ Add New</button>
+              <button onClick={handleAddCert} className="text-primary text-[10px] font-bold">+ Add New</button>
            </div>
-           <div className="bg-white border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm border-dashed">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border">
-                 <FileText size={22} className="text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                 <p className="text-sm font-bold text-foreground">Electrician License (Level 1)</p>
-                 <p className="text-[10px] text-muted-foreground">Uploaded on 12 Oct 2023</p>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">Valid</span>
+           
+           <div className="space-y-2">
+             {certificates.map(cert => (
+               <button 
+                 key={cert.id} 
+                 onClick={() => setSelectedCert(cert)}
+                 className="w-full bg-white border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform text-left"
+               >
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border">
+                     <FileText size={22} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                     <p className="text-sm font-bold text-foreground">{cert.name}</p>
+                     <p className="text-[10px] text-muted-foreground">Uploaded on {cert.date}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+                    cert.status === 'Valid' ? 'text-emerald-600 bg-emerald-50' : 'text-orange-600 bg-orange-50'
+                  }`}>
+                    {cert.status}
+                  </span>
+               </button>
+             ))}
            </div>
         </div>
 
@@ -110,6 +149,36 @@ const Documents = () => {
       </div>
 
       <ProviderBottomNav />
+
+      {selectedCert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-card w-full max-w-sm rounded-3xl p-6 shadow-2xl relative">
+            <button 
+              onClick={() => setSelectedCert(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-input flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+            >
+              ×
+            </button>
+            <h2 className="text-lg font-bold text-foreground mb-1">{selectedCert.name}</h2>
+            <p className="text-xs text-muted-foreground mb-6">Manage your certificate file</p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => handleUpdateCert(selectedCert.id)}
+                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-sm active:scale-95 transition-transform"
+              >
+                Update File
+              </button>
+              <button 
+                onClick={() => handleDeleteCert(selectedCert.id)}
+                className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 font-bold text-sm border border-red-100 active:scale-95 transition-transform"
+              >
+                Delete File
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
