@@ -30,7 +30,7 @@ async function main() {
       methods: ["GET", "POST"]
     },
     allowEIO3: true,
-    transports: ['polling', 'websocket']
+    transports: ['websocket']   // websocket-only: no sticky sessions on Railway
   });
 
   app.locals.io = io;
