@@ -82,13 +82,7 @@ const OtpVerify = () => {
 
         // Check if onboarding is needed
         if (apiUser.name) {
-          if (apiUser.role === "provider") {
-            dispatch({ type: "SET_ROLE", role: "provider" });
-            navigate("/provider", { replace: true });
-          } else {
-            dispatch({ type: "SET_ROLE", role: "customer" });
-            navigate("/home", { replace: true });
-          }
+          navigate("/role", { replace: true });
         } else {
           navigate("/onboarding-name", { replace: true });
         }

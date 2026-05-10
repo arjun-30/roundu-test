@@ -29,9 +29,7 @@ const Home = () => {
     { icon: HelpCircle, label: "Help & Support", path: "/support" },
   ];
 
-  if (user.role === "provider") {
-    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role-select" });
-  }
+  menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28 relative">
@@ -134,7 +132,14 @@ const Home = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/role")}
+            className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
+            title="Switch Side"
+          >
+            <Wrench size={18} className="text-secondary" />
+          </button>
           <button
             onClick={() => navigate("/wallet")}
             className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"

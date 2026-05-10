@@ -40,6 +40,7 @@ const Profile = () => {
 
         {/* Menu Items */}
         <div className="bg-white border border-border rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+          <Item icon={Wrench} label="Switch Role (Customer/Provider)" onClick={() => navigate("/role")} />
           <Item icon={History} label="My Bookings" onClick={() => navigate("/bookings")} />
           <Item icon={Bell} label="Notifications" onClick={() => navigate("/notifications")} />
           <Item icon={Tag} label="Offers & Promos" onClick={() => navigate("/offers")} />
