@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, Image as ImageIcon, Play } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 
@@ -6,7 +6,16 @@ import { useState } from "react";
 
 const Portfolio = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [notification, setNotification] = useState("");
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
   const mockPortfolio = [
     { id: 1, title: "AC Repair", date: "22 Oct 2023", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
     { id: 2, title: "Electrical Wiring", date: "15 Oct 2023", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
@@ -16,15 +25,34 @@ const Portfolio = () => {
     { id: 6, title: "Kitchen Lighting", date: "28 Sep 2023", image: "https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=400&h=300&fit=crop" },
   ];
 
-  const handleUpload = () => {
-    setNotification("Upload functionality coming soon!");
+  const [portfolio, setPortfolio] = useState(mockPortfolio);
+  const [isManaging, setIsManaging] = useState(false);
+
+  const handleAddPair = () => {
+    if (portfolio.length >= 5) {
+      setNotification("Maximum of 5 pairs allowed.");
+      setTimeout(() => setNotification(""), 3000);
+      return;
+    }
+    const newPair = {
+      id: Date.now(),
+      title: "New Service Entry",
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop"
+    };
+    setPortfolio([newPair, ...portfolio]);
+    setNotification("Added mock pair. Actual upload coming soon!");
     setTimeout(() => setNotification(""), 3000);
+  };
+
+  const handleDeletePair = (id: number) => {
+    setPortfolio(portfolio.filter(p => p.id !== id));
   };
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-white sticky top-0 z-10 border-b border-border shadow-sm">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform">
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -54,7 +82,7 @@ const Portfolio = () => {
                     </div>
                  </div>
               </div>
-              <button className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
+              <button onClick={() => navigate("/provider/video-portfolio")} className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
                 Re-record Introduction
               </button>
            </div>
@@ -64,27 +92,49 @@ const Portfolio = () => {
         <div className="px-5 pb-10 space-y-6">
           <div className="flex items-center justify-between">
              <h2 className="text-sm font-bold text-foreground">Service History (Before & After)</h2>
-             <button className="text-primary text-[11px] font-bold">Manage Pairs</button>
+             <button onClick={() => setIsManaging(!isManaging)} className="text-primary text-[11px] font-bold">
+               {isManaging ? "Done" : "Manage Pairs"}
+             </button>
           </div>
+          {isManaging && (
+             <button onClick={handleAddPair} className="w-full py-3 rounded-xl border border-dashed border-primary text-primary font-bold text-xs hover:bg-primary/5 transition-colors">
+               + Add New Pair ({portfolio.length}/5)
+             </button>
+          )}
 
           <div className="space-y-4">
-            {mockPortfolio.slice(0, 3).map((item) => (
-              <div key={item.id} className="bg-card border border-border rounded-[24px] p-4 shadow-sm space-y-3">
+            {portfolio.slice(0, 5).map((item) => (
+              <div key={item.id} className="bg-card border border-border rounded-[24px] p-4 shadow-sm space-y-3 relative">
+                {isManaging && (
+                  <button onClick={() => handleDeletePair(item.id)} className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-destructive text-white flex items-center justify-center shadow-md active:scale-95 transition-transform z-10">
+                    <span className="text-sm font-bold leading-none mb-0.5">×</span>
+                  </button>
+                )}
                 <div className="flex justify-between items-center">
                    <p className="text-sm font-bold text-foreground">{item.title}</p>
                    <p className="text-[10px] text-muted-foreground">{item.date}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                   <div className="space-y-1.5">
+                   <div className="space-y-1.5 relative group">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase text-center">Before</p>
-                      <div className="aspect-square rounded-2xl overflow-hidden border border-border shadow-inner">
+                      <div className="aspect-square rounded-2xl overflow-hidden border border-border shadow-inner relative">
                          <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=300&q=80" alt="Before" className="w-full h-full object-cover grayscale-[0.3]" />
+                         {isManaging && (
+                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                             <span className="text-white text-xs font-bold">Replace</span>
+                           </div>
+                         )}
                       </div>
                    </div>
-                   <div className="space-y-1.5">
+                   <div className="space-y-1.5 relative group">
                       <p className="text-[10px] font-bold text-emerald-600 uppercase text-center">After</p>
-                      <div className="aspect-square rounded-2xl overflow-hidden border border-emerald-200 shadow-inner ring-2 ring-emerald-500/20">
+                      <div className="aspect-square rounded-2xl overflow-hidden border border-emerald-200 shadow-inner ring-2 ring-emerald-500/20 relative">
                          <img src={item.image} alt="After" className="w-full h-full object-cover" />
+                         {isManaging && (
+                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                             <span className="text-white text-xs font-bold">Replace</span>
+                           </div>
+                         )}
                       </div>
                    </div>
                 </div>
@@ -95,12 +145,7 @@ const Portfolio = () => {
       </div>
 
 
-      <button 
-        onClick={handleUpload}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-90 transition-transform z-20"
-      >
-        <Plus size={28} />
-      </button>
+
 
       <ProviderBottomNav />
     </div>

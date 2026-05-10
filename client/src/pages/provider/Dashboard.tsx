@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
@@ -16,7 +16,7 @@ import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications } = useApp();
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications } = useApp() as any;
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
@@ -30,6 +30,9 @@ const Dashboard = () => {
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+  // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
+  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
+  const seenBroadcastIds = useRef(new Set<string>());
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
@@ -52,6 +55,18 @@ const Dashboard = () => {
       socket.off("incoming_request", handleNewRequest);
     };
   }, [dispatch]);
+
+  // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
+  useEffect(() => {
+    const handleBroadcast = (broadcast: any) => {
+      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
+      if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+      seenBroadcastIds.current.add(broadcast.broadcastId);
+      setActiveBroadcast(broadcast);
+    };
+    socket.on("incoming_broadcast", handleBroadcast);
+    return () => { socket.off("incoming_broadcast", handleBroadcast); };
+  }, []);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -150,6 +165,7 @@ const Dashboard = () => {
     
     dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
+    setActiveBroadcast(null);
     setQuotePrice("");
   };
 
@@ -177,13 +193,13 @@ const Dashboard = () => {
         />
       )}
 
-      {/* ✅ Incoming Broadcast Popup — shown when a customer requests a service */}
-      {liveBroadcasts.length > 0 && !quotingBroadcast && (
+      {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
+      {activeBroadcast && !quotingBroadcast && (
         <IncomingRequestPopup
-          request={liveBroadcasts[0]}
+          request={activeBroadcast}
           isBroadcast={true}
-          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
+          onAccept={() => setQuotingBroadcast(activeBroadcast)}
+          onReject={() => setActiveBroadcast(null)}
         />
       )}
 

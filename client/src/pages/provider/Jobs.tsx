@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
@@ -8,8 +8,17 @@ import EmptyState from "@/components/EmptyState";
 
 const Jobs = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { providerRequests, completedJobs } = useApp();
   const [tab, setTab] = useState<"upcoming" | "active" | "completed">("upcoming");
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
 
   const upcomingJobs = providerRequests.filter(r => r.status === "accepted");
   const activeJobs = providerRequests.filter(r => ["on_the_way", "arrived", "quote_set", "in_progress"].includes(r.status));
@@ -17,7 +26,7 @@ const Jobs = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative">
       <div className="px-5 pt-3 pb-2 flex items-center gap-3 animate-fade-in bg-white sticky top-0 z-10 shadow-sm">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">My Jobs</h1>
@@ -71,7 +80,7 @@ const Jobs = () => {
                  return (
                    <button
                      key={job.id}
-                     onClick={() => navigate(`/provider/job/${job.id}`)}
+                     onClick={() => navigate(`/provider/job/${job.id}`, { state: { from: location.state?.from === "profile" ? "profile" : "jobs" } })}
                      className="w-full bg-card border border-border rounded-2xl p-4 text-left active:scale-[0.98] shadow-card transition-transform"
                    >
                      <div className="flex justify-between items-start mb-2">
@@ -102,7 +111,7 @@ const Jobs = () => {
                  return (
                    <button
                      key={job.id}
-                     onClick={() => navigate(`/provider/job/${job.id}`)}
+                     onClick={() => navigate(`/provider/job/${job.id}`, { state: { from: location.state?.from === "profile" ? "profile" : "jobs" } })}
                      className="w-full bg-card border border-border rounded-2xl p-4 text-left active:scale-[0.98] shadow-card transition-transform"
                    >
                      <div className="flex justify-between items-start mb-2">

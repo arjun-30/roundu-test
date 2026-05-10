@@ -1,5 +1,5 @@
 import { ArrowLeft, Camera, User, Mail, Phone, Briefcase } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 
@@ -7,7 +7,16 @@ import { services } from "@/data/mockData";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { user, providerRegistrationDraft } = useApp();
+  const location = useLocation();
+  const { user, providerRegistrationDraft, dispatch } = useApp();
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
 
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || "hello@roundu.in");
@@ -15,7 +24,13 @@ const EditProfile = () => {
   const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
 
   const handleSave = () => {
-    // API call would go here
+    dispatch({ type: "UPDATE_USER", user: { name, email, phone } });
+    if (user.role === "provider" && providerRegistrationDraft) {
+      dispatch({ 
+        type: "UPDATE_REGISTRATION_DRAFT", 
+        patch: { serviceIds: [serviceId] } 
+      });
+    }
     navigate(-1);
   };
 
@@ -23,7 +38,7 @@ const EditProfile = () => {
     <div className="min-h-full flex flex-col bg-background pb-24 font-sans">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all">
+          <button onClick={handleBack} className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all">
             <ArrowLeft size={20} className="text-primary" />
           </button>
           <h1 className="text-xl font-extrabold text-foreground">Edit Profile</h1>

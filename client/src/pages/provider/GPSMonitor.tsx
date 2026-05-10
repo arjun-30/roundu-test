@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Navigation, ShieldCheck, Info } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import { useApp } from "@/context/AppContext";
@@ -7,6 +7,15 @@ import { socket } from "@/lib/socket";
 
 const GPSMonitor = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else {
+      navigate("/provider");
+    }
+  };
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(true);
   const [notification, setNotification] = useState("");
 
@@ -68,7 +77,7 @@ const GPSMonitor = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-24">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-white sticky top-0 z-10 border-b border-border shadow-sm">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95 transition-transform shadow-sm">
           <ArrowLeft size={20} />
         </button>
         <div>
