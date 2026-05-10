@@ -106,7 +106,7 @@ const Dashboard = () => {
       
       // Add to providerRequests so Job.tsx can find it
       dispatch({ 
-        type: "ADD_REQUEST", 
+        type: "ADD_PROVIDER_REQUEST", 
         request: {
           id: data.bookingId,
           customerName: data.customerName || "Customer",

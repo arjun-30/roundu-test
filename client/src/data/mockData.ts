@@ -57,6 +57,8 @@ export interface ProviderRequest {
   status: "pending" | "accepted" | "rejected" | "assigned" | "on_the_way" | "arrived" | "in_progress" | "completed" | "cancelled";
   notes?: string;
   voiceNote?: boolean;
+  photos?: string[];
+  video?: boolean | string;
   lat?: number;
   lng?: number;
   quote?: number;
