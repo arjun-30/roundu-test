@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, Calendar } from "lucide-react";
+import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
-import { Wallet } from "lucide-react";
+import ProviderBottomNav from "@/components/ProviderBottomNav";
 import axios from "axios";
 
 const Earnings = () => {
@@ -14,6 +14,7 @@ const Earnings = () => {
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("This Week");
 
   useEffect(() => {
     const fetchEarnings = async () => {
@@ -41,9 +42,15 @@ const Earnings = () => {
     }
   }, [user.id]);
 
-  const total = completedJobs.reduce((s, j) => s + (j.price || 0), 0);
-  const thisWeek = completedJobs.filter((j) => Date.now() - new Date(j.scheduled_at || j.date).getTime() < 7 * 86400000);
-  const weekTotal = thisWeek.reduce((s, j) => s + (j.price || 0), 0);
+  const now = Date.now();
+  const filteredJobs = completedJobs.filter((j) => {
+    const jobDate = new Date(j.scheduled_at || j.date || Date.now()).getTime();
+    if (timeframe === "Today") return now - jobDate < 86400000;
+    if (timeframe === "This Week") return now - jobDate < 7 * 86400000;
+    return now - jobDate < 30 * 86400000;
+  });
+  
+  const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
@@ -60,9 +67,6 @@ const Earnings = () => {
           <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Available Balance</p>
           <div className="flex items-end gap-2 mt-2">
             <p className="text-4xl font-extrabold text-white">₹{balance.toLocaleString('en-IN')}</p>
-            <div className="mb-1.5 flex items-center gap-1 text-emerald-400 text-xs font-bold bg-emerald-400/10 px-2 py-0.5 rounded-full">
-              <TrendingUp size={12} /> +12%
-            </div>
           </div>
           <button className="w-full mt-6 py-4 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
             Withdraw to Bank
@@ -73,8 +77,9 @@ const Earnings = () => {
           {["Today", "This Week", "This Month"].map((label) => (
             <button
               key={label}
+              onClick={() => setTimeframe(label as any)}
               className={`px-5 py-2.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all ${
-                label === "This Week" 
+                timeframe === label 
                   ? "bg-primary border-primary text-primary-foreground shadow-md" 
                   : "bg-white border-border text-muted-foreground"
               }`}
@@ -85,19 +90,19 @@ const Earnings = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Stat label="Jobs Done" value={String(completedJobs.length)} color="text-secondary" />
-          <Stat label="Earned" value={`₹${weekTotal}`} color="text-emerald-600" />
+          <Stat label="Jobs Done" value={String(filteredJobs.length)} color="text-secondary" />
+          <Stat label="Earned" value={`₹${timeframeTotal}`} color="text-emerald-600" />
         </div>
       </div>
 
 
       <div className="px-5 mt-6 flex-1 overflow-y-auto">
         <h2 className="text-sm font-bold text-foreground mb-3">Completed Jobs</h2>
-        {completedJobs.length === 0 ? (
+        {filteredJobs.length === 0 ? (
           <EmptyState icon={Wallet} title="No earnings yet" description="Completed jobs will appear here." />
         ) : (
           <div className="space-y-2">
-            {completedJobs.map((j) => {
+            {filteredJobs.map((j) => {
               const s = getServiceById(j.serviceId);
               return (
                 <div key={j.id} className="bg-card border border-border rounded-2xl p-3 flex items-center gap-3 shadow-card">
@@ -117,6 +122,7 @@ const Earnings = () => {
           </div>
         )}
       </div>
+      <ProviderBottomNav />
     </div>
   );
 };

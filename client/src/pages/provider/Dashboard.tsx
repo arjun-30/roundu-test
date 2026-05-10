@@ -57,6 +57,7 @@ const Dashboard = () => {
     if (providerStats.rating === 0) {
       const hasSeenNewSignup = localStorage.getItem("has_seen_new_signup");
       if (!hasSeenNewSignup) {
+        localStorage.setItem("has_seen_new_signup", "true");
         setPipType("new_signup");
         setShowPip(true);
       }
@@ -71,6 +72,7 @@ const Dashboard = () => {
       if (isInPip) {
         const lastSeenLowRating = localStorage.getItem("last_seen_low_rating");
         if (lastSeenLowRating !== today) {
+          localStorage.setItem("last_seen_low_rating", today);
           setPipType("low_rating");
           setShowPip(true);
         }
@@ -215,7 +217,7 @@ const Dashboard = () => {
         {/* Dynamic Warning Banner */}
         {(() => {
           let warning = null;
-          if (providerStats.rating < 4.0 || providerStats.responseRate < 50) {
+          if ((providerStats.rating > 0 && providerStats.rating < 3.7) || providerStats.responseRate < 50) {
             warning = {
               type: "critical",
               title: "Account at Risk",

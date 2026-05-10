@@ -69,8 +69,8 @@ const ProviderProfile = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-background pb-8">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
+    <div className="min-h-full flex flex-col bg-background pb-28">
+      <div className="px-5 pt-3 pb-2 flex items-center gap-3 animate-fade-in">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>

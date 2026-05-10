@@ -16,14 +16,14 @@ const Jobs = () => {
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in bg-white sticky top-0 z-10 shadow-sm">
+      <div className="px-5 pt-3 pb-2 flex items-center gap-3 animate-fade-in bg-white sticky top-0 z-10 shadow-sm">
         <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">My Jobs</h1>
       </div>
 
-      <div className="px-5 mt-2 flex gap-2">
+      <div className="px-5 mt-6 flex gap-2">
         <button
           onClick={() => setTab("upcoming")}
           className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${
