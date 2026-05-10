@@ -242,6 +242,23 @@ const Dashboard = () => {
         <span>🔌 Socket: {socketConnected ? `CONNECTED (${socketId?.slice(0,8)})` : 'DISCONNECTED'}</span>
         <span>👤 User: {user.id || 'NOT SET'} | Role: {role || 'none'}</span>
         <span>📡 Live Broadcasts: {liveBroadcasts.length}</span>
+        <button
+          onClick={() => dispatch({ type: "ADD_LIVE_BROADCAST", broadcast: {
+            broadcastId: `test-${Date.now()}`,
+            customerId: "test-customer",
+            customerName: "Test Customer",
+            serviceId: "plumber",
+            address: "123 Test Street",
+            date: new Date().toISOString().slice(0,10),
+            time: "Now",
+            notes: "Test broadcast",
+            status: "active",
+            createdAt: Date.now()
+          }})}
+          className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-[10px] font-bold"
+        >
+          🧪 Simulate Broadcast (Test Popup)
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
