@@ -259,6 +259,25 @@ const Dashboard = () => {
         >
           🧪 Simulate Broadcast (Test Popup)
         </button>
+        <button
+          onClick={() => {
+            const testId = `server-test-${Date.now()}`;
+            socket.emit("broadcast_job", {
+              broadcastId: testId,
+              customerId: "server-test",
+              customerName: "Server Test",
+              serviceId: "plumber",
+              address: "Server Round-trip Test",
+              date: new Date().toISOString().slice(0,10),
+              time: "Now",
+              notes: "Testing server delivery",
+            });
+            alert(`Fired broadcast_job: ${testId}\nWatch if Live Broadcasts count increases`);
+          }}
+          className="mt-1 bg-orange-500 text-white px-2 py-1 rounded text-[10px] font-bold"
+        >
+          🔥 Fire broadcast_job → Server Test
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
