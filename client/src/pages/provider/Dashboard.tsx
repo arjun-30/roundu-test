@@ -176,6 +176,17 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      {/* ✅ Incoming Broadcast Popup — shown when a customer requests a service */}
+      {liveBroadcasts.length > 0 && !quotingBroadcast && (
+        <IncomingRequestPopup
+          request={liveBroadcasts[0]}
+          isBroadcast={true}
+          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
+        />
+      )}
+
       {/* Header */}
       <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
         <div>
