@@ -7,7 +7,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
-import { toast } from "sonner";
 
 const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
   const R = 6371;
@@ -578,8 +577,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       console.log("[socket] ✅ incoming_broadcast received:", broadcast);
       dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
       dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
-      // Toast so we can verify receipt on phone even if popup has issues
-      toast(`🚨 New Job: ${broadcast.serviceId}`, { description: broadcast.address, duration: 8000 });
     });
 
     socket.on("quote_received", (quote: ProviderQuote) => {
