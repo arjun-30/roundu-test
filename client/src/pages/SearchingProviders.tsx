@@ -40,8 +40,9 @@ const SearchingProviders = () => {
   const [isLongWait, setIsLongWait] = useState(false);
   const [error, setError] = useState("");
 
-  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes } = useApp();
+  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote } = useApp();
   const hasTriggered = useRef(false);
+  const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
 
   // Fetch Customer Location
   useEffect(() => {
@@ -69,9 +70,6 @@ const SearchingProviders = () => {
     };
   };
 
-  // Always generate a fresh ID — reusing sessionStorage ID causes server to silently drop it as duplicate
-  const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
-
   // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
     if (hasTriggered.current) return;
@@ -86,7 +84,9 @@ const SearchingProviders = () => {
       address: user.address || "Current Location",
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      notes: "Quick fix request from customer"
+      notes: bookingNotes || "Quick fix request from customer",
+      voiceNoteUrl: bookingVoiceNoteUrl,
+      voiceNote: bookingVoiceNote
     };
 
     const doEmit = () => {
@@ -110,7 +110,7 @@ const SearchingProviders = () => {
       clearInterval(interval);
       socket.off("connect", doEmit);
     };
-  }, [serviceId, user, dispatch]);
+  }, [serviceId, user, dispatch, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote]);
 
   const handleAcceptQuote = async (quote: any) => {
     if (!user || !user.id) {
@@ -130,8 +130,9 @@ const SearchingProviders = () => {
       lat: currentLocation?.lat,
       lng: currentLocation?.lng,
       price: quote.price,
-      notes: "Quick fix requested",
-      voice_note: false,
+      notes: bookingNotes || "Quick fix requested",
+      voice_note: bookingVoiceNote,
+      voice_note_url: bookingVoiceNoteUrl || null,
     };
 
     try {

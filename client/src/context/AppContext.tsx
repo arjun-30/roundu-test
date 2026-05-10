@@ -35,6 +35,8 @@ export interface JobBroadcast {
   notes: string;
   status: string;
   createdAt: number;
+  voiceNote?: boolean;
+  voiceNoteUrl?: string;
 }
 
 export interface ProviderQuote {
@@ -71,6 +73,7 @@ interface State {
   selectedTime: string | null;
   bookingNotes: string;
   bookingVoiceNote: boolean;
+  bookingVoiceNoteUrl: string | null;
   // Records
   bookings: Booking[];
   providerRequests: ProviderRequest[];
@@ -123,7 +126,7 @@ type Action =
   | { type: "PAY_BOOKING"; id: string }
   | { type: "SELECT_DATE"; date: string }
   | { type: "SELECT_TIME"; time: string }
-  | { type: "SET_NOTES"; notes: string; voiceNote?: boolean }
+  | { type: "SET_NOTES"; notes: string; voiceNote?: boolean; voiceNoteUrl?: string }
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
@@ -143,7 +146,7 @@ type Action =
   | { type: "UPDATE_NEARBY_PROVIDER"; id: string; lat: number; lng: number; name: string }
   | { type: "SET_CURRENT_LOCATION"; lat: number; lng: number }
   | { type: "ADD_LIVE_BROADCAST"; broadcast: JobBroadcast }
-  | { type: "REMOVE_LIVE_BROADCAST"; broadcastId: string }
+  | { type: "REMOVE_LIVE_BROADCAST"; id: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
@@ -182,6 +185,7 @@ const initialState: State = {
   selectedTime: null,
   bookingNotes: "",
   bookingVoiceNote: false,
+  bookingVoiceNoteUrl: null,
   bookings: [],
   providerRequests: [],
   completedJobs: [],
@@ -282,7 +286,8 @@ function reducer(state: State, action: Action): State {
           notes: booking.notes,
           lat: booking.lat,
           lng: booking.lng,
-          voiceNote: booking.voice_note || false
+          voiceNote: booking.voice_note || false,
+          voiceNoteUrl: booking.voice_note_url || null
         };
         return {
           ...state,
@@ -332,7 +337,7 @@ function reducer(state: State, action: Action): State {
     case "SELECT_TIME":
       return { ...state, selectedTime: action.time };
     case "SET_NOTES":
-      return { ...state, bookingNotes: action.notes, bookingVoiceNote: action.voiceNote || false };
+      return { ...state, bookingNotes: action.notes, bookingVoiceNote: action.voiceNote || false, bookingVoiceNoteUrl: action.voiceNoteUrl || null };
     case "PAY_BOOKING":
       return {
         ...state,
@@ -348,6 +353,7 @@ function reducer(state: State, action: Action): State {
         selectedTime: null,
         bookingNotes: "",
         bookingVoiceNote: false,
+        bookingVoiceNoteUrl: null,
       };
     case "ADD_BOOKING":
       return { ...state, bookings: [action.booking, ...state.bookings] };
@@ -456,7 +462,7 @@ function reducer(state: State, action: Action): State {
         ] 
       };
     case "REMOVE_LIVE_BROADCAST":
-      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.broadcastId) };
+      return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
     case "ADD_RECEIVED_QUOTE":
       return {
         ...state,
@@ -530,7 +536,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                   price: b.price,
                   status: b.status,
                   notes: b.notes,
-                  voiceNote: b.voice_note || false
+                  voiceNote: b.voice_note || false,
+                  voiceNoteUrl: b.voice_note_url || null
                 }));
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
               }

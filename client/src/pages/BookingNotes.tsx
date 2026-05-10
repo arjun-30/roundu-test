@@ -1,70 +1,38 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Square, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, Mic, Square, Play, Pause, Trash2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { uploadVoiceNote } from "@/lib/voiceUpload";
+import { toast } from "sonner";
 
 const BookingNotes = () => {
   const navigate = useNavigate();
   const { selectedProvider, selectedDate, selectedTime, dispatch } = useApp();
   const [notes, setNotes] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const recorder = useVoiceRecorder(60); // 60 seconds max
 
-  // Voice record state
-  const [isRecording, setIsRecording] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<boolean>(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-
-
-  const startRecording = () => {
-    setIsRecording(true);
-    setTimer(0);
-    intervalRef.current = setInterval(() => {
-      setTimer(prev => {
-        if (prev >= 9) {
-          stopRecording();
-          return 10;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setAudioBlob(true);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
-
-  const deleteRecording = () => {
-    setAudioBlob(false);
-    setTimer(0);
-  };
-
-  const handleNext = useCallback(() => {
-    dispatch({ type: "SET_NOTES", notes, voiceNote: audioBlob });
-    navigate("/booking/payment");
-  }, [dispatch, navigate, notes, audioBlob]);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      // Don't trigger 'Enter' if the user is typing in the textarea
-      if (e.key === "Enter" && document.activeElement?.tagName !== "TEXTAREA") {
-        handleNext();
+  const handleNext = useCallback(async () => {
+    let uploadedUrl: string | null = null;
+    if (recorder.audioBlob) {
+      setIsUploading(true);
+      toast.info("Uploading voice note...");
+      try {
+        uploadedUrl = await uploadVoiceNote(recorder.audioBlob);
+        toast.success("Voice note uploaded!");
+      } catch (err) {
+        toast.error("Failed to upload voice note. Please try again.");
+        setIsUploading(false);
+        return; // Stop flow
       }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [handleNext, notes]);
+      setIsUploading(false);
+    }
+    
+    dispatch({ type: "SET_NOTES", notes, voiceNote: !!recorder.audioBlob, voiceNoteUrl: uploadedUrl || undefined });
+    navigate("/booking/payment");
+  }, [dispatch, navigate, notes, recorder.audioBlob]);
 
   if (!selectedProvider || !selectedDate || !selectedTime) {
     navigate("/booking/date", { replace: true });
@@ -99,46 +67,56 @@ const BookingNotes = () => {
         <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold text-foreground">Voice Description (Optional)</h3>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">10s max</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">60s max</span>
           </div>
 
-          {!isRecording && !audioBlob ? (
+          {!recorder.isRecording && !recorder.audioBlob ? (
             <button
-              onClick={startRecording}
+              onClick={recorder.startRecording}
               className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 transition-colors"
             >
               <Mic size={18} />
               <span className="text-[13px] font-bold">Hold to Record Voice</span>
             </button>
-          ) : isRecording ? (
+          ) : recorder.isRecording ? (
             <div className="w-full flex flex-col items-center justify-center gap-3 py-4 bg-red-50 rounded-xl border-2 border-red-200 animate-pulse">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-500" />
-                <span className="text-[13px] font-bold text-red-600">Recording... {timer}s</span>
+                <span className="text-[13px] font-bold text-red-600">Recording... {recorder.formatTime(recorder.duration)}</span>
               </div>
               <button 
-                onClick={stopRecording}
+                onClick={recorder.stopRecording}
                 className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white"
               >
-                <Square size={16} fill="white" />
+                <Square size={16} fill="currentColor" />
               </button>
             </div>
           ) : (
             <div className="w-full flex items-center gap-3 py-3 px-4 bg-primary/5 rounded-xl border border-primary/20">
-              <button className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                <Play size={16} fill="white" />
-              </button>
-              <div className="flex-1 h-1.5 bg-primary/20 rounded-full overflow-hidden">
-                <div className="h-full w-1/2 bg-primary" />
-              </div>
-              <span className="text-[11px] font-bold text-primary">0:05 / 0:10</span>
               <button 
-                onClick={deleteRecording}
+                onClick={recorder.playAudio}
+                className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-sm"
+              >
+                {recorder.isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-1" />}
+              </button>
+              <div className="flex-1">
+                <span className="text-[12px] font-bold text-primary">
+                  {recorder.isPlaying 
+                    ? `${recorder.formatTime(recorder.playbackTime)} / ${recorder.formatTime(recorder.duration)}` 
+                    : recorder.formatTime(recorder.duration)}
+                </span>
+              </div>
+              <button 
+                onClick={recorder.deleteRecording}
                 className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
               >
                 <Trash2 size={16} />
               </button>
             </div>
+          )}
+          
+          {recorder.error && (
+             <p className="text-xs text-red-500 mt-2">{recorder.error}</p>
           )}
         </div>
 
@@ -156,9 +134,10 @@ const BookingNotes = () => {
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
         <button
           onClick={handleNext}
-          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all"
+          disabled={isUploading}
+          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all disabled:opacity-50"
         >
-          Continue to Payment
+          {isUploading ? "Uploading..." : "Continue to Payment"}
         </button>
       </div>
     </div>

@@ -53,7 +53,7 @@ const OtpVerify = () => {
     setError("");
     
     setLoading(true);
-    
+
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         phone,
@@ -61,28 +61,28 @@ const OtpVerify = () => {
       });
 
       if (response.data.success) {
-        const { token, user } = response.data;
+        const { token, user: apiUser } = response.data;
         
         // Store session info
         if (token) {
           localStorage.setItem("roundu_token", token);
-          localStorage.setItem("roundu_user", JSON.stringify(user));
-          localStorage.setItem("roundu_role", user.role || "customer");
+          localStorage.setItem("roundu_user", JSON.stringify(apiUser));
+          localStorage.setItem("roundu_role", apiUser.role || "customer");
         }
 
         // Update Context
         dispatch({ type: "SET_AUTH", value: true });
-        dispatch({ type: "SET_USER_ID", id: user.id });
+        dispatch({ type: "SET_USER_ID", id: apiUser.id });
         dispatch({ type: "UPDATE_USER", user: {
-          name: user.name || "",
-          email: user.email || "",
-          address: user.address || "",
-          role: user.role || "customer"
+          name: apiUser.name || "",
+          email: apiUser.email || "",
+          address: apiUser.address || "",
+          role: apiUser.role || "customer"
         }});
 
         // Check if onboarding is needed
-        if (user.name) {
-          if (user.role === "provider") {
+        if (apiUser.name) {
+          if (apiUser.role === "provider") {
             dispatch({ type: "SET_ROLE", role: "provider" });
             navigate("/provider", { replace: true });
           } else {
@@ -95,7 +95,36 @@ const OtpVerify = () => {
       }
     } catch (err: any) {
       console.error("Verify Error:", err);
-      setError(err.response?.data?.error || "Verification failed. Check the code.");
+      
+      // Development Fallback
+      if (import.meta.env.DEV) {
+        console.warn('[OtpVerify] Using Mock Login fallback');
+        const mockUser = {
+          id: "mock-user-" + Date.now(),
+          name: "", // Empty name triggers onboarding flow
+          phone: phone || "9999999999",
+          email: "",
+          address: "",
+          role: "customer"
+        };
+
+        localStorage.setItem("roundu_token", "mock-token");
+        localStorage.setItem("roundu_user", JSON.stringify(mockUser));
+        localStorage.setItem("roundu_role", "customer");
+
+        dispatch({ type: "SET_AUTH", value: true });
+        dispatch({ type: "SET_USER_ID", id: mockUser.id });
+        dispatch({ type: "UPDATE_USER", user: {
+          name: "",
+          email: "",
+          address: "",
+          role: "customer"
+        }});
+
+        navigate("/onboarding-name", { replace: true });
+      } else {
+        setError(err.response?.data?.error || "Verification failed. Check the code.");
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +154,7 @@ const OtpVerify = () => {
         </div>
       )}
 
-      <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
+      <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 1 }}>
         {otp.map((d, i) => (
           <input
             key={i}

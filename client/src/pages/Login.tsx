@@ -28,6 +28,8 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/send-otp`, { phone: data.phone });
@@ -46,7 +48,16 @@ const Login = () => {
       }
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
-      setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
+      
+      // Development Fallback
+      if (import.meta.env.DEV) {
+        console.warn('[Login] Using Mock OTP fallback');
+        dispatch({ type: "SET_PHONE", phone: data.phone });
+        setSuccess("OTP sent (Mock Mode)");
+        setTimeout(() => navigate("/otp"), 500);
+      } else {
+        setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -73,7 +84,7 @@ const Login = () => {
       {success && <div className="bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold mb-4">{success}</div>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 1 }}>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
             Phone Number *
           </label>
@@ -102,7 +113,7 @@ const Login = () => {
           type="submit"
           disabled={!isValid || loading}
           className="w-full py-4 rounded-2xl font-bold text-base transition-all duration-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:bg-secondary animate-fade-in-up flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30"
-          style={{ animationDelay: "0.3s", opacity: 0 }}
+          style={{ animationDelay: "0.3s", opacity: 1 }}
         >
           {loading ? (
             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -120,4 +131,3 @@ const Login = () => {
 };
 
 export default Login;
-

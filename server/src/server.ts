@@ -10,6 +10,7 @@ async function main() {
   const db = getPool();
   try {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);

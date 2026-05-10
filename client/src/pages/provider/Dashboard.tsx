@@ -16,7 +16,7 @@ import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts } = useApp();
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications } = useApp();
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
@@ -25,6 +25,12 @@ const Dashboard = () => {
   const [quotePrice, setQuotePrice] = useState("");
   const [quoteEta, setQuoteEta] = useState("15");
   
+  const [showPip, setShowPip] = useState(false);
+  const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
+  const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
+
+  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
   const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
@@ -32,11 +38,6 @@ const Dashboard = () => {
   const toggleOnline = () => {
     dispatch({ type: "SET_ONLINE", value: !isOnline });
   };
-
-  const [showPip, setShowPip] = useState(false);
-  const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
-
-  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
 
   // Alert provider when a new direct request arrives
   useEffect(() => {
@@ -82,7 +83,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
-      dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: data.broadcastId });
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
     };
     socket.on("job_taken", handleJobTaken);
     return () => {
@@ -120,7 +121,6 @@ const Dashboard = () => {
           date: data.date || new Date().toISOString().slice(0, 10),
           time: data.time || "Now",
           price: data.price || 0,
-          quote: data.price || 0,
           notes: "",
         } 
       });
@@ -148,7 +148,7 @@ const Dashboard = () => {
       reviews: 0
     });
     
-    dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
+    dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
     setQuotePrice("");
   };
@@ -183,7 +183,7 @@ const Dashboard = () => {
           request={liveBroadcasts[0]}
           isBroadcast={true}
           onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
         />
       )}
 
@@ -219,7 +219,7 @@ const Dashboard = () => {
             title="Notifications"
           >
             <Bell size={18} className="text-foreground" />
-            {pending.length > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
+            {(pending.length > 0 || notifications.length > 0) && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
         </div>
       </div>
@@ -228,7 +228,7 @@ const Dashboard = () => {
         {/* Dynamic Warning Banner */}
         {(() => {
           let warning = null;
-          if ((providerStats.rating > 0 && providerStats.rating < 3.7) || providerStats.responseRate < 50) {
+          if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
             warning = {
               type: "critical",
               title: "Account at Risk",
@@ -239,7 +239,7 @@ const Dashboard = () => {
               subtext: "text-red-600",
               iconColor: "text-red-500"
             };
-          } else if (providerStats.responseRate < 90) {
+          } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
             warning = {
               type: "warning",
               title: "Response Rate Low",
@@ -250,7 +250,7 @@ const Dashboard = () => {
               subtext: "text-orange-600",
               iconColor: "text-orange-500"
             };
-          } else if (providerStats.rating < 4.5) {
+          } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
             warning = {
               type: "caution",
               title: "Rating Dropping",
@@ -300,8 +300,8 @@ const Dashboard = () => {
                         <p className="text-sm font-bold text-foreground">{b.customerName}</p>
                         <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
-                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
-                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                           <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
+                           <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
                         </div>
                         {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
                         
@@ -313,7 +313,7 @@ const Dashboard = () => {
                             Provide Quote
                           </button>
                           <button 
-                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: b.broadcastId })}
+                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
                             className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
                           >
                             Skip
@@ -638,7 +638,19 @@ const Dashboard = () => {
                         </div>
                       </div>
                     )}
-                    {selectedJob.voiceNote && (
+                    {selectedJob.voiceNote && selectedJob.voiceNoteUrl && (
+                      <div className="w-full bg-primary/5 rounded-xl p-3 border border-primary/10 flex flex-col gap-2 shadow-sm min-w-[200px]">
+                        <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-wider">
+                          <Mic size={14} /> Voice Note
+                        </div>
+                        <audio 
+                          src={selectedJob.voiceNoteUrl} 
+                          controls 
+                          className="w-full h-8"
+                        />
+                      </div>
+                    )}
+                    {selectedJob.voiceNote && !selectedJob.voiceNoteUrl && (
                       <div className="w-32 h-24 rounded-xl bg-muted flex-shrink-0 flex items-center justify-center border border-border flex-col gap-1 shadow-sm">
                         <Mic size={20} className="text-muted-foreground/60" />
                         <span className="text-[10px] text-muted-foreground font-semibold">Voice Note</span>
@@ -717,7 +729,7 @@ const Dashboard = () => {
           }}
           isBroadcast={true}
           onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
         />
       )}
 

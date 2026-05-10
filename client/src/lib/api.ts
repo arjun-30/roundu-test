@@ -26,6 +26,17 @@ export const createBooking = async (bookingData: any) => {
 };
 
 export const updateUser = async (userId: string, data: any) => {
+  // Use mock fallback in local development if backend might be down
+  if (import.meta.env.DEV) {
+    try {
+      const res = await api.put(`/users/${userId}`, data);
+      return res.data;
+    } catch (err) {
+      console.warn('[API] Backend unreachable, using mock response for updateUser');
+      return { success: true, data: { id: userId, ...data } };
+    }
+  }
+
   const res = await api.put(`/users/${userId}`, data);
   return res.data;
 };

@@ -216,6 +216,22 @@ const Job = () => {
               <p className="text-xs text-foreground">{job.notes}</p>
             </>
           )}
+
+          {job.voiceNote && job.voiceNoteUrl && (
+            <>
+              <div className="h-px bg-border my-3" />
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Mic size={12} /> Voice Note from Customer
+              </p>
+              <div className="bg-primary/5 rounded-xl p-3 border border-primary/10">
+                <audio 
+                  src={job.voiceNoteUrl} 
+                  controls 
+                  className="w-full h-8 accent-primary"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <button
