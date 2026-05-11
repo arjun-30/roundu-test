@@ -58,7 +58,7 @@ const SearchPage = () => {
         {matchedServices.length > 0 && (
           <div>
             <h2 className="text-sm font-bold text-foreground mb-3">Services</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 items-stretch">
               {matchedServices.map((s) => (
                 <ServiceCard
                   key={s.id}

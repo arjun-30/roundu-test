@@ -11,11 +11,11 @@ const ServicesPage = () => {
     <div className="min-h-full flex flex-col bg-background">
       <ScreenHeader title="All Services" />
       <div className="flex-1 px-5 pb-8">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 items-stretch">
           {services.map((s, i) => (
             <div
               key={s.id}
-              className="animate-fade-in-up"
+              className="animate-fade-in-up h-full"
               style={{ animationDelay: `${i * 0.04}s`, opacity: 0 }}
             >
               <ServiceCard
