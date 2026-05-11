@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Gift, Share2, Copy, Users, Wallet, ChevronRight, Award } from "lucide-react";
+import { ArrowLeft, Gift, Share2, Copy, Users, Wallet, ChevronRight, Award, Check } from "lucide-react";
 
 const ReferEarn = () => {
   const navigate = useNavigate();
