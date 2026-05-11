@@ -20,7 +20,7 @@ const RoleSelect = () => {
         navigate("/provider", { replace: true });
         return;
       }
-      
+
       // Otherwise, double-check the database just in case the local state is stale
       setLoading(true);
       try {
@@ -35,7 +35,7 @@ const RoleSelect = () => {
       } finally {
         setLoading(false);
       }
-      
+
       navigate("/provider/select-service", { replace: true });
     }
   };
@@ -101,6 +101,8 @@ const RoleSelect = () => {
         By continuing, you agree to our Terms & Privacy Policy
       </p>
     </div>
+
+
   );
 };
 

@@ -21,17 +21,30 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('lucide-react')) return 'icons';
-            if (id.includes('mapbox-gl')) return 'map';
-            if (id.includes('@supabase')) return 'supabase';
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) return 'react-vendor';
-            if (id.includes('@radix-ui')) return 'ui';
-            return 'vendor';
-          }
-        }
-      }
-    }
-  }
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-utils': ['axios', 'lucide-react', 'date-fns', 'clsx', 'tailwind-merge', 'zod', 'react-hook-form', '@hookform/resolvers', 'socket.io-client'],
+          'vendor-ui': [
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-avatar',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-label',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-select',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+          ],
+          'vendor-maps': ['mapbox-gl'],
+          'vendor-charts': ['recharts'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
 }));
