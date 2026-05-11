@@ -325,6 +325,9 @@ function reducer(state: State, action: Action): State {
     case "SET_AUTH":
       return { ...state, isAuthenticated: action.value };
     case "SET_ROLE":
+      if (action.role) {
+        localStorage.setItem("roundu_role", action.role);
+      }
       return { ...state, role: action.role };
     case "UPDATE_USER":
       return { ...state, user: { ...state.user, ...action.user } };
