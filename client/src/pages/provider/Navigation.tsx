@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import api from "@/lib/api";
+import { socket } from "@/lib/socket";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -15,6 +16,7 @@ const Navigation = () => {
   const [booking, setBooking] = useState<any>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const providerMarker = useRef<mapboxgl.Marker | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(true);
   const [steps, setSteps] = useState<any[]>([]);
@@ -41,22 +43,46 @@ const Navigation = () => {
   }, [id, providerRequests, user.id]);
 
   useEffect(() => {
-    // Get current location
-    navigator.geolocation.getCurrentPosition(
+    if (!id) return;
+
+    // Join job-scoped socket room so location updates are scoped to this job
+    socket.emit('join_job_room', { jobId: id });
+
+    // Watch GPS position continuously
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+        setCurrentLocation(coords);
         setLocating(false);
+
+        // Move the provider marker on the map
+        if (providerMarker.current) {
+          providerMarker.current.setLngLat(coords);
+        }
+
+        // Broadcast location to customer via server room relay
+        socket.emit('provider_location_update', {
+          jobId: id,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
       },
-      (error) => {
-        console.error("Error getting location:", error);
+      (err) => {
+        console.error("Error getting location:", err);
         setError("Failed to get GPS location. Using default location.");
         setTimeout(() => setError(""), 3000);
         // Fallback to Chennai coordinates
-        setCurrentLocation([80.27, 13.08]);
+        const fallback: [number, number] = [80.27, 13.08];
+        setCurrentLocation(fallback);
         setLocating(false);
-      }
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
-  }, []);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!mapContainer.current || !currentLocation || !booking) return;
@@ -74,8 +100,8 @@ const Navigation = () => {
     map.current.on('load', async () => {
       if (!map.current) return;
 
-      // Add markers
-      new mapboxgl.Marker({ color: 'blue' })
+      // Add markers — store the provider (blue) marker in a ref so watchPosition can move it
+      providerMarker.current = new mapboxgl.Marker({ color: 'blue' })
         .setLngLat(currentLocation)
         .addTo(map.current);
 

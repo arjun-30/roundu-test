@@ -4,6 +4,6 @@ import { SOCKET_URL } from "@/config/env";
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
-  transports: ["polling", "websocket"],
+  transports: ["websocket"],  // websocket-only: Railway has no sticky sessions for polling
   withCredentials: true,
 });

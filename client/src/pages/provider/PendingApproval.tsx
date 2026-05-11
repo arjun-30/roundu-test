@@ -38,7 +38,7 @@ const PendingApproval = () => {
       </div>
 
       <div className="space-y-4 max-w-[320px]">
-        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-2">{notification}</div>}
+        {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold mb-2">{notification}</div>}
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-2">{error}</div>}
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight animate-fade-in">
           Verification <br /><span className="text-accent">In Progress</span>

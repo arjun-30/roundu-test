@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, Navigation } from 'lucide-react';
 import { loadMap, geocode, reverseGeocode, MapInstance, LatLng } from '@/lib/mapProvider';
-import { toast } from 'sonner';
 
 interface HybridMapProps {
   onLocationSelect?: (location: { lat: number; lng: number; address: string }) => void;
@@ -93,7 +92,6 @@ const HybridMap: React.FC<HybridMapProps> = ({
       },
       (error) => {
         console.error("Error getting location:", error);
-        toast.error("Failed to get GPS location.");
       }
     );
   };
@@ -103,7 +101,7 @@ const HybridMap: React.FC<HybridMapProps> = ({
       {/* Search Bar */}
       <div className="absolute top-4 left-4 right-4 z-10 animate-fade-in">
         <div className="relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
             <Search size={18} />
           </div>
           <input

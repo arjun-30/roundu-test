@@ -6,6 +6,7 @@ import userRouter from './user.routes';
 import providerRouter from './provider.routes';
 import bookingRouter from './booking.routes';
 import paymentRouter from './payment.routes';
+import uploadRouter from './upload.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/bookings', bookingRouter);
 router.use('/payments', paymentRouter);
 router.use('/tracking', trackingRouter);
 router.use('/referrals', referralRouter);
+router.use('/upload', uploadRouter);
 
 export default router;

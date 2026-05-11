@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
@@ -7,8 +7,19 @@ import { socket } from "@/lib/socket";
 
 const Job = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id = "" } = useParams();
   const { providerRequests, dispatch } = useApp();
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/provider/profile");
+    } else if (location.state?.from === "jobs") {
+      navigate("/provider/jobs");
+    } else {
+      navigate("/provider");
+    }
+  };
   const job = providerRequests.find((r) => r.id === id);
 
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false); // kept for future use
@@ -62,7 +73,6 @@ const Job = () => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
     socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
     showNotification("Customer notified that you are on the way!");
-    setTimeout(() => navigate(`/provider/navigation/${job.id}`), 1000);
   };
 
   const markArrived = () => {
@@ -89,11 +99,17 @@ const Job = () => {
   };
 
   const openNavigation = () => {
-    const destination = (job.lat && job.lng)
-      ? `${job.lat},${job.lng}`
-      : encodeURIComponent(job.address);
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-    window.open(url, "_blank");
+    let url = '';
+    if ((job as any).lat && (job as any).lng) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${(job as any).lat},${(job as any).lng}&travelmode=driving`;
+    } else if (job.address) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}&travelmode=driving`;
+    } else {
+      showNotification("No address available for navigation");
+      return;
+    }
+    // '_system' opens Google Maps app on Android (Capacitor)
+    window.open(url, '_system');
   };
 
   const renderActionBar = () => {
@@ -119,7 +135,7 @@ const Job = () => {
             </div>
             <button
               onClick={openNavigation}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Navigation size={16} /> Open Navigation
             </button>
@@ -139,7 +155,7 @@ const Job = () => {
         return (
           <button
             onClick={startService}
-            className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
+            className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
           >
             <Play size={18} /> Start Service
           </button>
@@ -149,13 +165,13 @@ const Job = () => {
         const secs = elapsedSeconds % 60;
         return (
           <div className="space-y-3">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
+            <div className="bg-secondary/10 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
               <span className="text-xs font-semibold text-blue-900 flex items-center gap-1"><Timer size={14} /> Time Elapsed</span>
               <span className="text-lg font-bold text-blue-700 font-mono">{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
             </div>
             <button
               onClick={openNavigation}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Navigation size={16} /> Open Navigation
             </button>
@@ -173,14 +189,14 @@ const Job = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-28">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
-        <button onClick={() => navigate("/provider")} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
+        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">Active Job</h1>
       </div>
 
       <div className="px-5 flex-1 space-y-4">
-        {notification && <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold">
@@ -211,6 +227,22 @@ const Job = () => {
               <p className="text-xs text-foreground">{job.notes}</p>
             </>
           )}
+
+          {job.voiceNote && job.voiceNoteUrl && (
+            <>
+              <div className="h-px bg-border my-3" />
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Mic size={12} /> Voice Note from Customer
+              </p>
+              <div className="bg-primary/5 rounded-xl p-3 border border-primary/10">
+                <audio 
+                  src={job.voiceNoteUrl} 
+                  controls 
+                  className="w-full h-8 accent-primary"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <button
@@ -232,7 +264,7 @@ const Job = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border z-10">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border z-10">
         {renderActionBar()}
       </div>
 

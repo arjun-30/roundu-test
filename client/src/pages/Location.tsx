@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import HybridMap from "@/components/Maps/HybridMap";
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
 
 const Location = () => {
   const navigate = useNavigate();
@@ -10,7 +9,6 @@ const Location = () => {
 
   const handleLocationSelect = (location: { lat: number; lng: number; address: string }) => {
     dispatch({ type: "UPDATE_USER", user: { address: location.address } });
-    toast.success("Location updated!");
     navigate("/home", { replace: true });
   };
 

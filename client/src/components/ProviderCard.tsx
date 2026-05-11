@@ -27,10 +27,14 @@ const ProviderCard = ({ provider, onClick, onBook }: ProviderCardProps) => {
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-foreground text-sm">{provider.name}</h3>
           <div className="flex items-center gap-2 mt-1">
-            <div className="flex items-center gap-0.5">
-              <Star size={12} className="text-accent fill-accent" />
-              <span className="text-xs font-bold text-foreground">{provider.rating}</span>
-            </div>
+            {provider.rating === 0 ? (
+              <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded uppercase tracking-wider">New</span>
+            ) : (
+              <div className="flex items-center gap-0.5">
+                <Star size={12} className="text-accent fill-accent" />
+                <span className="text-xs font-bold text-foreground">{provider.rating}</span>
+              </div>
+            )}
             <span className="text-[10px] text-muted-foreground">({provider.reviews} reviews)</span>
           </div>
           <div className="flex items-center gap-3 mt-2">

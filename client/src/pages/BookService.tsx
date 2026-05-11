@@ -1,48 +1,60 @@
 import { useState } from "react";
-import { ArrowLeft, ImagePlus, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Volume2, Square, Play, Pause } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-
 import { getServiceById } from "@/data/mockData";
-
-const suggestions = [
-  "Switch not working",
-  "Fan repair",
-  "Water leakage",
-  "AC not cooling"
-];
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useApp } from "@/context/AppContext";
+import { uploadVoiceNote } from "@/lib/voiceUpload";
 
 const BookService = () => {
   const { serviceId = "s1" } = useParams();
   const navigate = useNavigate();
   const service = getServiceById(serviceId);
+  const { dispatch } = useApp();
   const [desc, setDesc] = useState("");
   const [scheduleType, setScheduleType] = useState<"now" | "later" | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [hasVoiceNote, setHasVoiceNote] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
-
-  const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      setHasVoiceNote(true);
-    } else {
-      setIsRecording(true);
-    }
-  };
   
-  const handleScheduleSelect = (type: "now" | "later") => {
-    if (!desc) {
-      setError("Please describe your issue first");
+  const recorder = useVoiceRecorder();
+
+  const handleScheduleSelect = async (type: "now" | "later") => {
+    if (!desc && !recorder.audioBlob) {
+      setError("Please describe your issue first (text or voice)");
       return;
     }
     setError("");
     setScheduleType(type);
     
+    let uploadedUrl: string | undefined = undefined;
+    if (recorder.audioBlob) {
+      setIsUploading(true);
+      try {
+        uploadedUrl = await uploadVoiceNote(recorder.audioBlob);
+      } catch (err) {
+        setError("Failed to upload voice note. Please try again.");
+        setIsUploading(false);
+        setScheduleType(null);
+        return;
+      }
+      setIsUploading(false);
+    }
+
+    // Save to global context
+    dispatch({ 
+      type: "SET_NOTES", 
+      notes: desc, 
+      voiceNote: !!recorder.audioBlob, 
+      voiceNoteUrl: uploadedUrl 
+    });
+    
     if (type === "later") {
       navigate("/booking/date", {
         state: {
           serviceId,
-          desc
+          desc,
+          hasVoiceNote: !!recorder.audioBlob,
+          voiceNoteUrl: uploadedUrl
         }
       });
       return;
@@ -52,78 +64,110 @@ const BookService = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#F5F6FA] font-sans">
+    <div className="min-h-[100dvh] flex flex-col bg-background font-sans pb-6">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] sticky top-0 z-20">
         <button 
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all mr-3"
+          className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all mr-3"
         >
-          <ArrowLeft size={20} className="text-gray-700" />
+          <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="text-[18px] font-extrabold text-gray-900 leading-tight">Book Service</h1>
-          <p className="text-[12px] text-blue-600 font-bold mt-0.5">{service?.label || "Electrician"}</p>
+          <h1 className="text-[18px] font-extrabold text-foreground leading-tight">Book Service</h1>
+          <p className="text-[12px] text-secondary font-bold mt-0.5">{service?.label || "Electrician"}</p>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-6">
         
-
-
         {/* Description */}
-        <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100">
-           <h2 className="text-[14px] font-extrabold text-gray-900 mb-3 block">Problem Description</h2>
-           <div className="relative">
-             <textarea
-               rows={4}
-               value={desc}
-               onChange={e => setDesc(e.target.value)}
-               placeholder="Describe your issue (e.g., switch not working, water leakage)"
-               className="w-full bg-[#F5F6FA] rounded-xl p-4 pr-12 text-[14px] font-medium text-gray-900 border-none placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-             />
-             <button 
-               onClick={toggleRecording}
-               className={`absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-600 text-white'}`}
-             >
-               <Mic size={16} />
-             </button>
-           </div>
-           {error && <p className="text-red-500 text-xs mt-2 ml-1">{error}</p>}
+        <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
+           <h2 className="text-[14px] font-extrabold text-foreground mb-3 block">Problem Description</h2>
+           
+           {!recorder.isRecording && !recorder.audioBlob && (
+             <div className="relative">
+               <textarea
+                 rows={4}
+                 value={desc}
+                 onChange={e => setDesc(e.target.value)}
+                 placeholder="Describe your issue (e.g., switch not working, water leakage)"
+                 className="w-full bg-background rounded-xl p-4 pr-12 text-[14px] font-medium text-foreground border-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+               />
+               <button 
+                 onClick={recorder.startRecording}
+                 className="absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-white"
+               >
+                 <Mic size={16} />
+               </button>
+             </div>
+           )}
 
-           {hasVoiceNote && (
-             <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-center justify-between border border-blue-100 animate-fade-in">
+           {recorder.isRecording && (
+             <div className="mt-2 p-4 bg-red-50 rounded-xl flex items-center justify-between border border-red-100 animate-pulse">
                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                      <Volume2 size={14} />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-[12px] font-bold text-gray-900">Voice Note</span>
-                      <span className="text-[10px] text-blue-600 font-medium">0:12 • Recorded</span>
-                   </div>
+                   <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                   <span className="text-[14px] font-bold text-red-600">Recording... {recorder.formatTime(recorder.duration)}</span>
                 </div>
                 <button 
-                  onClick={() => setHasVoiceNote(false)}
-                  className="p-2 text-gray-400 hover:text-red-500"
+                  onClick={recorder.stopRecording}
+                  className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200"
                 >
-                   <Trash2 size={16} />
+                   <Square size={14} fill="currentColor" />
                 </button>
              </div>
            )}
 
+           {recorder.audioBlob && !recorder.isRecording && (
+             <div className="mt-2 p-3 bg-blue-50 rounded-xl flex items-center justify-between border border-blue-100 animate-fade-in">
+                <div className="flex items-center gap-3">
+                   <button 
+                     onClick={recorder.playAudio}
+                     className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white active:scale-95 transition-transform shadow-md"
+                   >
+                      {recorder.isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
+                   </button>
+                   <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-foreground">Voice Note</span>
+                      <span className="text-[11px] text-primary font-medium">
+                        {recorder.isPlaying 
+                          ? `${recorder.formatTime(recorder.playbackTime)} / ${recorder.formatTime(recorder.duration)}` 
+                          : recorder.formatTime(recorder.duration)}
+                      </span>
+                   </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button 
+                    onClick={recorder.deleteRecording}
+                    className="p-2.5 text-muted-foreground hover:text-red-500 bg-white rounded-full shadow-sm"
+                  >
+                     <Trash2 size={16} />
+                  </button>
+                </div>
+             </div>
+           )}
+           
+           {(error || recorder.error) && (
+             <p className="text-xs text-red-500 mt-2 ml-1">{error || recorder.error}</p>
+           )}
+
+           {isUploading && (
+             <p className="text-xs text-primary mt-2 ml-1 animate-pulse">Uploading voice note...</p>
+           )}
         </div>
 
         {/* Address */}
         <div>
-           <h2 className="text-[14px] font-extrabold text-gray-900 mb-3 px-1 block">Service Location</h2>
-           <div className="bg-white rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                 <MapPin size={18} className="text-blue-600" />
+           <h2 className="text-[14px] font-extrabold text-foreground mb-3 px-1 block">Service Location</h2>
+           <div className="bg-white rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                 <MapPin size={18} className="text-secondary" />
               </div>
               <div className="flex-1">
-                 <h3 className="font-bold text-[14px] text-gray-900">Home</h3>
-                 <p className="text-[12px] text-gray-500 font-medium line-clamp-1 mt-0.5">123, Gandhi Nagar, Chennai</p>
+                 <h3 className="font-bold text-[14px] text-foreground">Home</h3>
+                 <p className="text-[12px] text-muted-foreground font-medium line-clamp-1 mt-0.5">123, Gandhi Nagar, Chennai</p>
               </div>
-              <button className="text-[11px] uppercase tracking-wider font-extrabold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg active:scale-95 transition-all">
+              <button className="text-[11px] uppercase tracking-wider font-extrabold text-secondary bg-secondary/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all">
                 Change
               </button>
            </div>
@@ -131,7 +175,7 @@ const BookService = () => {
 
         {/* Schedule */}
         <div>
-           <h2 className="text-[14px] font-extrabold text-gray-900 mb-3 px-1 block">Schedule Service</h2>
+           <h2 className="text-[14px] font-extrabold text-foreground mb-3 px-1 block">Schedule Service</h2>
            <div className="flex gap-3">
               <button 
                 onClick={() => handleScheduleSelect("now")}
@@ -142,7 +186,7 @@ const BookService = () => {
               </button>
               <button 
                 onClick={() => handleScheduleSelect("later")}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[16px] border-2 transition-all ${scheduleType === 'later' ? 'bg-blue-600 border-gray-900 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]' : 'bg-white border-gray-100 text-gray-600 shadow-sm hover:border-gray-200'}`}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-[16px] border-2 transition-all ${scheduleType === 'later' ? 'bg-primary border-gray-900 text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]' : 'bg-white border-border text-gray-600 shadow-sm hover:border-gray-200'}`}
               >
                 <Clock size={18} />
                 <span className="font-bold text-[14px]">Schedule</span>
@@ -150,11 +194,9 @@ const BookService = () => {
            </div>
         </div>
 
-
-
         <div className="flex gap-4 pt-2 justify-center">
             <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-green-700 bg-green-50 px-3 py-1.5 rounded-[8px]"><ShieldCheck size={14}/> Verified Pros</span>
-            <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-blue-700 bg-blue-50 px-3 py-1.5 rounded-[8px]"><Clock size={14}/> Fast Arrival</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-blue-700 bg-secondary/10 px-3 py-1.5 rounded-[8px]"><Clock size={14}/> Fast Arrival</span>
         </div>
 
       </div>

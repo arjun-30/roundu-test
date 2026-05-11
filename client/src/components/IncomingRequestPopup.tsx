@@ -97,11 +97,29 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: Inco
         <div className="p-6">
           <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
           {isBroadcast ? (
-            <p className="text-sm font-medium text-foreground italic">"{request.notes || "No notes provided."}"</p>
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground italic">"{request.notes || "No notes provided."}"</p>
+              {request.voiceNoteUrl && (
+                <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Voice Note Attached
+                  </div>
+                  <audio src={request.voiceNoteUrl} controls className="w-full h-8" />
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <p className="text-3xl font-extrabold text-emerald-600">₹{request.price} - {request.price + 200}</p>
               <p className="text-xs text-muted-foreground mt-1">Final amount depends on work complexity</p>
+              {request.voiceNoteUrl && (
+                <div className="mt-3 bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Voice Note Attached
+                  </div>
+                  <audio src={request.voiceNoteUrl} controls className="w-full h-8" />
+                </div>
+              )}
             </>
           )}
         </div>

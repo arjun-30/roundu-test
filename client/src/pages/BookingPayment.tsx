@@ -15,6 +15,7 @@ const BookingPayment = () => {
     selectedTime = "10:00 AM", 
     bookingNotes,
     bookingVoiceNote,
+    bookingVoiceNoteUrl,
     bookings,
     user,
     dispatch,
@@ -98,6 +99,7 @@ const BookingPayment = () => {
               price: total,
               notes: bookingNotes,
               voice_note: bookingVoiceNote, // Pass the boolean flag
+              voice_note_url: bookingVoiceNoteUrl || null,
               payment_id: response.razorpay_payment_id,
             };
 
@@ -183,7 +185,7 @@ const BookingPayment = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
         <button
           onClick={handleConfirm}
           disabled={loading}

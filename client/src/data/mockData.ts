@@ -44,6 +44,7 @@ export interface Booking {
   review?: string;
   paid?: boolean;
   voiceNote?: boolean;
+  voiceNoteUrl?: string;
 }
 
 export interface ProviderRequest {
@@ -57,6 +58,11 @@ export interface ProviderRequest {
   status: "pending" | "accepted" | "rejected" | "assigned" | "on_the_way" | "arrived" | "in_progress" | "completed" | "cancelled";
   notes?: string;
   voiceNote?: boolean;
+  voiceNoteUrl?: string;
+  photos?: string[];
+  video?: boolean | string;
+  customerRating?: number;
+  distanceKm?: number;
   lat?: number;
   lng?: number;
   quote?: number;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
@@ -16,7 +16,7 @@ import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts } = useApp();
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications } = useApp() as any;
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
@@ -25,6 +25,15 @@ const Dashboard = () => {
   const [quotePrice, setQuotePrice] = useState("");
   const [quoteEta, setQuoteEta] = useState("15");
   
+  const [showPip, setShowPip] = useState(false);
+  const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
+  const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
+
+  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+  // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
+  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
+  const seenBroadcastIds = useRef(new Set<string>());
+
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
   const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
@@ -32,12 +41,6 @@ const Dashboard = () => {
   const toggleOnline = () => {
     dispatch({ type: "SET_ONLINE", value: !isOnline });
   };
-
-  const [showPip, setShowPip] = useState(false);
-
-  const isCritical = providerStats.rating < 4.0 || providerStats.responseRate < 50;
-
-  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
 
   // Alert provider when a new direct request arrives
   useEffect(() => {
@@ -53,15 +56,49 @@ const Dashboard = () => {
     };
   }, [dispatch]);
 
+  // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
   useEffect(() => {
-    if (isCritical) {
-      setShowPip(true);
+    const handleBroadcast = (broadcast: any) => {
+      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
+      if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+      seenBroadcastIds.current.add(broadcast.broadcastId);
+      setActiveBroadcast(broadcast);
+    };
+    socket.on("incoming_broadcast", handleBroadcast);
+    return () => { socket.off("incoming_broadcast", handleBroadcast); };
+  }, []);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (providerStats.rating === 0) {
+      const hasSeenNewSignup = localStorage.getItem("has_seen_new_signup");
+      if (!hasSeenNewSignup) {
+        localStorage.setItem("has_seen_new_signup", "true");
+        setPipType("new_signup");
+        setShowPip(true);
+      }
+    } else {
+      if (providerStats.rating < 3.5) {
+        localStorage.setItem("is_in_pip", "true");
+      } else if (providerStats.rating >= 3.7) {
+        localStorage.setItem("is_in_pip", "false");
+      }
+
+      const isInPip = localStorage.getItem("is_in_pip") === "true";
+      if (isInPip) {
+        const lastSeenLowRating = localStorage.getItem("last_seen_low_rating");
+        if (lastSeenLowRating !== today) {
+          localStorage.setItem("last_seen_low_rating", today);
+          setPipType("low_rating");
+          setShowPip(true);
+        }
+      }
     }
-  }, [isCritical]);
+  }, [providerStats.rating]);
 
   useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
-      dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: data.broadcastId });
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
     };
     socket.on("job_taken", handleJobTaken);
     return () => {
@@ -87,7 +124,7 @@ const Dashboard = () => {
       
       // Add to providerRequests so Job.tsx can find it
       dispatch({ 
-        type: "ADD_REQUEST", 
+        type: "ADD_PROVIDER_REQUEST", 
         request: {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
@@ -99,7 +136,6 @@ const Dashboard = () => {
           date: data.date || new Date().toISOString().slice(0, 10),
           time: data.time || "Now",
           price: data.price || 0,
-          quote: data.price || 0,
           notes: "",
         } 
       });
@@ -127,45 +163,72 @@ const Dashboard = () => {
       reviews: 0
     });
     
-    dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: quotingBroadcast.broadcastId });
+    dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
+    setActiveBroadcast(null);
     setQuotePrice("");
   };
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
       {/* PIP Modal */}
-      {isCritical && showPip && (
+      {showPip && pipType && (
         <PIPModal 
-          reasons={[
-            providerStats.rating < 4.0 ? "Low Customer Rating (< 4.0)" : "",
-            providerStats.responseRate < 50 ? "Critically Low Response Rate (< 50%)" : ""
-          ].filter(Boolean)} 
-          onCommit={() => {
+          type={pipType}
+          rating={providerStats.rating}
+          onClose={pipType === "low_rating" ? () => {
+            const today = new Date().toISOString().slice(0, 10);
+            localStorage.setItem("last_seen_low_rating", today);
             setShowPip(false);
-            dispatch({ type: "UPDATE_STATS", patch: { rating: 4.5, responseRate: 90 } });
+          } : undefined}
+          onCommit={() => {
+            if (pipType === "new_signup") {
+              localStorage.setItem("has_seen_new_signup", "true");
+            } else {
+              const today = new Date().toISOString().slice(0, 10);
+              localStorage.setItem("last_seen_low_rating", today);
+            }
+            setShowPip(false);
           }}
         />
       )}
+
+      {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
+      {activeBroadcast && !quotingBroadcast && (
+        <IncomingRequestPopup
+          request={activeBroadcast}
+          isBroadcast={true}
+          onAccept={() => setQuotingBroadcast(activeBroadcast)}
+          onReject={() => setActiveBroadcast(null)}
+        />
+      )}
+
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
+      <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
         <div>
           <p className="text-xs text-muted-foreground font-medium">Provider Dashboard</p>
           <h1 className="text-xl font-extrabold text-foreground mt-0.5">Hi, {user.name.split(" ")[0]}</h1>
         </div>
         <div className="flex gap-2 items-center">
           {/* Online/Offline Toggle */}
-          <div className="flex items-center gap-2 mr-2">
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
+          <div className="flex flex-col items-center gap-1 mr-2 mt-1">
             <button 
               onClick={toggleOnline}
               className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${isOnline ? 'bg-success' : 'bg-muted-foreground/30'}`}
             >
               <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
           </div>
+          <button 
+            onClick={() => navigate("/role")}
+            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
+            title="Switch Side"
+          >
+            <User size={18} className="text-foreground" />
+          </button>
           <button 
             onClick={() => navigate("/provider/profile")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
@@ -174,22 +237,12 @@ const Dashboard = () => {
             <User size={18} className="text-foreground" />
           </button>
           <button 
-            onClick={() => {
-              dispatch({ type: "LOGOUT" });
-              navigate("/login", { replace: true });
-            }}
-            className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center relative hover:bg-red-100 transition-colors"
-            title="Log Out"
-          >
-            <LogOut size={18} className="text-red-500" />
-          </button>
-          <button 
             onClick={() => navigate("/notifications")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
             title="Notifications"
           >
             <Bell size={18} className="text-foreground" />
-            {pending.length > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
+            {(pending.length > 0 || notifications.length > 0) && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
         </div>
       </div>
@@ -198,7 +251,7 @@ const Dashboard = () => {
         {/* Dynamic Warning Banner */}
         {(() => {
           let warning = null;
-          if (providerStats.rating < 4.0 || providerStats.responseRate < 50) {
+          if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
             warning = {
               type: "critical",
               title: "Account at Risk",
@@ -209,7 +262,7 @@ const Dashboard = () => {
               subtext: "text-red-600",
               iconColor: "text-red-500"
             };
-          } else if (providerStats.responseRate < 90) {
+          } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
             warning = {
               type: "warning",
               title: "Response Rate Low",
@@ -220,7 +273,7 @@ const Dashboard = () => {
               subtext: "text-orange-600",
               iconColor: "text-orange-500"
             };
-          } else if (providerStats.rating < 4.5) {
+          } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
             warning = {
               type: "caution",
               title: "Rating Dropping",
@@ -263,27 +316,35 @@ const Dashboard = () => {
                   <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
                     <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-[#F59E0B] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 shadow-sm">
                         {service && <service.icon size={18} className="text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[#030916]">{b.customerName}</p>
+                        <p className="text-sm font-bold text-foreground">{b.customerName}</p>
                         <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
-                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
-                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                           <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
+                           <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
                         </div>
                         {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
+                        {b.voiceNoteUrl && (
+                          <div className="mt-2 bg-white/50 rounded-lg p-2 border border-[#FFD966]/50">
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
+                               <Mic size={10} /> Voice Note Attached
+                             </div>
+                             <audio src={b.voiceNoteUrl} controls className="w-full h-7" />
+                          </div>
+                        )}
                         
                         <div className="flex gap-2 mt-3">
                           <button 
                             onClick={() => setQuotingBroadcast(b)}
-                            className="flex-1 py-2 bg-[#F59E0B] text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                            className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
                           >
                             Provide Quote
                           </button>
                           <button 
-                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: b.broadcastId })}
+                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
                             className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
                           >
                             Skip
@@ -299,7 +360,7 @@ const Dashboard = () => {
         )}
 
         {/* Stats Row */}
-        <div className="px-5 mb-6">
+        <div className="px-5 mb-6 mt-6">
           <div className="flex overflow-x-auto pb-2 gap-3 no-scrollbar -mx-5 px-5">
             <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[130px] shadow-card flex-shrink-0">
               <div className="flex items-center gap-1.5 mb-2 text-emerald-600">
@@ -339,7 +400,7 @@ const Dashboard = () => {
               <Lightbulb size={20} className="text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#030916] mb-1">Smart Suggestion</p>
+              <p className="text-sm font-bold text-foreground mb-1">Smart Suggestion</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Stay online to receive real-time job requests and increase your earnings.
               </p>
@@ -359,7 +420,7 @@ const Dashboard = () => {
                 <ClipboardCheck size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Jobs</p>
+                <p className="text-sm font-bold text-foreground">My Jobs</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
               </div>
             </button>
@@ -372,7 +433,7 @@ const Dashboard = () => {
                 <Wallet size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Earnings</p>
+                <p className="text-sm font-bold text-foreground">My Earnings</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">₹{earnings} earned</p>
               </div>
             </button>
@@ -385,7 +446,7 @@ const Dashboard = () => {
                 <Images size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Portfolio</p>
+                <p className="text-sm font-bold text-foreground">My Portfolio</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Showcase work</p>
               </div>
             </button>
@@ -398,7 +459,7 @@ const Dashboard = () => {
                 <FileText size={22} />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#030916]">My Documents</p>
+                <p className="text-sm font-bold text-foreground">My Documents</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">KYC & Verification</p>
               </div>
             </button>
@@ -484,7 +545,7 @@ const Dashboard = () => {
                 <button
                   key={r.id}
                   onClick={() => navigate(`/provider/job/${r.id}`)}
-                  className="w-full bg-[#152E4B] rounded-2xl p-4 text-left active:scale-[0.98] shadow-md flex items-center justify-between"
+                  className="w-full bg-primary rounded-2xl p-4 text-left active:scale-[0.98] shadow-md flex items-center justify-between"
                 >
                   <div>
                     <p className="text-xs text-blue-200/80 mb-0.5">{r.date} at {r.time}</p>
@@ -608,7 +669,19 @@ const Dashboard = () => {
                         </div>
                       </div>
                     )}
-                    {selectedJob.voiceNote && (
+                    {selectedJob.voiceNote && selectedJob.voiceNoteUrl && (
+                      <div className="w-full bg-primary/5 rounded-xl p-3 border border-primary/10 flex flex-col gap-2 shadow-sm min-w-[200px]">
+                        <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-wider">
+                          <Mic size={14} /> Voice Note
+                        </div>
+                        <audio 
+                          src={selectedJob.voiceNoteUrl} 
+                          controls 
+                          className="w-full h-8"
+                        />
+                      </div>
+                    )}
+                    {selectedJob.voiceNote && !selectedJob.voiceNoteUrl && (
                       <div className="w-32 h-24 rounded-xl bg-muted flex-shrink-0 flex items-center justify-center border border-border flex-col gap-1 shadow-sm">
                         <Mic size={20} className="text-muted-foreground/60" />
                         <span className="text-[10px] text-muted-foreground font-semibold">Voice Note</span>
@@ -687,7 +760,7 @@ const Dashboard = () => {
           }}
           isBroadcast={true}
           onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", broadcastId: liveBroadcasts[0].broadcastId })}
+          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
         />
       )}
 
@@ -695,7 +768,7 @@ const Dashboard = () => {
       {quotingBroadcast && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 animate-fade-in backdrop-blur-sm">
           <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
-            <h3 className="text-lg font-bold text-[#030916] mb-1">Submit Your Quote</h3>
+            <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
             
             <div className="space-y-4">

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Phone, MessageCircle, Check, IndianRupee, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, MessageCircle, Check, IndianRupee, CheckCircle2, XCircle, Navigation } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { getProviderById } from "@/data/mockData";
 
 const stages = ["assigned", "on_the_way", "arrived", "in_progress", "completed"] as const;
 const stageLabels: Record<string, { title: string; subtitle: string; color: string }> = {
-  assigned:    { title: "Provider Assigned",     subtitle: "Your provider has been confirmed",     color: "bg-blue-500" },
+  assigned:    { title: "Provider Assigned",     subtitle: "Your provider has been confirmed",     color: "bg-secondary/100" },
   on_the_way:  { title: "On the Way",            subtitle: "Your provider is heading to you",      color: "bg-indigo-500" },
   arrived:     { title: "Arrived",               subtitle: "Your provider has reached you",         color: "bg-orange-500" },
   in_progress: { title: "Service in Progress",   subtitle: "Work is being done",                   color: "bg-primary" },
@@ -28,6 +28,16 @@ const Tracking = () => {
   useEffect(() => {
     const t = setInterval(() => setEta((e) => Math.max(0, e - 1)), 60000);
     return () => clearInterval(t);
+  }, []);
+
+  // Listen for live provider location updates (ETA update only, no map)
+  useEffect(() => {
+    const handleLocationUpdate = (data: { lat: number; lng: number }) => {
+      // Could compute real distance here if needed
+      console.log("[tracking] provider location:", data);
+    };
+    socket.on('provider_location_update', handleLocationUpdate);
+    return () => { socket.off('provider_location_update', handleLocationUpdate); };
   }, []);
 
   // Listen for real-time status updates from provider
@@ -79,7 +89,8 @@ const Tracking = () => {
   }
 
   const handleCall = () => {
-    toast.info("Connecting via secure masked number...");
+    setNotification("Connecting via secure masked number...");
+    setTimeout(() => setNotification(""), 3000);
     window.open("tel:+911234567890", "_self");
   };
 
@@ -102,31 +113,26 @@ const Tracking = () => {
 
       <div className="px-5 flex-1 space-y-5 overflow-y-auto">
         {notification && (
-          <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold shadow-sm animate-fade-in text-center">
+          <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold shadow-sm animate-fade-in text-center">
             {notification}
           </div>
         )}
 
-        {/* Map / ETA card */}
-        <div className="relative w-full h-44 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-border overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
-              backgroundSize: "20px 20px",
-            }}
-          />
-          <div className="relative text-center">
-            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center mx-auto mb-2 animate-pulse shadow-card">
-              <MapPin size={20} className="text-primary-foreground" />
-            </div>
-            <p className="text-xs font-bold text-foreground">
-              {currentStatus === "assigned" ? `ETA: ${eta} min` :
-               currentStatus === "on_the_way" ? "Provider is on the way 🚗" :
-               currentStatus === "arrived" ? "Provider has arrived 📍" :
-               currentStatus === "in_progress" ? "Service in progress 🔧" :
-               currentStatus === "completed" ? "Service complete ✅" : `ETA: ${eta} min`}
-            </p>
+        {/* Status card — replaces Mapbox map (no API key needed) */}
+        <div className="w-full rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-primary/10 to-primary/5 p-5 flex flex-col items-center gap-2">
+          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+            <Navigation size={24} className="text-primary animate-pulse" />
           </div>
+          <p className="text-sm font-bold text-foreground">
+            {currentStatus === "assigned"   ? `Provider assigned · ETA ${eta} min` :
+             currentStatus === "on_the_way" ? "Provider is on the way 🚗" :
+             currentStatus === "arrived"    ? "Provider has arrived 📍" :
+             currentStatus === "in_progress"? "Service in progress 🔧" :
+             currentStatus === "completed"  ? "Service complete ✅" : `ETA: ${eta} min`}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {(booking as any).address || "Your location"}
+          </p>
         </div>
 
         {/* Provider card */}
@@ -139,7 +145,14 @@ const Tracking = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground">{provider.name}</p>
-              <p className="text-[10px] text-muted-foreground">{provider.rating} ★ · {provider.experienceYrs} yrs experience</p>
+              <p className="text-[10px] text-muted-foreground">
+                {provider.rating === 0 ? (
+                  <span className="bg-yellow-100 text-yellow-700 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mr-1">New</span>
+                ) : (
+                  `${provider.rating} ★ · `
+                )}
+                {provider.experienceYrs} yrs experience
+              </p>
             </div>
             <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <Phone size={16} className="text-primary" />
@@ -201,7 +214,7 @@ const Tracking = () => {
       </div>
 
       {currentStatus === "completed" && (
-        <div className="absolute bottom-0 left-0 right-0 p-5 bg-card border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
           <button
             onClick={() => {
               if (!(booking as any).paid) {

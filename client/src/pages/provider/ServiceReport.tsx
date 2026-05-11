@@ -59,7 +59,7 @@ const ServiceReport = () => {
       </div>
 
       <div className="p-5 flex-1">
-        {notification && <div className="mb-4 bg-blue-50 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
+        {notification && <div className="mb-4 bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="mb-4 bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Root Cause */}
@@ -183,7 +183,7 @@ const ServiceReport = () => {
         </form>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-5 bg-white border-t border-border shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
         <button
           onClick={handleSubmit}
           disabled={description.length < 20 || !rootCause}

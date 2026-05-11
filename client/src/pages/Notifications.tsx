@@ -11,15 +11,15 @@ const Notifications = () => {
       case "booking": return <CalendarCheck size={18} className="text-blue-500" />;
       case "offer": return <Gift size={18} className="text-amber-500" />;
       case "payment": return <CheckCircle2 size={18} className="text-green-500" />;
-      default: return <Bell size={18} className="text-gray-500" />;
+      default: return <Bell size={18} className="text-muted-foreground" />;
     }
   };
   const getIconBg = (type: string) => {
     switch(type) {
-      case "booking": return "bg-blue-50 border-blue-100";
+      case "booking": return "bg-secondary/10 border-blue-100";
       case "offer": return "bg-amber-50 border-amber-100";
       case "payment": return "bg-green-50 border-green-100";
-      default: return "bg-gray-50 border-gray-100";
+      default: return "bg-background border-border";
     }
   };
 
@@ -32,22 +32,22 @@ const Notifications = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-[#F5F6FA] pb-24 font-sans">
+    <div className="min-h-full flex flex-col bg-background pb-24 font-sans">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all">
-            <ArrowLeft size={20} className="text-[#152E4B]" />
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all">
+            <ArrowLeft size={20} className="text-primary" />
           </button>
-          <h1 className="text-xl font-extrabold text-[#030916]">Notifications</h1>
+          <h1 className="text-xl font-extrabold text-foreground">Notifications</h1>
         </div>
-        <button className="text-[11px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors uppercase tracking-wider">
+        <button className="text-[11px] font-extrabold text-secondary bg-secondary/10 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors uppercase tracking-wider">
           Mark all read
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 space-y-3">
         {notifications.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 font-medium">
+          <div className="text-center py-10 text-muted-foreground font-medium">
             <Bell size={40} className="mx-auto mb-3 opacity-30" />
             <p>No new notifications</p>
           </div>
@@ -60,8 +60,8 @@ const Notifications = () => {
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-[15px] font-extrabold text-gray-900">Alert</h3>
-                    <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">{formatTime(n.ts)}</span>
+                    <h3 className="text-[15px] font-extrabold text-foreground">Alert</h3>
+                    <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider">{formatTime(n.ts)}</span>
                   </div>
                   <p className="text-[13px] leading-snug mt-0.5 text-gray-600 font-semibold">{n.text}</p>
                 </div>

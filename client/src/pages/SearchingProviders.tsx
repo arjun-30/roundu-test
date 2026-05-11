@@ -40,8 +40,9 @@ const SearchingProviders = () => {
   const [isLongWait, setIsLongWait] = useState(false);
   const [error, setError] = useState("");
 
-  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes } = useApp();
+  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote } = useApp();
   const hasTriggered = useRef(false);
+  const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
 
   // Fetch Customer Location
   useEffect(() => {
@@ -69,12 +70,6 @@ const SearchingProviders = () => {
     };
   };
 
-  const broadcastIdRef = useRef(sessionStorage.getItem("current_broadcast_id") || `bc-${Date.now()}`);
-  
-  useEffect(() => {
-    sessionStorage.setItem("current_broadcast_id", broadcastIdRef.current);
-  }, []);
-
   // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
   useEffect(() => {
     if (hasTriggered.current) return;
@@ -89,7 +84,9 @@ const SearchingProviders = () => {
       address: user.address || "Current Location",
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      notes: "Quick fix request from customer"
+      notes: bookingNotes || "Quick fix request from customer",
+      voiceNoteUrl: bookingVoiceNoteUrl,
+      voiceNote: bookingVoiceNote
     };
 
     const doEmit = () => {
@@ -113,7 +110,7 @@ const SearchingProviders = () => {
       clearInterval(interval);
       socket.off("connect", doEmit);
     };
-  }, [serviceId, user, dispatch]);
+  }, [serviceId, user, dispatch, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote]);
 
   const handleAcceptQuote = async (quote: any) => {
     if (!user || !user.id) {
@@ -133,8 +130,9 @@ const SearchingProviders = () => {
       lat: currentLocation?.lat,
       lng: currentLocation?.lng,
       price: quote.price,
-      notes: "Quick fix requested",
-      voice_note: false,
+      notes: bookingNotes || "Quick fix requested",
+      voice_note: bookingVoiceNote,
+      voice_note_url: bookingVoiceNoteUrl || null,
     };
 
     try {
@@ -175,17 +173,17 @@ const SearchingProviders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF2F7] flex flex-col font-['DM_Sans',sans-serif] overflow-hidden select-none">
+    <div className="min-h-screen bg-background flex flex-col font-['DM_Sans',sans-serif] overflow-hidden select-none">
 
       {/* Top Bar */}
       <div className="px-5 pt-6 pb-2 flex items-center gap-4 relative z-20">
         <button
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100 active:scale-90 transition-transform"
+          className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-border active:scale-90 transition-transform"
         >
-          <ArrowLeft size={20} className="text-[#152E4B]" />
+          <ArrowLeft size={20} className="text-primary" />
         </button>
-        <h1 className="text-[17px] font-[600] text-[#030916]">Finding your specialist</h1>
+        <h1 className="text-[17px] font-[600] text-foreground">Finding your specialist</h1>
       </div>
 
       {/* Map Area */}
@@ -270,7 +268,7 @@ const SearchingProviders = () => {
         {/* Found Counter Badge (Top Right) */}
         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md border border-[#152E4B1A] py-1.5 px-3.5 rounded-[12px] shadow-sm z-10 animate-fade-in flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[11px] font-[600] text-[#152E4B] tracking-tight">{foundCount} pros found</span>
+          <span className="text-[11px] font-[600] text-primary tracking-tight">{foundCount} pros found</span>
         </div>
 
         {/* Floating Provider Dots Layer (REAL TIME) */}
@@ -316,7 +314,7 @@ const SearchingProviders = () => {
             </div>
           )}
 
-          <h2 className="text-[18px] font-[600] text-[#030916] mb-1.5">Finding nearby professionals</h2>
+          <h2 className="text-[18px] font-[600] text-foreground mb-1.5">Finding nearby professionals</h2>
 
           <div className="h-6 flex items-center justify-center overflow-hidden w-full relative mb-4">
             <p
@@ -340,19 +338,23 @@ const SearchingProviders = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-[#152E4B] border border-[#E1E8EF]">
+                      <div className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF]">
                         {q.providerAvatar}
                       </div>
                       <div>
-                        <h4 className="text-[15px] font-[600] text-[#030916]">{q.providerName}</h4>
+                        <h4 className="text-[15px] font-[600] text-foreground">{q.providerName}</h4>
                         <div className="flex items-center gap-2 text-[11px] text-[#7A8BA0] mt-0.5">
-                          <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                          {q.rating === 0 ? (
+                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-[600] text-[10px] uppercase">New</span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                          )}
                           <span>• {q.distanceKm}km away</span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[18px] font-extrabold text-[#152E4B]">₹{q.price}</p>
+                      <p className="text-[18px] font-extrabold text-primary">₹{q.price}</p>
                       <p className="text-[10px] text-green-600 font-[600] bg-green-50 px-1.5 py-0.5 rounded-md mt-1 inline-block">ETA: {q.etaMin} mins</p>
                     </div>
                   </div>
@@ -361,7 +363,7 @@ const SearchingProviders = () => {
                       e.stopPropagation();
                       handleAcceptQuote(q);
                     }}
-                    className="w-full bg-[#152E4B] text-white py-2.5 rounded-xl text-[13px] font-[600] mt-1 active:scale-95 transition-transform"
+                    className="w-full bg-primary text-white py-2.5 rounded-xl text-[13px] font-[600] mt-1 active:scale-95 transition-transform"
                   >
                     Accept Quote
                   </button>
@@ -375,7 +377,7 @@ const SearchingProviders = () => {
                 {[...Array(5)].map((_, i) => (
                   <div
                     key={i}
-                    className={`w-[7px] h-[7px] rounded-full transition-all duration-300 ${i === activeDotIndex ? 'bg-[#F59E0B] scale-[1.35]' : 'bg-[#D1DCE8]'}`}
+                    className={`w-[7px] h-[7px] rounded-full transition-all duration-300 ${i === activeDotIndex ? 'bg-accent scale-[1.35]' : 'bg-[#D1DCE8]'}`}
                   />
                 ))}
               </div>
@@ -392,7 +394,7 @@ const SearchingProviders = () => {
           <div className="flex flex-col gap-3 w-full">
             <button
               onClick={() => navigate(-1)}
-              className="text-[13px] font-[600] text-[#7A8BA0] hover:text-[#152E4B] transition-colors pb-2"
+              className="text-[13px] font-[600] text-[#7A8BA0] hover:text-primary transition-colors pb-2"
             >
               Cancel Request
             </button>
@@ -465,12 +467,12 @@ const SearchingProviders = () => {
 
 const TrustIndicator = ({ label }: { label: string }) => (
   <div className="flex items-center gap-1.5">
-    <div className="w-4 h-4 rounded-full bg-[#152E4B] flex items-center justify-center">
+    <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
       <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
         <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
-    <span className="text-[11px] font-[500] text-[#152E4B]">{label}</span>
+    <span className="text-[11px] font-[500] text-primary">{label}</span>
   </div>
 );
 
