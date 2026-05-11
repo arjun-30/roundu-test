@@ -11,8 +11,15 @@ import { useApp } from "@/context/AppContext";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, dispatch, notifications } = useApp();
+  const { user, dispatch, notifications, bookings } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isConnected = (id: string) => {
+    return bookings?.some((b: any) => 
+      (b.serviceId === id || b.service_id === id) && 
+      ["assigned", "on_the_way", "arrived", "in_progress"].includes(b.status)
+    );
+  };
 
   const browseServices = services.slice(0, 8);
 
@@ -215,7 +222,7 @@ const Home = () => {
                 onClick={() => goToProviders(service.id)}
                 className="bg-white rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.97] relative overflow-hidden border border-border shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
               >
-                {index === 0 && (
+                {isConnected(service.id) && (
                   <div className="absolute top-3 right-3">
                     <span className="text-[8px] font-extrabold tracking-wider uppercase bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
                       ⚡ Connected
@@ -322,13 +329,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ─── Floating Action Button ─── */}
-      <button
-        className="fixed bottom-[88px] right-5 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(21,46,75,0.4)] hover:bg-[#1C3D63] active:scale-90 transition-all z-20"
-        onClick={() => navigate("/services")}
-      >
-        <Plus size={26} className="text-white" strokeWidth={2.5} />
-      </button>
+
 
       <BottomNav />
     </div>
