@@ -2,6 +2,7 @@ import { useState } from "react";
 import { User, Wrench, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
+import { fetchProviderDashboard } from "@/lib/api";
 
 const RoleSelect = () => {
   const navigate = useNavigate();
@@ -23,7 +24,6 @@ const RoleSelect = () => {
       // Otherwise, double-check the database just in case the local state is stale
       setLoading(true);
       try {
-        const { fetchProviderDashboard } = await import("@/lib/api");
         const res = await fetchProviderDashboard(user.id);
         if (res.success) {
           dispatch({ type: "UPDATE_USER", user: { role: "provider" } });

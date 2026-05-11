@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 
@@ -5,69 +6,69 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
 import MobileLayout from "@/components/MobileLayout";
 
-import Splash from "@/pages/Splash";
-import Login from "@/pages/Login";
-import OtpVerify from "@/pages/OtpVerify";
-import OnboardingName from "@/pages/OnboardingName";
-import Onboarding from "@/pages/Onboarding";
-import RoleSelect from "@/pages/RoleSelect";
-import Location from "@/pages/Location";
-import Home from "@/pages/Home";
-import SearchPage from "@/pages/SearchPage";
-import ServicesPage from "@/pages/ServicesPage";
-import ProvidersPage from "@/pages/ProvidersPage";
-import ProviderDetail from "@/pages/ProviderDetail";
-import Chat from "@/pages/Chat";
-import BookingDate from "@/pages/BookingDate";
-import BookingTime from "@/pages/BookingTime";
-import BookingNotes from "@/pages/BookingNotes";
-import BookingPayment from "@/pages/BookingPayment";
-import BookingSuccess from "@/pages/BookingSuccess";
-import BookService from "@/pages/BookService";
-import SearchingProviders from "@/pages/SearchingProviders";
-import ActingDriverBooking from "@/pages/ActingDriverBooking";
-import Tracking from "@/pages/Tracking";
-import Rating from "@/pages/Rating";
-import Bookings from "@/pages/Bookings";
-import BookingDetail from "@/pages/BookingDetail";
-import Profile from "@/pages/Profile";
-import EditProfile from "@/pages/EditProfile";
-import Emergency from "@/pages/Emergency";
-import Wallet from "@/pages/Wallet";
-import WalletTopUp from "@/pages/WalletTopUp";
-import WalletHistory from "@/pages/WalletHistory";
-import ReferEarn from "@/pages/ReferEarn";
-import Offers from "@/pages/Offers";
-import Settings from "@/pages/Settings";
-import Notifications from "@/pages/Notifications";
-import HelpSupport from "@/pages/HelpSupport";
-import ReportIssue from "@/pages/ReportIssue";
-import ManageSubscriptions from "@/pages/ManageSubscriptions";
-import Subscription from "@/pages/Subscription";
-import Cancellation from "@/pages/Cancellation";
-import ProviderDashboard from "@/pages/provider/Dashboard";
-import ProviderJob from "@/pages/provider/Job";
-import Jobs from "@/pages/provider/Jobs";
-import ProviderEarnings from "@/pages/provider/Earnings";
-import ProviderProfile from "@/pages/provider/ProviderProfile";
-import ProviderVideoPortfolio from "@/pages/provider/VideoPortfolio";
-import SelectService from "@/pages/provider/SelectService";
-import PersonalDetails from "@/pages/provider/PersonalDetails";
-import DigiLockerKYC from "@/pages/provider/DigiLockerKYC";
-import GpsConsent from "@/pages/provider/GpsConsent";
-import PendingApproval from "@/pages/provider/PendingApproval";
-import Portfolio from "@/pages/provider/Portfolio";
-import Documents from "@/pages/provider/Documents";
-import GPSMonitor from "@/pages/provider/GPSMonitor";
-import Navigation from "@/pages/provider/Navigation";
-import ServiceSelection from "@/pages/ServiceSelection";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import TermsOfService from "@/pages/TermsOfService";
+const Splash = lazy(() => import("@/pages/Splash"));
+const Login = lazy(() => import("@/pages/Login"));
+const OtpVerify = lazy(() => import("@/pages/OtpVerify"));
+const OnboardingName = lazy(() => import("@/pages/OnboardingName"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const RoleSelect = lazy(() => import("@/pages/RoleSelect"));
+const Location = lazy(() => import("@/pages/Location"));
+const Home = lazy(() => import("@/pages/Home"));
+const SearchPage = lazy(() => import("@/pages/SearchPage"));
+const ServicesPage = lazy(() => import("@/pages/ServicesPage"));
+const ProvidersPage = lazy(() => import("@/pages/ProvidersPage"));
+const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
+const Chat = lazy(() => import("@/pages/Chat"));
+const BookingDate = lazy(() => import("@/pages/BookingDate"));
+const BookingTime = lazy(() => import("@/pages/BookingTime"));
+const BookingNotes = lazy(() => import("@/pages/BookingNotes"));
+const BookingPayment = lazy(() => import("@/pages/BookingPayment"));
+const BookingSuccess = lazy(() => import("@/pages/BookingSuccess"));
+const BookService = lazy(() => import("@/pages/BookService"));
+const SearchingProviders = lazy(() => import("@/pages/SearchingProviders"));
+const ActingDriverBooking = lazy(() => import("@/pages/ActingDriverBooking"));
+const Tracking = lazy(() => import("@/pages/Tracking"));
+const Rating = lazy(() => import("@/pages/Rating"));
+const Bookings = lazy(() => import("@/pages/Bookings"));
+const BookingDetail = lazy(() => import("@/pages/BookingDetail"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const EditProfile = lazy(() => import("@/pages/EditProfile"));
+const Emergency = lazy(() => import("@/pages/Emergency"));
+const Wallet = lazy(() => import("@/pages/Wallet"));
+const WalletTopUp = lazy(() => import("@/pages/WalletTopUp"));
+const WalletHistory = lazy(() => import("@/pages/WalletHistory"));
+const ReferEarn = lazy(() => import("@/pages/ReferEarn"));
+const Offers = lazy(() => import("@/pages/Offers"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Notifications = lazy(() => import("@/pages/Notifications"));
+const HelpSupport = lazy(() => import("@/pages/HelpSupport"));
+const ReportIssue = lazy(() => import("@/pages/ReportIssue"));
+const ManageSubscriptions = lazy(() => import("@/pages/ManageSubscriptions"));
+const Subscription = lazy(() => import("@/pages/Subscription"));
+const Cancellation = lazy(() => import("@/pages/Cancellation"));
+const ProviderDashboard = lazy(() => import("@/pages/provider/Dashboard"));
+const ProviderJob = lazy(() => import("@/pages/provider/Job"));
+const Jobs = lazy(() => import("@/pages/provider/Jobs"));
+const ProviderEarnings = lazy(() => import("@/pages/provider/Earnings"));
+const ProviderProfile = lazy(() => import("@/pages/provider/ProviderProfile"));
+const ProviderVideoPortfolio = lazy(() => import("@/pages/provider/VideoPortfolio"));
+const SelectService = lazy(() => import("@/pages/provider/SelectService"));
+const PersonalDetails = lazy(() => import("@/pages/provider/PersonalDetails"));
+const DigiLockerKYC = lazy(() => import("@/pages/provider/DigiLockerKYC"));
+const GpsConsent = lazy(() => import("@/pages/provider/GpsConsent"));
+const PendingApproval = lazy(() => import("@/pages/provider/PendingApproval"));
+const Portfolio = lazy(() => import("@/pages/provider/Portfolio"));
+const Documents = lazy(() => import("@/pages/provider/Documents"));
+const GPSMonitor = lazy(() => import("@/pages/provider/GPSMonitor"));
+const Navigation = lazy(() => import("@/pages/provider/Navigation"));
+const ServiceSelection = lazy(() => import("@/pages/ServiceSelection"));
+const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 
-import DbCheck from "@/pages/DbCheck";
-import NotFound from "./pages/NotFound";
+const DbCheck = lazy(() => import("@/pages/DbCheck"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -79,7 +80,8 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
 const AppRoutes = () => (
   <MobileLayout>
-    <Routes>
+    <Suspense fallback={<div className="h-full w-full flex items-center justify-center p-4"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+      <Routes>
       <Route path="/" element={<Splash />} />
       <Route path="/login" element={<Login />} />
       <Route path="/otp" element={<OtpVerify />} />
@@ -147,6 +149,7 @@ const AppRoutes = () => (
       <Route path="/db-check" element={<DbCheck />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   </MobileLayout>
 );
 
