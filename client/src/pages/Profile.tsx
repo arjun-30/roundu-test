@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift } from "lucide-react";
+import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useApp } from "@/context/AppContext";
 
