@@ -102,6 +102,10 @@ export function createApp(deps: AppDeps): Application {
   app.use('/api', apiRouter);
   app.use('/api/v1', apiRouter);
 
+  app.get('/version', (_req: Request, res: Response) => {
+    res.json({ version: 'v2.1-harmonized', ts: Date.now() });
+  });
+
   app.use(notFoundHandler);
   app.use(errorHandler);
 

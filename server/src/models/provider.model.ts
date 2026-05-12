@@ -23,7 +23,7 @@ export const ProviderModel = {
       'UPDATE providers SET service_radius = $1 WHERE user_id = $2',
       [radius, userId]
     );
-    return res.rowCount > 0;
+    return (res.rowCount ?? 0) > 0;
   },
 
   async getStats(providerId: string): Promise<any> {

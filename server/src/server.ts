@@ -37,11 +37,6 @@ async function main() {
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
 
-  // Version endpoint — confirms which code Railway is running
-  app.get('/version', (_req: any, res: any) => {
-    res.json({ version: 'v2-echo-sender', providers_room: true, sender_echo: true, ts: Date.now() });
-  });
-
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
       console.log(`[socket] client connected: ${socket.id}`);
