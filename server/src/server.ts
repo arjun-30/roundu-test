@@ -160,6 +160,8 @@ async function main() {
         date: data.date,
         time: data.time,
         notes: data.notes,
+        voiceNote: data.voiceNote || false,
+        voiceNoteUrl: data.voiceNoteUrl || null,
         status: "active",
         createdAt: Date.now()
       };
@@ -209,6 +211,9 @@ async function main() {
           date: new Date().toISOString().slice(0, 10),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: 'assigned',
+          notes: broadcast?.notes || '',
+          voiceNote: broadcast?.voiceNote || false,
+          voiceNoteUrl: broadcast?.voiceNoteUrl || null,
         });
         
         console.log(`[socket] quote_accepted sent to user:${data.acceptedProviderId} for booking ${data.bookingId}`);

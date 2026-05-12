@@ -136,7 +136,9 @@ const Dashboard = () => {
           date: data.date || new Date().toISOString().slice(0, 10),
           time: data.time || "Now",
           price: data.price || 0,
-          notes: "",
+          notes: data.notes || "",
+          voiceNote: data.voiceNote || false,
+          voiceNoteUrl: data.voiceNoteUrl || null,
         } 
       });
       
