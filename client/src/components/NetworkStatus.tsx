@@ -6,19 +6,23 @@ const NetworkStatus = () => {
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
+    let handler: any;
+
     const checkStatus = async () => {
       const status = await Network.getStatus();
       setIsOffline(!status.connected);
+      
+      handler = await Network.addListener("networkStatusChange", (status) => {
+        setIsOffline(!status.connected);
+      });
     };
 
     checkStatus();
 
-    const handler = Network.addListener("networkStatusChange", (status) => {
-      setIsOffline(!status.connected);
-    });
-
     return () => {
-      handler.remove();
+      if (handler) {
+        handler.remove();
+      }
     };
   }, []);
 
