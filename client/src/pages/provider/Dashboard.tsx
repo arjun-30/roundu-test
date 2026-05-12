@@ -119,6 +119,9 @@ const Dashboard = () => {
       date: string;
       time: string;
       status: string;
+      notes?: string;
+      voiceNote?: boolean;
+      voiceNoteUrl?: string | null;
     }) => {
       console.log("[socket] quote_accepted received:", data);
       
@@ -138,7 +141,7 @@ const Dashboard = () => {
           price: data.price || 0,
           notes: data.notes || "",
           voiceNote: data.voiceNote || false,
-          voiceNoteUrl: data.voiceNoteUrl || null,
+          voiceNoteUrl: data.voiceNoteUrl || undefined,
         } 
       });
       
