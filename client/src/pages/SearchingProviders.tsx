@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
+import { useCurrentLocation } from "@/hooks/useLocation";
 
 /**
  * 🎨 DESIGN SYSTEM & SPEC-DRIVEN
@@ -44,16 +45,6 @@ const SearchingProviders = () => {
   const hasTriggered = useRef(false);
   const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
 
-  // Fetch Customer Location
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        dispatch({ type: "SET_CURRENT_LOCATION", lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      (err) => console.error("Customer GPS Error:", err)
-    );
-  }, [dispatch]);
-
   // Convert GPS to SVG Coordinates
   const getProviderPos = (lat: number, lng: number) => {
     if (!currentLocation) return { x: 190, y: 170, opacity: 0 };
@@ -70,28 +61,43 @@ const SearchingProviders = () => {
     };
   };
 
-  // Emit broadcast and keep re-broadcasting every 5s for late-connecting providers
+  // ── GPS: fetch once, store in ref + AppContext ──────────────────────────
+  // Use a ref so the broadcast useEffect always reads the LATEST coords
+  // even after GPS resolves asynchronously.
+  const coordsRef = useRef<{ lat: number; lng: number } | null>(currentLocation);
+
+  const handleLocationUpdate = useCallback((lat: number, lng: number) => {
+    coordsRef.current = { lat, lng };
+    dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+  }, [dispatch]);
+  useCurrentLocation(handleLocationUpdate);
+
+  // ── Broadcast Job ────────────────────────────────────────────────────────
+  // Emits broadcast_job immediately (with coords if GPS already resolved)
+  // AND re-emits every 5s for late-connecting providers, always using the
+  // latest coordsRef value so GPS doesn't need to race the first render.
   useEffect(() => {
-    if (hasTriggered.current) return;
-    hasTriggered.current = true;
     dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
 
-    const payload = {
+    const buildPayload = () => ({
       broadcastId: broadcastIdRef.current,
       customerId: user.id,
       customerName: user.name,
       serviceId: serviceId || "electrician",
       address: user.address || "Current Location",
+      lat: coordsRef.current?.lat ?? null,
+      lng: coordsRef.current?.lng ?? null,
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       notes: bookingNotes || "Quick fix request from customer",
       voiceNoteUrl: bookingVoiceNoteUrl,
       voiceNote: bookingVoiceNote
-    };
+    });
 
     const doEmit = () => {
       if (socket.connected) {
-        console.log("[socket] emitting broadcast_job:", payload.serviceId);
+        const payload = buildPayload();
+        console.log("[socket] emitting broadcast_job:", payload.serviceId, "lat:", payload.lat, "lng:", payload.lng);
         socket.emit("broadcast_job", payload);
       }
     };
@@ -104,6 +110,7 @@ const SearchingProviders = () => {
     }
 
     // Re-broadcast every 5 seconds for providers with unstable connections
+    // Each re-broadcast picks up the latest coordsRef (GPS may have resolved by then)
     const interval = setInterval(doEmit, 5000);
 
     return () => {

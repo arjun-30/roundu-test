@@ -30,6 +30,8 @@ export interface JobBroadcast {
   customerName: string;
   serviceId: string;
   address: string;
+  lat?: number | null;
+  lng?: number | null;
   date: string;
   time: string;
   notes: string;
