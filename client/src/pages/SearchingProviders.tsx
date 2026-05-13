@@ -393,8 +393,8 @@ const SearchingProviders = () => {
 
           <div className="flex flex-col gap-3 w-full">
             <button
-              onClick={() => navigate(-1)}
-              className="text-[13px] font-[600] text-[#7A8BA0] hover:text-primary transition-colors pb-2"
+              onClick={() => navigate(`/book/${serviceId}`, { state: { cancelled: true } })}
+              className="text-[13px] font-[600] text-[#7A8BA0] hover:text-red-500 transition-colors pb-2"
             >
               Cancel Request
             </button>

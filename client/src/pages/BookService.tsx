@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { ArrowLeft, ImagePlus, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Volume2, Square, Play, Pause } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { ArrowLeft, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Square, Play, Pause, XCircle, X } from "lucide-react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getServiceById } from "@/data/mockData";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useApp } from "@/context/AppContext";
@@ -9,13 +9,26 @@ import { uploadVoiceNote } from "@/lib/voiceUpload";
 const BookService = () => {
   const { serviceId = "s1" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const service = getServiceById(serviceId);
-  const { dispatch } = useApp();
-  const [desc, setDesc] = useState("");
+  const { dispatch, bookingNotes, bookingVoiceNote, bookingVoiceNoteUrl } = useApp();
+
+  // Restore previously entered data and detect cancellation
+  const [desc, setDesc] = useState(bookingNotes || "");
   const [scheduleType, setScheduleType] = useState<"now" | "later" | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
-  
+  const [isCancelled, setIsCancelled] = useState(false);
+
+  // On mount: if we landed here via a cancellation, flag it
+  useEffect(() => {
+    if ((location.state as any)?.cancelled) {
+      setIsCancelled(true);
+      // Clear the router state so a refresh doesn't re-show the banner
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
+
   const recorder = useVoiceRecorder();
 
   const handleScheduleSelect = async (type: "now" | "later") => {
@@ -24,6 +37,8 @@ const BookService = () => {
       return;
     }
     setError("");
+    // Dismiss cancellation banner when user re-books
+    setIsCancelled(false);
     setScheduleType(type);
     
     let uploadedUrl: string | undefined = undefined;
@@ -72,11 +87,40 @@ const BookService = () => {
         >
           <ArrowLeft size={20} className="text-foreground" />
         </button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-[18px] font-extrabold text-foreground leading-tight">Book Service</h1>
           <p className="text-[12px] text-secondary font-bold mt-0.5">{service?.label || "Electrician"}</p>
         </div>
+        {/* Booking status badge in header */}
+        {isCancelled && (
+          <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-[8px] animate-fade-in">
+            <XCircle size={13} />
+            Cancelled
+          </span>
+        )}
       </div>
+
+      {/* ── Cancellation Banner ── */}
+      {isCancelled && (
+        <div className="mx-5 mt-4 rounded-[16px] bg-red-50 border border-red-200 p-4 flex items-start gap-3 animate-slide-down relative">
+          <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <XCircle size={18} className="text-red-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[14px] font-extrabold text-red-700 leading-tight">Request Cancelled</p>
+            <p className="text-[12px] text-red-500 font-medium mt-1 leading-snug">
+              You can edit and rebook this request anytime.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsCancelled(false)}
+            className="p-1 rounded-full hover:bg-red-100 transition-colors text-red-400"
+            aria-label="Dismiss cancellation notice"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-6">
         
@@ -200,6 +244,20 @@ const BookService = () => {
         </div>
 
       </div>
+
+      <style>{`
+        @keyframes slide-down {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down { animation: slide-down 0.35s ease-out both; }
+
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .animate-fade-in { animation: fade-in 0.4s ease-out both; }
+      `}</style>
 
     </div>
   );
