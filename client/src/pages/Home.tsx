@@ -15,7 +15,7 @@ const Home = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isConnected = (id: string) => {
-    return bookings?.some((b: any) => 
+    return bookings?.some((b: { serviceId?: string; service_id?: string; status: string }) => 
       (b.serviceId === id || b.service_id === id) && 
       ["assigned", "on_the_way", "arrived", "in_progress"].includes(b.status)
     );
@@ -251,7 +251,7 @@ const Home = () => {
             {quickFixes.map((fix) => (
               <button
                 key={fix.id}
-                onClick={() => goToProviders(fix.id === "pipe" || fix.id === "drain" ? "plumber" : fix.id === "fan" || fix.id === "switch" ? "electrician" : "security")}
+                onClick={() => goToProviders(fix.id === "pipe" || fix.id === "drain" ? "plumber" : fix.id === "fan" || fix.id === "switch" ? "electrician" : fix.id === "cleaning" ? "housekeeping" : fix.id === "driver" ? "drivers" : fix.id === "carwash" ? "carwash" : "security")}
                 className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-[#1C3D63] active:scale-95 transition-all flex-shrink-0 shadow-sm"
               >
                 <fix.icon size={14} strokeWidth={2.5} />

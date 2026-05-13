@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
 import { registerProvider } from '@/lib/api';
+import { useApp } from '@/context/AppContext';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
