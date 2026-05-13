@@ -1,18 +1,44 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
-  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench
+  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
+  Loader2
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, popularTasks } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
+import { useCurrentLocation } from "@/hooks/useLocation";
+import { reverseGeocode } from "@/lib/mapProvider";
 
 
 const Home = () => {
   const navigate = useNavigate();
   const { user, dispatch, notifications, bookings } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  // Auto-fetch GPS on mount → reverse geocode → update user.address
+  const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
+    dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+    setLocating(true);
+    try {
+      const result = await reverseGeocode(lat, lng);
+      if (result.address) {
+        const shortAddr = result.area
+          ? `${result.area}${result.city ? ", " + result.city : ""}`
+          : result.address.split(",").slice(0, 2).join(",");
+        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+      }
+    } catch (err) {
+      console.warn("Reverse geocode failed:", err);
+      // Still show coords as fallback
+      dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
+    } finally {
+      setLocating(false);
+    }
+  }, [dispatch]);
+  const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
   const isConnected = (id: string) => {
     return bookings?.some((b: { serviceId?: string; service_id?: string; status: string }) => 
@@ -135,7 +161,14 @@ const Home = () => {
               onClick={() => navigate("/location")}
               className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary"
             >
-              <MapPin size={11} className="text-primary" /> {user.address || "Set Location"}
+              <MapPin size={11} className="text-primary" />
+              {locating || gpsLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 size={10} className="animate-spin" /> Detecting...
+                </span>
+              ) : (
+                user.address || "Set Location"
+              )}
             </p>
           </div>
         </div>

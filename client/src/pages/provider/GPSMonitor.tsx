@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, MapPin, Navigation, ShieldCheck, Info } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation, ShieldCheck, Info, Loader2 } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { useWatchLocation } from "@/hooks/useLocation";
+import { reverseGeocode } from "@/lib/mapProvider";
 
 const GPSMonitor = () => {
   const navigate = useNavigate();
@@ -21,6 +22,8 @@ const GPSMonitor = () => {
   const [notification, setNotification] = useState("");
 
   const { user, providerRequests, dispatch } = useApp();
+  const [displayAddress, setDisplayAddress] = useState("Detecting location...");
+  const [liveCoords, setLiveCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const toggleTracking = () => {
     setIsTrackingEnabled(!isTrackingEnabled);
@@ -36,22 +39,32 @@ const GPSMonitor = () => {
   const handleProviderLocation = useCallback((latitude: number, longitude: number) => {
     // 1. Update global AppContext so distance filter works correctly
     dispatch({ type: "SET_CURRENT_LOCATION", lat: latitude, lng: longitude });
+    setLiveCoords({ lat: latitude, lng: longitude });
 
-    // 2. Emit to socket for live customer tracking
-    //    Use the active job's id as jobId scope; fall back to broadcast to all
+    // 2. Reverse geocode to display human-readable address
+    reverseGeocode(latitude, longitude)
+      .then((result) => {
+        const shortAddr = result.area
+          ? `${result.area}${result.city ? ", " + result.city : ""}`
+          : result.address?.split(",").slice(0, 2).join(",") || "Unknown";
+        setDisplayAddress(shortAddr);
+      })
+      .catch(() => {
+        setDisplayAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      });
+
+    // 3. Emit to socket for live customer tracking
     const activeJob = providerRequests.find(
       (r) => r.status === "on_the_way" || r.status === "arrived" || r.status === "in_progress"
     );
 
-    // Fixed event name: was "provider_location" (no handler on server)
-    // Correct name: "provider_location_update" (server.ts L244)
     socket.emit("provider_location_update", {
       jobId: activeJob?.id ?? "",
       lat: latitude,
       lng: longitude,
     });
 
-    // 3. Auto-arrive: check if within 100m of customer
+    // 4. Auto-arrive: check if within 100m of customer
     providerRequests.forEach((req) => {
       if (req.lat && req.lng && req.status === "on_the_way") {
         const R = 6371;
@@ -98,15 +111,26 @@ const GPSMonitor = () => {
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80')] bg-cover bg-center opacity-40 mix-blend-multiply" />
           
           <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center animate-pulse">
-               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/50 ring-4 ring-white">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isTrackingEnabled ? 'bg-primary/20 animate-pulse' : 'bg-muted'}`}>
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ring-4 ring-white ${isTrackingEnabled ? 'bg-primary shadow-primary/50' : 'bg-muted-foreground'}`}>
                  <Navigation size={20} className="fill-white" />
                </div>
             </div>
             <div className="mt-4 bg-white/90 backdrop-blur-md border border-border px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2">
                <MapPin size={14} className="text-primary" />
-               <span className="text-xs font-bold text-foreground">Koramangala, Bengaluru</span>
+               {!liveCoords ? (
+                 <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                   <Loader2 size={12} className="animate-spin" /> Detecting...
+                 </span>
+               ) : (
+                 <span className="text-xs font-bold text-foreground">{displayAddress}</span>
+               )}
             </div>
+            {liveCoords && (
+              <p className="mt-1 text-[9px] text-muted-foreground font-mono">
+                {liveCoords.lat.toFixed(5)}, {liveCoords.lng.toFixed(5)}
+              </p>
+            )}
           </div>
 
           <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-3">
