@@ -228,13 +228,6 @@ const Dashboard = () => {
             </span>
           </div>
           <button 
-            onClick={() => navigate("/role")}
-            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
-            title="Switch Side"
-          >
-            <User size={18} className="text-foreground" />
-          </button>
-          <button 
             onClick={() => navigate("/provider/profile")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
             title="Provider Profile"
