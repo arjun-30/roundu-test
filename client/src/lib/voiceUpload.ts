@@ -3,19 +3,31 @@ import api from './api';
 export async function uploadVoiceNote(audioBlob: Blob): Promise<string> {
   try {
     // 1. Get presigned URL
-    const { data: presigned } = await api.post('/upload/presigned', {
-      filename: `voice_note_${Date.now()}.webm`,
-      contentType: audioBlob.type || 'audio/webm',
-      purpose: 'voice_note'
-    });
+    let presignedData: any;
+    try {
+      const { data } = await api.post('/upload/presigned', {
+        filename: `voice_note_${Date.now()}.webm`,
+        contentType: audioBlob.type || 'audio/webm',
+        purpose: 'voice_note'
+      });
+      presignedData = data;
+    } catch (err: any) {
+      // Backend endpoint not available (e.g. local dev without server)
+      // Fall back to a local object URL so the booking flow isn't blocked
+      if (import.meta.env.DEV) {
+        console.warn('[voiceUpload] /upload/presigned unavailable in dev — using local object URL');
+        return URL.createObjectURL(audioBlob);
+      }
+      throw err;
+    }
 
-    if (!presigned.success || !presigned.uploadUrl) {
+    if (!presignedData.success || !presignedData.uploadUrl) {
       throw new Error('Failed to get upload URL');
     }
 
     // 2. Upload file directly to S3
     try {
-      const uploadRes = await fetch(presigned.uploadUrl, {
+      const uploadRes = await fetch(presignedData.uploadUrl, {
         method: 'PUT',
         body: audioBlob,
         headers: {
@@ -32,8 +44,8 @@ export async function uploadVoiceNote(audioBlob: Blob): Promise<string> {
       return URL.createObjectURL(audioBlob);
     }
 
-    // 3. Return the stored key/url (In production this would be the S3 public URL or handled by the backend)
-    return presigned.fileKey;
+    // 3. Return the stored key/url
+    return presignedData.fileKey;
   } catch (error) {
     console.error('Upload voice note error:', error);
     throw error;
