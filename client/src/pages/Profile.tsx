@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench } from "lucide-react";
+import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench, Repeat } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useApp } from "@/context/AppContext";
 
@@ -19,7 +19,7 @@ const Profile = () => {
       </div>
 
       <div className="px-5 pt-5 flex-1 overflow-y-auto space-y-4">
-        
+
         {/* Profile Card */}
         <div className="bg-white border border-border rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 relative">
           <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-xl font-extrabold shadow-sm">
@@ -41,7 +41,7 @@ const Profile = () => {
         {/* Menu Items */}
         <div className="bg-white border border-border rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
           {user.role === "provider" && (
-            <Item icon={Wrench} label="Switch Role (Customer/Provider)" onClick={() => navigate("/provider")} />
+            <Item icon={Wrench} label="Switch Role (Customer/Provider)" onClick={() => navigate("/role")} />
           )}
           <Item icon={History} label="My Bookings" onClick={() => navigate("/bookings")} />
           <Item icon={Bell} label="Notifications" onClick={() => navigate("/notifications")} />
@@ -50,6 +50,15 @@ const Profile = () => {
           <Item icon={Settings} label="Settings" onClick={() => navigate("/settings")} />
           <Item icon={HelpCircle} label="Help & Support" onClick={() => navigate("/support")} last />
         </div>
+        
+        {user.role === "provider" && (
+          <button
+            onClick={() => navigate("/provider")}
+            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-card mt-4"
+          >
+            <Repeat size={18} /> Switch as Provider
+          </button>
+        )}
 
         <button
           onClick={handleLogout}
