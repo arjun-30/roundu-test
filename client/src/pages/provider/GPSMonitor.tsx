@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Navigation, ShieldCheck, Info } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
+import { useWatchLocation } from "@/hooks/useLocation";
 
 const GPSMonitor = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const GPSMonitor = () => {
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(true);
   const [notification, setNotification] = useState("");
 
-  const { user, providerRequests } = useApp();
+  const { user, providerRequests, dispatch } = useApp();
 
   const toggleTracking = () => {
     setIsTrackingEnabled(!isTrackingEnabled);
@@ -31,48 +32,47 @@ const GPSMonitor = () => {
     setTimeout(() => setNotification(""), 3000);
   };
 
-  useEffect(() => {
-    if (!isTrackingEnabled) return;
+  // Watch provider GPS continuously when tracking is enabled
+  const handleProviderLocation = useCallback((latitude: number, longitude: number) => {
+    // 1. Update global AppContext so distance filter works correctly
+    dispatch({ type: "SET_CURRENT_LOCATION", lat: latitude, lng: longitude });
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        socket.emit("provider_location", {
-          id: user.id || user.phone,
-          lat: latitude,
-          lng: longitude,
-          name: user.name
-        });
-
-        // Auto-status update for active jobs
-        providerRequests.forEach(req => {
-          if (req.lat && req.lng) {
-            // Re-calculate distance
-            const R = 6371;
-            const dLat = ((req.lat - latitude) * Math.PI) / 180;
-            const dLng = ((req.lng - longitude) * Math.PI) / 180;
-            const a =
-              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos((latitude * Math.PI) / 180) *
-                Math.cos((req.lat * Math.PI) / 180) *
-                Math.sin(dLng / 2) *
-                Math.sin(dLng / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const dist = R * c;
-
-            // Auto-arrive: update status when within 100m
-            if (req.status === "on_the_way" && dist < 0.1) {
-              socket.emit("update_job_status", { bookingId: req.id, status: "arrived" });
-            }
-          }
-        });
-      },
-      (err) => console.error("GPS Error:", err),
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    // 2. Emit to socket for live customer tracking
+    //    Use the active job's id as jobId scope; fall back to broadcast to all
+    const activeJob = providerRequests.find(
+      (r) => r.status === "on_the_way" || r.status === "arrived" || r.status === "in_progress"
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [isTrackingEnabled, user.phone, user.name]);
+    // Fixed event name: was "provider_location" (no handler on server)
+    // Correct name: "provider_location_update" (server.ts L244)
+    socket.emit("provider_location_update", {
+      jobId: activeJob?.id ?? "",
+      lat: latitude,
+      lng: longitude,
+    });
+
+    // 3. Auto-arrive: check if within 100m of customer
+    providerRequests.forEach((req) => {
+      if (req.lat && req.lng && req.status === "on_the_way") {
+        const R = 6371;
+        const dLat = ((req.lat - latitude) * Math.PI) / 180;
+        const dLng = ((req.lng - longitude) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((latitude * Math.PI) / 180) *
+            Math.cos((req.lat * Math.PI) / 180) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const dist = R * c;
+        if (dist < 0.1) {
+          socket.emit("update_job_status", { bookingId: req.id, status: "arrived" });
+        }
+      }
+    });
+  }, [dispatch, providerRequests]);
+
+  useWatchLocation(handleProviderLocation, isTrackingEnabled);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24">
