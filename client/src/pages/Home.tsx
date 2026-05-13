@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
   Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, popularTasks } from "@/data/mockData";
@@ -62,7 +62,9 @@ const Home = () => {
     { icon: HelpCircle, label: "Help & Support", path: "/support" },
   ];
 
-  menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
+  if (user.role === "provider") {
+    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
+  }
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28 relative">
@@ -173,13 +175,15 @@ const Home = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/role")}
-            className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
-            title="Switch Side"
-          >
-            <Wrench size={18} className="text-secondary" />
-          </button>
+          {user.role === "provider" && (
+            <button
+              onClick={() => navigate("/role")}
+              className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
+              title="Switch Side"
+            >
+              <Wrench size={18} className="text-secondary" />
+            </button>
+          )}
           <button
             onClick={() => navigate("/wallet")}
             className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"
