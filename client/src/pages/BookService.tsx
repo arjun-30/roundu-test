@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, MapPin, ShieldCheck, Clock, Zap, Mic, Trash2, Square, Play, Pause, XCircle, X } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getServiceById } from "@/data/mockData";
@@ -20,6 +20,54 @@ const BookService = () => {
   const [error, setError] = useState("");
   const [isCancelled, setIsCancelled] = useState(false);
 
+  // Restored voice note playback (from context URL, when no new recording exists)
+  const restoredAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isRestoredPlaying, setIsRestoredPlaying] = useState(false);
+  const [restoredCleared, setRestoredCleared] = useState(false);
+
+  const recorder = useVoiceRecorder();
+
+  // True when we should show the restored voice note UI
+  const showRestoredVoice =
+    !restoredCleared &&
+    bookingVoiceNote &&
+    !!bookingVoiceNoteUrl &&
+    !recorder.audioBlob;
+
+  // Build/destroy the Audio object when the restored URL is available
+  useEffect(() => {
+    if (bookingVoiceNoteUrl && !restoredCleared) {
+      const audio = new Audio(bookingVoiceNoteUrl);
+      audio.onended = () => setIsRestoredPlaying(false);
+      restoredAudioRef.current = audio;
+    }
+    return () => {
+      restoredAudioRef.current?.pause();
+      restoredAudioRef.current = null;
+    };
+  }, [bookingVoiceNoteUrl, restoredCleared]);
+
+  const toggleRestoredPlay = () => {
+    const audio = restoredAudioRef.current;
+    if (!audio) return;
+    if (isRestoredPlaying) {
+      audio.pause();
+      setIsRestoredPlaying(false);
+    } else {
+      audio.play();
+      setIsRestoredPlaying(true);
+    }
+  };
+
+  const deleteRestoredVoice = () => {
+    restoredAudioRef.current?.pause();
+    restoredAudioRef.current = null;
+    setIsRestoredPlaying(false);
+    setRestoredCleared(true);
+    // Clear from context so re-booking doesn't carry a stale URL
+    dispatch({ type: "SET_NOTES", notes: desc, voiceNote: false, voiceNoteUrl: undefined });
+  };
+
   // On mount: if we landed here via a cancellation, flag it
   useEffect(() => {
     if ((location.state as any)?.cancelled) {
@@ -29,10 +77,8 @@ const BookService = () => {
     }
   }, [location.state]);
 
-  const recorder = useVoiceRecorder();
-
   const handleScheduleSelect = async (type: "now" | "later") => {
-    if (!desc && !recorder.audioBlob) {
+    if (!desc && !recorder.audioBlob && !showRestoredVoice) {
       setError("Please describe your issue first (text or voice)");
       return;
     }
@@ -59,8 +105,8 @@ const BookService = () => {
     dispatch({ 
       type: "SET_NOTES", 
       notes: desc, 
-      voiceNote: !!recorder.audioBlob, 
-      voiceNoteUrl: uploadedUrl 
+      voiceNote: !!recorder.audioBlob || showRestoredVoice, 
+      voiceNoteUrl: uploadedUrl || (showRestoredVoice ? bookingVoiceNoteUrl ?? undefined : undefined) 
     });
     
     if (type === "later") {
@@ -128,7 +174,7 @@ const BookService = () => {
         <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
            <h2 className="text-[14px] font-extrabold text-foreground mb-3 block">Problem Description</h2>
            
-           {!recorder.isRecording && !recorder.audioBlob && (
+           {!recorder.isRecording && !recorder.audioBlob && !showRestoredVoice && (
              <div className="relative">
                <textarea
                  rows={4}
@@ -142,6 +188,30 @@ const BookService = () => {
                  className="absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-white"
                >
                  <Mic size={16} />
+               </button>
+             </div>
+           )}
+
+           {/* ── Restored voice note from previous cancelled request ── */}
+           {showRestoredVoice && !recorder.isRecording && (
+             <div className="mt-2 p-3 bg-blue-50 rounded-xl flex items-center justify-between border border-blue-100 animate-fade-in">
+               <div className="flex items-center gap-3">
+                 <button
+                   onClick={toggleRestoredPlay}
+                   className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white active:scale-95 transition-transform shadow-md"
+                 >
+                   {isRestoredPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
+                 </button>
+                 <div className="flex flex-col">
+                   <span className="text-[13px] font-bold text-foreground">Voice Note</span>
+                   <span className="text-[11px] text-primary font-medium">Tap to {isRestoredPlaying ? "pause" : "play"}</span>
+                 </div>
+               </div>
+               <button
+                 onClick={deleteRestoredVoice}
+                 className="p-2.5 text-muted-foreground hover:text-red-500 bg-white rounded-full shadow-sm"
+               >
+                 <Trash2 size={16} />
                </button>
              </div>
            )}
