@@ -8,13 +8,16 @@ import crypto from 'crypto';
 
 export class KycController {
   static async initDigilocker(req: Request, res: Response) {
+    let step = 'START';
     try {
       const userId = req.user!.id;
       const { clientRedirectUrl } = req.body;
       const redirectUrl = clientRedirectUrl || `${env.APP_BASE_URL}/provider/digilocker-kyc`;
       
+      step = 'SETU_API_CALL';
       const setuRes = await SetuService.createDigilockerRequest(redirectUrl);
       
+      step = 'DATABASE_INSERT';
       await db.query(
         `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
         [userId, 'AADHAAR_INIT', 'pending']
@@ -22,8 +25,13 @@ export class KycController {
 
       return sendSuccess(res, { id: setuRes.id, url: setuRes.url });
     } catch (error: any) {
-      console.error('[KYC] initDigilocker Error:', error?.response?.data || error);
-      return sendError(res, 500, 'KYC_ERROR', 'Failed to initialize Aadhaar verification');
+      const details = error?.response?.data || error?.message || String(error);
+      console.error(`[KYC] initDigilocker Error at ${step}:`, details);
+      // Temporarily send error straight to client message for debugging UI
+      return res.status(500).json({
+        success: false,
+        message: `Debug (${step}): ${typeof details === 'object' ? JSON.stringify(details) : details}`
+      });
     }
   }
 
