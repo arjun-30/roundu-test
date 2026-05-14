@@ -7,20 +7,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
+import { getDistance } from "@/lib/utils";
 
-const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
-  const R = 6371;
-  const dLat = ((l2.lat - l1.lat) * Math.PI) / 180;
-  const dLng = ((l2.lng - l1.lng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((l1.lat * Math.PI) / 180) *
-      Math.cos((l2.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
 
 type Role = "customer" | "provider" | null;
 
@@ -61,6 +49,15 @@ interface UserProfile {
   email: string;
   address: string;
   role?: "customer" | "provider";
+  savedAddresses?: SavedAddress[];
+}
+
+export interface SavedAddress {
+  id: string;
+  label: "Home" | "Work" | "Other";
+  address: string;
+  lat: number;
+  lng: number;
 }
 
 interface State {
@@ -180,6 +177,10 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
+    savedAddresses: [
+      { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
+      { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
+    ],
   },
   selectedServiceId: null,
   selectedProviderId: null,
@@ -662,6 +663,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const selectedProvider = state.selectedProviderId
     ? allProviders.find((p) => p.id === state.selectedProviderId) ?? null
     : null;
+
+  useEffect(() => {
+    localStorage.setItem("roundu_user", JSON.stringify(state.user));
+  }, [state.user]);
 
   return (
     <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking }}>

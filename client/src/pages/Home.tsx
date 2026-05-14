@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
@@ -10,13 +10,17 @@ import { services, quickFixes, popularTasks } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
+import LocationModal from "@/components/LocationModal";
+import { providers as allProviders } from "@/data/mockData";
+import { getDistance } from "@/lib/utils";
 
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, dispatch, notifications, bookings } = useApp();
+  const { user, dispatch, notifications, bookings, currentLocation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   // Auto-fetch GPS on mount → reverse geocode → update user.address
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
@@ -65,6 +69,17 @@ const Home = () => {
   if (user.role === "provider") {
     menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
   }
+
+  const nearbyList = useMemo(() => {
+    if (!currentLocation) return allProviders.slice(0, 5);
+    return allProviders
+      .map(p => ({
+        ...p,
+        distance: getDistance(currentLocation!, { lat: p.lat, lng: p.lng })
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5);
+  }, [currentLocation]);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28 relative">
@@ -160,8 +175,8 @@ const Home = () => {
               Hi {user.name.split(" ")[0]}! 👋
             </h1>
             <p 
-              onClick={() => navigate("/location")}
-              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary"
+              onClick={() => setIsLocationModalOpen(true)}
+              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary transition-colors"
             >
               <MapPin size={11} className="text-primary" />
               {locating || gpsLoading ? (
@@ -174,6 +189,10 @@ const Home = () => {
             </p>
           </div>
         </div>
+        <LocationModal 
+          isOpen={isLocationModalOpen} 
+          onClose={() => setIsLocationModalOpen(false)} 
+        />
         <div className="flex items-center gap-2">
           {user.role === "provider" && (
             <button
@@ -342,6 +361,40 @@ const Home = () => {
                   </button>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ═══ NEARBY PROFESSIONALS ═══ */}
+        <div className="pt-5 pb-2 animate-fade-in" style={{ animationDelay: "0.22s" }}>
+          <div className="px-5 flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-[17px] font-extrabold text-foreground">Nearby Professionals</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
+            </div>
+          </div>
+          <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
+            {nearbyList.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/provider/${p.id}`)}
+                className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
+              >
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary mx-auto mb-2 text-lg">
+                  {p.name.charAt(0)}
+                </div>
+                <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                  <span className="text-[10px] font-bold text-foreground">{p.rating}</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    {(p as any).distance ? `${(p as any).distance.toFixed(1)}km` : "0.8km"}
+                  </span>
+                </div>
+                <div className="mt-2 text-[10px] font-extrabold text-primary uppercase bg-primary/5 py-1 rounded-lg">
+                  Available
+                </div>
+              </button>
             ))}
           </div>
         </div>
