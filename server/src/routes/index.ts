@@ -7,6 +7,8 @@ import providerRouter from './provider.routes';
 import bookingRouter from './booking.routes';
 import paymentRouter from './payment.routes';
 import uploadRouter from './upload.routes';
+import kycRouter from './kyc.routes';
+import webhookRouter from './webhook.routes';
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use('/payments', paymentRouter);
 router.use('/tracking', trackingRouter);
 router.use('/referrals', referralRouter);
 router.use('/upload', uploadRouter);
+router.use('/kyc', kycRouter);
+router.use('/webhooks', webhookRouter);
 
 export default router;

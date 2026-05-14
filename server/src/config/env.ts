@@ -39,6 +39,11 @@ const envSchema = z.object({
   MSG91_SENDER_ID: z.string().default('ROUNDU'),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  SETU_CLIENT_ID: z.string().optional(),
+  SETU_CLIENT_SECRET: z.string().optional(),
+  SETU_DIGILOCKER_PRODUCT_ID: z.string().optional(),
+  SETU_PAN_PRODUCT_ID: z.string().optional(),
+  SETU_BAV_PRODUCT_ID: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
