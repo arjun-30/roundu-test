@@ -44,6 +44,7 @@ const envSchema = z.object({
   SETU_DIGILOCKER_PRODUCT_ID: z.string().optional(),
   SETU_PAN_PRODUCT_ID: z.string().optional(),
   SETU_BAV_PRODUCT_ID: z.string().optional(),
+  SETU_BASE_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

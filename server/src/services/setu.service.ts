@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { env } from '../config/env';
 
-const SETU_BASE_URL = 'https://dg-sandbox.setu.co';
+const SETU_BASE_URL = env.SETU_BASE_URL || 'https://dg-sandbox.setu.co';
 const HEADERS = {
   'x-client-id': env.SETU_CLIENT_ID || '3b3d4e41-f540-4dfa-a44f-5fe3ea98a3f4',
   'x-client-secret': env.SETU_CLIENT_SECRET || 'BizBetDlpEgM7DXWXAeWZTeUJtB7AilT',
