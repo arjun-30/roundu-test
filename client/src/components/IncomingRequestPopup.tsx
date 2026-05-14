@@ -11,19 +11,41 @@ interface IncomingRequestPopupProps {
 }
 
 const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: IncomingRequestPopupProps) => {
-  const [timeLeft, setTimeLeft] = useState(120);
+  // Compute initial time left from createdAt if available, else default to 120s
+  const getInitialTimeLeft = () => {
+    const POPUP_TTL = 120;
+    if (request.createdAt) {
+      const elapsed = Math.floor((Date.now() - request.createdAt) / 1000);
+      return Math.max(0, POPUP_TTL - elapsed);
+    }
+    return POPUP_TTL;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft);
   const service = getServiceById(request.serviceId);
 
   useEffect(() => {
+    // If already expired when popup opens, call onReject immediately
     if (timeLeft <= 0) {
       onReject();
       return;
     }
+
+    // Single interval — no timeLeft in deps so it doesn't restart every second
     const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          onReject();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [timeLeft, onReject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const percentage = (timeLeft / 120) * 100;
 
