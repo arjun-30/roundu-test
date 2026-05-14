@@ -145,7 +145,13 @@ const BookService = () => {
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans pb-6">
       <div className="bg-white px-5 pt-6 pb-4 flex items-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] sticky top-0 z-20">
         <button 
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (isCancelled) {
+              navigate(`/service-select/${serviceId}`);
+            } else {
+              navigate(-1);
+            }
+          }}
           className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all mr-3"
         >
           <ArrowLeft size={20} className="text-foreground" />
