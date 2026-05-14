@@ -5,6 +5,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import { Pool } from 'pg';
 import { Server as SocketServer } from 'socket.io';
+import path from 'path';
 import { corsMiddleware } from './middleware/cors';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import apiRouter from './routes/index';
@@ -22,6 +23,9 @@ export function createApp(deps: AppDeps): Application {
   app.set('trust proxy', 1);
   app.locals.db = deps.db;
   if (deps.io) app.locals.io = deps.io;
+
+  // Serve uploads statically
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
   // app.use(helmet());
   app.use(corsMiddleware());

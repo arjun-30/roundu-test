@@ -330,7 +330,15 @@ const Dashboard = () => {
                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
                                <Mic size={10} /> Voice Note Attached
                              </div>
-                             <audio src={b.voiceNoteUrl} controls className="w-full h-7" />
+                             <audio 
+                               src={b.voiceNoteUrl} 
+                               controls 
+                               className="w-full h-7" 
+                               onError={(e) => {
+                                 console.error("Audio playback error:", e);
+                                 (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                               }}
+                             />
                           </div>
                         )}
                         
@@ -676,6 +684,10 @@ const Dashboard = () => {
                           src={selectedJob.voiceNoteUrl} 
                           controls 
                           className="w-full h-8"
+                          onError={(e) => {
+                            console.error("Audio playback error:", e);
+                            (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                          }}
                         />
                       </div>
                     )}

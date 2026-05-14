@@ -24,28 +24,43 @@ export async function uploadVoiceNote(audioBlob: Blob): Promise<string> {
     if (!presignedData.success || !presignedData.uploadUrl) {
       throw new Error('Failed to get upload URL');
     }
+    const isLocal = !!presignedData.isLocal;
 
-    // 2. Upload file directly to S3
+    // 2. Upload file
     try {
-      const uploadRes = await fetch(presignedData.uploadUrl, {
-        method: 'PUT',
-        body: audioBlob,
-        headers: {
-          'Content-Type': audioBlob.type || 'audio/webm'
-        }
-      });
+      if (isLocal) {
+        // Multipart upload to local backend
+        const formData = new FormData();
+        formData.append('file', audioBlob, `voice_note_${Date.now()}.webm`);
+        
+        const uploadRes = await fetch(presignedData.uploadUrl, {
+          method: 'POST',
+          body: formData,
+        });
 
-      if (!uploadRes.ok) {
-        console.warn('S3 upload failed (likely missing credentials). Using local URL for testing.');
-        return URL.createObjectURL(audioBlob);
+        if (!uploadRes.ok) throw new Error('Backend upload failed');
+        const uploadData = await uploadRes.json();
+        return uploadData.url; // Full URL from backend
+      } else {
+        // Direct PUT to S3
+        const uploadRes = await fetch(presignedData.uploadUrl, {
+          method: 'PUT',
+          body: audioBlob,
+          headers: {
+            'Content-Type': audioBlob.type || 'audio/webm'
+          }
+        });
+
+        if (!uploadRes.ok) {
+          console.warn('S3 upload failed. Using local URL for testing.');
+          return URL.createObjectURL(audioBlob);
+        }
+        return presignedData.fileKey; // Return key for S3
       }
     } catch (err) {
-      console.warn('S3 upload network error. Using local URL for testing.');
+      console.warn('Upload network error. Using local URL for testing.');
       return URL.createObjectURL(audioBlob);
     }
-
-    // 3. Return the stored key/url
-    return presignedData.fileKey;
   } catch (error) {
     console.error('Upload voice note error:', error);
     throw error;
