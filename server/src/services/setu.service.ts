@@ -5,7 +5,8 @@ const SETU_BASE_URL = env.SETU_BASE_URL || 'https://dg-sandbox.setu.co';
 const HEADERS = {
   'x-client-id': env.SETU_CLIENT_ID || '3b3d4e41-f540-4dfa-a44f-5fe3ea98a3f4',
   'x-client-secret': env.SETU_CLIENT_SECRET || 'BizBetDlpEgM7DXWXAeWZTeUJtB7AilT',
-  'content-type': 'application/json'
+  'content-type': 'application/json',
+  'User-Agent': 'RoundU-Backend/1.0 (Node.js)'
 };
 
 const PRODUCT_ID_DIGILOCKER = env.SETU_DIGILOCKER_PRODUCT_ID || '534e1d22-6bcd-4d70-b1f2-867223426bc3';
