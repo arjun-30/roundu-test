@@ -32,7 +32,10 @@ const Dashboard = () => {
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
   const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  const seenBroadcastIds = useRef(new Set<string>());
+  // Use sessionStorage to persist seen IDs across re-renders/reconnects within same session
+  const seenBroadcastIds = useRef(new Set<string>(
+    JSON.parse(sessionStorage.getItem("seen_broadcast_ids") || "[]")
+  ));
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
@@ -61,7 +64,21 @@ const Dashboard = () => {
     const handleBroadcast = (broadcast: any) => {
       console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
       if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+
+      // 🕐 Reject stale broadcasts — if older than 120 seconds, ignore silently
+      const POPUP_TTL_MS = 120 * 1000;
+      const broadcastAge = Date.now() - (broadcast.createdAt || 0);
+      if (broadcastAge > POPUP_TTL_MS) {
+        console.log("[Dashboard] ⏰ Broadcast expired, skipping:", broadcast.broadcastId);
+        seenBroadcastIds.current.add(broadcast.broadcastId); // mark as seen so it won't show later
+        const updated = Array.from(seenBroadcastIds.current);
+        sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
+        return;
+      }
+
       seenBroadcastIds.current.add(broadcast.broadcastId);
+      const updated = Array.from(seenBroadcastIds.current);
+      sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
       setActiveBroadcast(broadcast);
     };
     socket.on("incoming_broadcast", handleBroadcast);
@@ -204,7 +221,11 @@ const Dashboard = () => {
           request={activeBroadcast}
           isBroadcast={true}
           onAccept={() => setQuotingBroadcast(activeBroadcast)}
-          onReject={() => setActiveBroadcast(null)}
+          onReject={() => {
+            // Remove from both local state AND liveBroadcasts context
+            dispatch({ type: "REMOVE_LIVE_BROADCAST", id: activeBroadcast.broadcastId });
+            setActiveBroadcast(null);
+          }}
         />
       )}
 
@@ -753,26 +774,8 @@ const Dashboard = () => {
         />
       )}
 
-      {/* Live Job Broadcast Popup (Top-aligned) */}
-      {isOnline && liveBroadcasts.length > 0 && !quotingBroadcast && (
-        <IncomingRequestPopup 
-          request={{
-            ...liveBroadcasts[0],
-            serviceId: liveBroadcasts[0].serviceId,
-            customerName: liveBroadcasts[0].customerName,
-            customerRating: "4.8",
-            distanceKm: "1.2",
-            address: liveBroadcasts[0].address,
-            date: liveBroadcasts[0].date,
-            time: liveBroadcasts[0].time,
-            price: 0,
-            notes: liveBroadcasts[0].notes || "No notes provided."
-          }}
-          isBroadcast={true}
-          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
-        />
-      )}
+      {/* Live Job Broadcast Popup removed — activeBroadcast handles all broadcasts directly
+           via socket, avoiding duplicate popups from liveBroadcasts context state */}
 
       {/* Quote Modal */}
       {quotingBroadcast && (

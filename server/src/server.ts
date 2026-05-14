@@ -81,9 +81,15 @@ async function main() {
           console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
         });
         
-        // Send active broadcasts for their services
+        // Send active broadcasts for their services (skip expired ones — 120s popup TTL)
+        const BROADCAST_TTL_MS = 120 * 1000;
         activeBroadcasts.forEach((payload, id) => {
           if (serviceIds.includes(payload.serviceId)) {
+            const age = Date.now() - (payload.createdAt || 0);
+            if (age > BROADCAST_TTL_MS) {
+              console.log(`[socket] skipping expired broadcast ${id} (age: ${Math.floor(age/1000)}s) for provider ${data.userId}`);
+              return;
+            }
             socket.emit('incoming_broadcast', payload);
             console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
           }
