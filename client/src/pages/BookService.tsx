@@ -186,7 +186,7 @@ const BookService = () => {
         <div className="bg-white rounded-[20px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
           <h2 className="text-[14px] font-extrabold text-foreground mb-3 block">Problem Description</h2>
           
-          {!recorder.isRecording && !recorder.audioBlob && !showRestoredVoice && (
+          {!recorder.isRecording && !recorder.audioBlob && (
             <div className="relative">
               <textarea
                 rows={4}
@@ -195,12 +195,14 @@ const BookService = () => {
                 placeholder="Describe your issue (e.g., switch not working, water leakage)"
                 className="w-full bg-background rounded-xl p-4 pr-12 text-[14px] font-medium text-foreground border-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
               />
-              <button 
-                onClick={recorder.startRecording}
-                className="absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-white"
-              >
-                <Mic size={16} />
-              </button>
+              {!showRestoredVoice && (
+                <button 
+                  onClick={recorder.startRecording}
+                  className="absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-primary text-white"
+                >
+                  <Mic size={16} />
+                </button>
+              )}
             </div>
           )}
 

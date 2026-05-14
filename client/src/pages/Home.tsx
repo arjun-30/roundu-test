@@ -67,7 +67,7 @@ const Home = () => {
   ];
 
   if (user.role === "provider") {
-    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
+    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/provider" });
   }
 
   const nearbyList = useMemo(() => {
@@ -196,7 +196,7 @@ const Home = () => {
         <div className="flex items-center gap-2">
           {user.role === "provider" && (
             <button
-              onClick={() => navigate("/role")}
+              onClick={() => navigate("/provider")}
               className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
               title="Switch Side"
             >
