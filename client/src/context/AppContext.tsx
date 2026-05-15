@@ -507,11 +507,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
+        // Exclude homeType — column doesn't exist in onboarding_responses table
+        const { homeType: _homeType, ...onboardingFields } = state.onboardingData;
         const { error } = await supabase
           .from('onboarding_responses')
           .upsert({
             phone: state.phone,
-            ...state.onboardingData,
+            ...onboardingFields,
             updated_at: new Date().toISOString()
           });
         if (error) console.error('Supabase sync error:', error);
