@@ -165,4 +165,28 @@ INSERT INTO services (id, label, description, price_per_hr) VALUES
 ('housekeeping', 'House Keeping', 'Deep & regular', 499)
 ON CONFLICT (id) DO NOTHING;
 
+-- KYC Audit Logs
+CREATE TABLE IF NOT EXISTS kyc_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    request_id VARCHAR(100),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    consent_flag BOOLEAN DEFAULT true
+);
 
+CREATE INDEX IF NOT EXISTS idx_kyc_audit_logs_user ON kyc_audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_kyc_audit_logs_request ON kyc_audit_logs(request_id);
+
+-- KYC Encrypted Vault
+CREATE TABLE IF NOT EXISTS kyc_encrypted_vault (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    verified_name_encrypted TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Users Table Alterations
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'unverified';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS masked_aadhaar VARCHAR(4);
