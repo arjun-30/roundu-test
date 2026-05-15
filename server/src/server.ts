@@ -27,7 +27,7 @@ async function main() {
     path: "/socket.io/",
     cors: { 
       origin: true, // Echo origin to bypass CORS
-      credentials: true,
+      credentials: false, // Allow non-credentialed connections from Android WebView
       methods: ["GET", "POST"]
     },
     allowEIO3: true,
@@ -151,42 +151,50 @@ async function main() {
     socket.on('broadcast_job', (data: any) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
       
-      // Deduplicate: if this broadcastId was already emitted, skip
-      if (activeBroadcasts.has(data.broadcastId)) {
-        console.log(`[socket] duplicate broadcast_job skipped: ${data.broadcastId}`);
+      const isNew = !activeBroadcasts.has(data.broadcastId);
+
+      const broadcastPayload = isNew
+        ? {
+            broadcastId: data.broadcastId,
+            customerId: data.customerId,
+            customerName: data.customerName || "Customer",
+            serviceId: data.serviceId,
+            address: data.address || "Client Address",
+            lat: data.lat ?? null,
+            lng: data.lng ?? null,
+            date: data.date,
+            time: data.time,
+            notes: data.notes,
+            voiceNote: data.voiceNote || false,
+            voiceNoteUrl: data.voiceNoteUrl || null,
+            status: "active",
+            createdAt: Date.now()   // only set on first emit so TTL is accurate
+          }
+        : activeBroadcasts.get(data.broadcastId); // reuse stored payload (preserves createdAt)
+
+      if (isNew) {
+        // Store and schedule auto-expire only on first emit
+        activeBroadcasts.set(data.broadcastId, broadcastPayload);
+        setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
+      } else {
+        console.log(`[socket] re-broadcast: ${data.broadcastId} (age: ${Math.floor((Date.now() - broadcastPayload.createdAt) / 1000)}s)`);
+      }
+
+      // Check TTL before re-broadcasting (120s = popup lifetime)
+      const POPUP_TTL_MS = 120 * 1000;
+      if (!isNew && (Date.now() - broadcastPayload.createdAt) > POPUP_TTL_MS) {
+        console.log(`[socket] broadcast expired, skipping re-emit: ${data.broadcastId}`);
         return;
       }
-      
-      const broadcastPayload = {
-        broadcastId: data.broadcastId,
-        customerId: data.customerId,
-        customerName: data.customerName || "Customer",
-        serviceId: data.serviceId,
-        address: data.address || "Client Address",
-        lat: data.lat ?? null,
-        lng: data.lng ?? null,
-        date: data.date,
-        time: data.time,
-        notes: data.notes,
-        voiceNote: data.voiceNote || false,
-        voiceNoteUrl: data.voiceNoteUrl || null,
-        status: "active",
-        createdAt: Date.now()
-      };
 
-      // Store in active broadcasts
-      activeBroadcasts.set(data.broadcastId, broadcastPayload);
-
-      // Auto-expire after 10 minutes
-      setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
-
-      // Always emit to BOTH the service room AND the providers room.
+      // Emit to service room + all providers room on every call
+      // This ensures providers who joined AFTER the first broadcast still receive it.
       const roomName = `service:${data.serviceId}`;
       io.to(roomName).emit('incoming_broadcast', broadcastPayload);
       io.to('providers').emit('incoming_broadcast', broadcastPayload);
-      // Also echo directly back to sender (for debug/test)
+      // Echo back to sender for debug/test
       socket.emit('incoming_broadcast', broadcastPayload);
-      console.log(`[socket] broadcast sent to ${roomName} + providers room + sender echo`);
+      console.log(`[socket] broadcast sent to ${roomName} + providers room (isNew=${isNew})`);
     });
 
     socket.on('accept_quote', (data: any) => {
