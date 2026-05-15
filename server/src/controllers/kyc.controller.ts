@@ -9,10 +9,11 @@ import crypto from 'crypto';
 export class KycController {
   static async initDigilocker(req: Request, res: Response) {
     let step = 'START';
+    let redirectUrl = '';
     try {
       const userId = req.user!.id;
       const { clientRedirectUrl } = req.body;
-      const redirectUrl = clientRedirectUrl || `${env.APP_BASE_URL}/provider/digilocker-kyc`;
+      redirectUrl = clientRedirectUrl || `${env.APP_BASE_URL}/provider/digilocker-kyc`;
       
       step = 'SETU_API_CALL';
       const setuRes = await SetuService.createDigilockerRequest(redirectUrl);
