@@ -340,12 +340,18 @@ const SearchingProviders = () => {
               {receivedQuotes.map((q) => (
                 <div 
                   key={q.providerId} 
-                  onClick={() => navigate(`/provider/${q.providerId}`)}
+                  onClick={() => navigate(`/provider/${q.providerId}`, { state: { quote: q } })}
                   className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF]">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/provider/${q.providerId}`, { state: { quote: q } });
+                        }}
+                        className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF] hover:border-primary transition-colors"
+                      >
                         {q.providerAvatar}
                       </div>
                       <div>
