@@ -189,10 +189,6 @@ const Home = () => {
             </p>
           </div>
         </div>
-        <LocationModal 
-          isOpen={isLocationModalOpen} 
-          onClose={() => setIsLocationModalOpen(false)} 
-        />
         <div className="flex items-center gap-2">
           {user.role === "provider" && (
             <button
@@ -405,6 +401,10 @@ const Home = () => {
 
 
 
+      <LocationModal 
+        isOpen={isLocationModalOpen} 
+        onClose={() => setIsLocationModalOpen(false)} 
+      />
       <BottomNav />
     </div>
   );

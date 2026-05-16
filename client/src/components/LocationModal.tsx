@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Navigation, X, Loader2, Home, Briefcase, MapPin as MapPinIcon } from "lucide-react";
+import { Search, MapPin, Navigation, X, Loader2, Home, Briefcase, MapPin as MapPinIcon, AlertTriangle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getSuggestions, reverseGeocode } from "@/lib/mapProvider";
 
@@ -87,7 +87,7 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
@@ -113,6 +113,25 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
             <X size={20} />
           </button>
         </div>
+
+        {/* Detection Overlay */}
+        {isDetecting && (
+          <div className="absolute inset-0 z-[10000] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+            <div className="relative mb-6">
+               <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping scale-150" />
+               <div className="relative w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/30">
+                  <Navigation size={32} className="animate-pulse" />
+               </div>
+            </div>
+            <h3 className="text-lg font-bold text-foreground">Detecting your location...</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-[200px]">
+              Finding your current position for the best service experience.
+            </p>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-8">
+               Please allow location access
+            </p>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {isEditingManually ? (
@@ -205,10 +224,18 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 </button>
                 {error && (
-                  <p className="text-[12px] text-red-500 font-bold px-1 flex items-center gap-1.5 animate-in fade-in">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    {error}
-                  </p>
+                  <div className="mt-2 p-4 rounded-2xl bg-red-50 border border-red-100 animate-in slide-in-from-top-2">
+                    <p className="text-[12px] text-red-600 font-bold flex items-center gap-2">
+                      <AlertTriangle size={14} />
+                      {error}
+                    </p>
+                    <button 
+                      onClick={detectCurrentLocation}
+                      className="mt-3 w-full py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors"
+                    >
+                      Retry Detection
+                    </button>
+                  </div>
                 )}
               </div>
 
