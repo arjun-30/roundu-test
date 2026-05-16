@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { SetuService } from '../services/setu.service';
+import { CashfreeService } from '../services/cashfree.service';
 import { getPool } from '../config/database';
 const db = { query: (sql: string, params?: any[]) => getPool().query(sql, params) };
 import { sendError, sendSuccess } from '../utils/response';
@@ -15,8 +15,8 @@ export class KycController {
       const { clientRedirectUrl } = req.body;
       redirectUrl = clientRedirectUrl || `${env.APP_BASE_URL}/provider/digilocker-kyc`;
       
-      step = 'SETU_API_CALL';
-      const setuRes = await SetuService.createDigilockerRequest(redirectUrl);
+      step = 'CASHFREE_API_CALL';
+      const cashfreeRes = await CashfreeService.createDigilockerRequest(redirectUrl, userId);
       
       step = 'DATABASE_INSERT';
       await db.query(
@@ -24,13 +24,13 @@ export class KycController {
         [userId, 'AADHAAR_INIT', 'pending']
       );
 
-      return sendSuccess(res, { id: setuRes.id, url: setuRes.url });
+      return sendSuccess(res, { id: cashfreeRes.verification_id, url: cashfreeRes.url });
     } catch (error: any) {
       const details = error?.response?.data || error?.message || String(error);
       
-      // Fallback for Setu IP Geoblocking (Railway servers)
+      // Fallback for Cashfree IP Geoblocking (Railway servers)
       if (typeof details === 'string' && details.includes('403 Forbidden')) {
-        console.warn(`[KYC] Setu blocked ${step} (Non-Indian IP). Using Mock Mode.`);
+        console.warn(`[KYC] Cashfree blocked ${step} (Non-Indian IP). Using Mock Mode.`);
         return sendSuccess(res, { id: 'mock-request-id-123', url: redirectUrl });
       }
 
@@ -52,41 +52,47 @@ export class KycController {
         return sendSuccess(res, { verified: true, name: 'Mock User (Demo)' });
       }
 
-      const setuRes = await SetuService.getDigilockerStatus(requestId);
+      const cashfreeRes = await CashfreeService.getDigilockerStatus(requestId);
 
-      if (setuRes.status === 'complete' && setuRes.aadhaar) {
-        const aadhaarNum = setuRes.aadhaar.maskedNumber || '';
-        const masked = aadhaarNum.slice(-4);
+      if (cashfreeRes.status === 'AUTHENTICATED') {
+        const docRes = await CashfreeService.getDigilockerDocument(requestId);
         
-        // Log to audit
-        await db.query(
-          `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
-          [userId, 'AADHAAR_VERIFY', 'success']
-        );
-
-        // Update user
-        await db.query(
-          `UPDATE users SET masked_aadhaar = $1 WHERE id = $2`,
-          [masked, userId]
-        );
-
-        // Optional: Save verified name to vault
-        const name = setuRes.aadhaar.name;
-        if (name) {
-          const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(env.JWT_SECRET!.padEnd(32, '0').slice(0, 32)), Buffer.alloc(16, 0));
-          let encryptedName = cipher.update(name, 'utf8', 'hex');
-          encryptedName += cipher.final('hex');
-
+        if (docRes.status === 'SUCCESS') {
+          const aadhaarNum = docRes.uid || '';
+          const masked = aadhaarNum.slice(-4);
+          
+          // Log to audit
           await db.query(
-            `INSERT INTO kyc_encrypted_vault (user_id, verified_name_encrypted) VALUES ($1, $2)`,
-            [userId, encryptedName]
+            `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
+            [userId, 'AADHAAR_VERIFY', 'success']
           );
-        }
 
-        return sendSuccess(res, { verified: true, name: setuRes.aadhaar.name });
+          // Update user
+          await db.query(
+            `UPDATE users SET masked_aadhaar = $1 WHERE id = $2`,
+            [masked, userId]
+          );
+
+          // Optional: Save verified name to vault
+          const name = docRes.name;
+          if (name) {
+            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(env.JWT_SECRET!.padEnd(32, '0').slice(0, 32)), Buffer.alloc(16, 0));
+            let encryptedName = cipher.update(name, 'utf8', 'hex');
+            encryptedName += cipher.final('hex');
+
+            await db.query(
+              `INSERT INTO kyc_encrypted_vault (user_id, verified_name_encrypted) VALUES ($1, $2)`,
+              [userId, encryptedName]
+            );
+          }
+
+          return sendSuccess(res, { verified: true, name: docRes.name });
+        }
+        
+        return sendSuccess(res, { verified: false, status: docRes.status });
       }
 
-      return sendSuccess(res, { verified: false, status: setuRes.status });
+      return sendSuccess(res, { verified: false, status: cashfreeRes.status });
     } catch (error: any) {
       console.error('[KYC] verifyDigilocker Error:', error?.response?.data || error);
       return sendError(res, 500, 'KYC_ERROR', 'Failed to verify Aadhaar status');
@@ -100,9 +106,9 @@ export class KycController {
 
       if (!pan) return sendError(res, 400, 'VALIDATION_ERROR', 'PAN is required');
 
-      let setuRes: any;
+      let cashfreeRes: any;
       try {
-        setuRes = await SetuService.verifyPan(pan);
+        cashfreeRes = await CashfreeService.verifyPan(pan);
       } catch (err: any) {
         if (String(err?.response?.data).includes('403 Forbidden')) {
           return sendSuccess(res, { verified: true, data: { full_name: 'Mock User' } });
@@ -110,13 +116,13 @@ export class KycController {
         throw err;
       }
 
-      if (setuRes.verification === 'SUCCESS') {
+      if (cashfreeRes.verification === 'SUCCESS') {
         await db.query(
           `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
           [userId, 'PAN_VERIFY', 'success']
         );
 
-        return sendSuccess(res, { verified: true, data: setuRes.data });
+        return sendSuccess(res, { verified: true, data: cashfreeRes.data });
       }
 
       await db.query(
@@ -124,7 +130,7 @@ export class KycController {
         [userId, 'PAN_VERIFY', 'failed']
       );
       
-      return sendSuccess(res, { verified: false, message: setuRes.message });
+      return sendSuccess(res, { verified: false, message: cashfreeRes.message });
     } catch (error: any) {
       console.error('[KYC] verifyPan Error:', error?.response?.data || error);
       return sendError(res, 500, 'KYC_ERROR', 'Failed to verify PAN');
@@ -138,9 +144,9 @@ export class KycController {
 
       if (!ifsc || !accountNumber) return sendError(res, 400, 'VALIDATION_ERROR', 'IFSC and Account Number required');
 
-      let setuRes: any;
+      let cashfreeRes: any;
       try {
-        setuRes = await SetuService.verifyBankAsync(ifsc, accountNumber);
+        cashfreeRes = await CashfreeService.verifyBankAsync(ifsc, accountNumber);
       } catch (err: any) {
         if (String(err?.response?.data).includes('403 Forbidden')) {
           return sendSuccess(res, { requestId: 'mock-bank-req-123' });
@@ -150,10 +156,10 @@ export class KycController {
 
       await db.query(
         `INSERT INTO kyc_audit_logs (user_id, type, status, request_id) VALUES ($1, $2, $3, $4)`,
-        [userId, 'BANK_VERIFY_INIT', 'pending', setuRes.id]
+        [userId, 'BANK_VERIFY_INIT', 'pending', cashfreeRes.id]
       );
 
-      return sendSuccess(res, { requestId: setuRes.id });
+      return sendSuccess(res, { requestId: cashfreeRes.id });
     } catch (error: any) {
       console.error('[KYC] initBankVerify Error:', error?.response?.data || error);
       return sendError(res, 500, 'KYC_ERROR', 'Failed to initiate bank verification');
@@ -169,22 +175,22 @@ export class KycController {
         return sendSuccess(res, { verified: true });
       }
 
-      const setuRes = await SetuService.getBankVerifyStatus(requestId);
+      const cashfreeRes = await CashfreeService.getBankVerifyStatus(requestId);
 
-      if (setuRes.verification === 'success') {
+      if (cashfreeRes.verification === 'success') {
         await db.query(
           `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
           [userId, 'BANK_VERIFY', 'success']
         );
         return sendSuccess(res, { verified: true });
-      } else if (setuRes.verification === 'failed') {
+      } else if (cashfreeRes.verification === 'failed') {
         await db.query(
           `INSERT INTO kyc_audit_logs (user_id, type, status) VALUES ($1, $2, $3)`,
           [userId, 'BANK_VERIFY', 'failed']
         );
       }
 
-      return sendSuccess(res, { verified: false, status: setuRes.verification, message: setuRes.message });
+      return sendSuccess(res, { verified: false, status: cashfreeRes.verification, message: cashfreeRes.message });
     } catch (error: any) {
       console.error('[KYC] getBankVerifyStatus Error:', error?.response?.data || error);
       return sendError(res, 500, 'KYC_ERROR', 'Failed to check bank verification status');
