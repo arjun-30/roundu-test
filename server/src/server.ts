@@ -220,6 +220,7 @@ async function main() {
           bookingId: data.bookingId,
           serviceId,
           customerName,
+          customerPhone: data.customerPhone || null,
           address,
           lat: data.lat ?? broadcast?.lat ?? null,
           lng: data.lng ?? broadcast?.lng ?? null,
@@ -248,6 +249,7 @@ async function main() {
         providerId: data.providerId,
         providerName: data.providerName,
         providerAvatar: data.providerAvatar,
+        providerPhone: data.providerPhone,
         price: data.price,
         rating: data.rating,
         distanceKm: data.distanceKm,
@@ -255,6 +257,19 @@ async function main() {
         reviews: data.reviews,
         submittedAt: Date.now()
       });
+    });
+
+    // Chat real-time messaging sockets
+    socket.on('join_chat_room', (data: { bookingId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      socket.join(room);
+      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}`);
+    });
+
+    socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string }) => {
+      const room = `chat:${data.bookingId}`;
+      console.log(`[socket] Chat message in room ${room} from ${data.senderId}: ${data.text}`);
+      socket.to(room).emit('chat_message_received', data);
     });
 
     socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {

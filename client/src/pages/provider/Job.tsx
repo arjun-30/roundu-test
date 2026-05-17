@@ -94,8 +94,9 @@ const Job = () => {
   };
 
   const handleCall = () => {
+    const phone = job?.customerPhone || "+919876543210";
     showNotification("Connecting via secure masked number...");
-    window.open("tel:+911234567890", "_self");
+    window.open(`tel:${phone}`, "_self");
   };
 
   const openNavigation = () => {

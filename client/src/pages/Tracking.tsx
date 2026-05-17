@@ -89,9 +89,10 @@ const Tracking = () => {
   }
 
   const handleCall = () => {
+    const phone = provider?.phone || "+919999999992";
     setNotification("Connecting via secure masked number...");
     setTimeout(() => setNotification(""), 3000);
-    window.open("tel:+911234567890", "_self");
+    window.open(`tel:${phone}`, "_self");
   };
 
   const currentStatus = liveStatus || booking.status;
@@ -157,7 +158,7 @@ const Tracking = () => {
             <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <Phone size={16} className="text-primary" />
             </button>
-            <button onClick={() => navigate(`/chat/${provider.id}`)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
+            <button onClick={() => navigate(`/chat/${booking.id}`)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <MessageCircle size={16} className="text-primary" />
             </button>
           </div>

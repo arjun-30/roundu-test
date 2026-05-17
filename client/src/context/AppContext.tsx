@@ -110,6 +110,7 @@ interface State {
     frequency: string;
     budget: string;
   };
+  chatHistories: Record<string, { sender: "me" | "other"; text: string; time: string }[]>;
 }
 
 type Action =
@@ -152,6 +153,7 @@ type Action =
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
   | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
+  | { type: "ADD_CHAT_MESSAGE"; payload: { bookingId: string; text: string; senderId: string; senderRole: string; time: string } }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
@@ -219,6 +221,7 @@ const initialState: State = {
     frequency: "",
     budget: "",
   },
+  chatHistories: {},
 };
 
 function reducer(state: State, action: Action): State {
@@ -479,6 +482,22 @@ function reducer(state: State, action: Action): State {
       };
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
+    case "ADD_CHAT_MESSAGE": {
+      const { bookingId, text, senderId, time } = action.payload;
+      const chatRoom = state.chatHistories[bookingId] || [];
+      const isMe = senderId === state.user.id;
+      
+      const isDuplicate = chatRoom.some(m => m.text === text && m.time === time && m.sender === (isMe ? "me" : "other"));
+      if (isDuplicate) return state;
+
+      return {
+        ...state,
+        chatHistories: {
+          ...state.chatHistories,
+          [bookingId]: [...chatRoom, { sender: isMe ? "me" : "other", text, time }]
+        }
+      };
+    }
     case "LOGOUT":
       localStorage.removeItem("roundu_token");
       localStorage.removeItem("roundu_user");
@@ -607,6 +626,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
     });
 
+    socket.on("chat_message_received", (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string }) => {
+      dispatch({ type: "ADD_CHAT_MESSAGE", payload: data });
+    });
+
     return () => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
@@ -614,6 +637,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.off("quote_received");
       socket.off("job_accepted");
       socket.off("job_status_updated");
+      socket.off("chat_message_received");
       socket.disconnect();
     };
   }, []);

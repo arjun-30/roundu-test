@@ -151,7 +151,8 @@ const SearchingProviders = () => {
             name: quote.providerName,
             avatar: quote.providerAvatar,
             rating: quote.rating,
-            experienceYrs: quote.reviews
+            experienceYrs: quote.reviews,
+            phone: quote.providerPhone
           }
         };
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
@@ -162,6 +163,7 @@ const SearchingProviders = () => {
           acceptedProviderId: quote.providerId,
           bookingId: res.data.id,
           customerName: user.name,
+          customerPhone: user.phone,
           address: user.address || "Customer Location",
           serviceId: serviceId,
           price: quote.price,

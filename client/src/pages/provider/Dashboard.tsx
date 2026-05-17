@@ -129,6 +129,7 @@ const Dashboard = () => {
       bookingId: string; 
       serviceId: string; 
       customerName: string; 
+      customerPhone?: string;
       address: string;
       lat?: number;
       lng?: number;
@@ -148,6 +149,7 @@ const Dashboard = () => {
         request: {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
+          customerPhone: data.customerPhone || "9999999991",
           serviceId: data.serviceId,
           address: data.address || "Customer Location",
           lat: data.lat,
@@ -178,6 +180,7 @@ const Dashboard = () => {
       providerId: user.id,
       providerName: user.name,
       providerAvatar: user.name.charAt(0),
+      providerPhone: user.phone || "9999999992",
       price: Number(quotePrice),
       rating: providerStats.rating || 0,
       distanceKm: 0,
