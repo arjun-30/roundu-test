@@ -92,9 +92,13 @@ const ReferEarn = () => {
         </div>
 
         {/* Leaderboard Button */}
-        <button className="w-full flex items-center justify-between p-5 rounded-3xl bg-secondary text-secondary-foreground shadow-lg shadow-secondary/10 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+        <button 
+          onClick={() => navigate("/top-referrers")}
+          className="w-full flex items-center justify-between p-5 rounded-3xl bg-secondary text-secondary-foreground shadow-lg shadow-secondary/10 animate-fade-in active:scale-[0.97] hover:scale-[1.01] hover:bg-secondary/95 hover:shadow-xl hover:shadow-secondary/20 transition-all duration-300 cursor-pointer group" 
+          style={{ animationDelay: "0.4s" }}
+        >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
               <Award size={24} className="text-amber-400" />
             </div>
             <div className="text-left">
@@ -102,7 +106,7 @@ const ReferEarn = () => {
               <p className="text-[10px] opacity-70">See the leaderboard</p>
             </div>
           </div>
-          <ChevronRight size={20} />
+          <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform duration-300" />
         </button>
 
         {/* How it works */}
