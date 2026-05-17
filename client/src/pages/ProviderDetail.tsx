@@ -44,6 +44,7 @@ const ProviderDetail = () => {
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   useEffect(() => {
     setLoadingPortfolio(true);
@@ -62,9 +63,14 @@ const ProviderDetail = () => {
   }, [id]);
 
   const mockReviews = [
-    { id: 1, user: "Amit S.", rating: 5, comment: "Excellent work! Fixed my leaking tap in minutes. Very professional.", date: "2 days ago" },
-    { id: 2, user: "Priya K.", rating: 4, comment: "On time and efficient. Highly recommended for electrical issues.", date: "1 week ago" },
-    { id: 3, user: "Vikram R.", rating: 5, comment: "Best service I've had in a while. Polite and thorough.", date: "2 weeks ago" },
+    { id: 1, user: "Amit S.", rating: 5, comment: "Excellent work! Fixed my leaking tap in minutes. Very professional.", date: "2 days ago", verified: true },
+    { id: 2, user: "Priya K.", rating: 4, comment: "On time and efficient. Highly recommended for electrical issues.", date: "1 week ago", verified: true },
+    { id: 3, user: "Vikram R.", rating: 5, comment: "Best service I've had in a while. Polite and thorough.", date: "2 weeks ago", verified: true },
+    { id: 4, user: "Suresh M.", rating: 5, comment: "Very knowledgeable and polite. Fixed the wiring issue flawlessly and explained everything.", date: "3 weeks ago", verified: true },
+    { id: 5, user: "Neha G.", rating: 5, comment: "Cleaned up after the job was done. Impressive dedication to quality and absolute transparency.", date: "1 month ago", verified: true },
+    { id: 6, user: "Rahul T.", rating: 4, comment: "Arrived a bit late but finished the job perfectly. Transparent pricing with no hidden charges.", date: "1 month ago", verified: true },
+    { id: 7, user: "Anjali D.", rating: 5, comment: "Super fast arrival and excellent communication throughout the service booking.", date: "2 months ago", verified: true },
+    { id: 8, user: "Manoj P.", rating: 5, comment: "Absolute expert. Solved a persistent plumbing issue no one else could fix in months.", date: "2 months ago", verified: true },
   ];
 
   const handleShare = async () => {
@@ -264,7 +270,7 @@ const ProviderDetail = () => {
              </div>
              
              <div className="space-y-4">
-                {mockReviews.map(review => (
+                {mockReviews.slice(0, 3).map(review => (
                    <div key={review.id} className="bg-[#F8FAFC] rounded-[24px] p-5 border border-border/40">
                       <div className="flex justify-between items-start mb-2">
                          <div className="flex items-center gap-3">
@@ -289,8 +295,8 @@ const ProviderDetail = () => {
                 ))}
              </div>
              
-             <button className="w-full py-4 text-[14px] font-extrabold text-primary bg-primary/5 rounded-[20px] mt-6 active:scale-[0.98] transition-all">
-                Read All Reviews
+             <button onClick={() => setShowReviewsModal(true)} className="w-full py-4 text-[14px] font-extrabold text-primary bg-primary/5 rounded-[20px] mt-6 active:scale-[0.98] transition-all hover:bg-primary/10">
+                Read All Reviews ({mockReviews.length})
              </button>
           </div>
 
@@ -330,6 +336,60 @@ const ProviderDetail = () => {
                     <h4 className="text-[16px] font-bold text-foreground mb-1">{item.title}</h4>
                     <p className="text-[13px] text-muted-foreground font-medium leading-relaxed">{item.desc || "Professional service execution with high quality standards."}</p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Modal */}
+      {showReviewsModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in" onClick={() => setShowReviewsModal(false)}>
+          <div className="bg-background w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center bg-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                  Client Reviews
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Star size={12} className="fill-yellow-600 text-yellow-600" /> {provider.rating}
+                  </span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">All {mockReviews.length} verified customer reviews</p>
+              </div>
+              <button onClick={() => setShowReviewsModal(false)} className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center text-secondary hover:bg-secondary/20 active:scale-95 transition-all">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-[#F8FAFC]">
+              {mockReviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-[24px] p-5 border border-border/60 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                        {review.user.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[15px] font-bold text-foreground">{review.user}</p>
+                          {review.verified && (
+                            <span className="bg-green-50 text-green-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-green-200">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{review.date}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 bg-yellow-50 px-2.5 py-1 rounded-full border border-yellow-100">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={12} className={i < review.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[14px] text-slate-700 font-medium leading-relaxed italic pl-1">
+                    "{review.comment}"
+                  </p>
                 </div>
               ))}
             </div>
