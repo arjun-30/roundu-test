@@ -105,7 +105,7 @@ const Home = () => {
           }`}
         >
           {/* Menu Header */}
-          <div className="px-5 pt-8 pb-5 bg-gradient-to-br from-[#152E4B] to-[#1C3D63] relative overflow-hidden">
+          <div className="px-5 pt-8 pb-5 bg-primary relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
             <button
               onClick={() => setMenuOpen(false)}
@@ -235,7 +235,23 @@ const Home = () => {
 
 
 
-      
+        {/* ═══ AI RECOMMENDATIONS ═══ */}
+        <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
+          <button
+            onClick={() => goToProviders("ac_cleaning")}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 hover:shadow-md transition-all active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={18} className="text-secondary" />
+            </div>
+            <div className="text-left flex-1">
+              <h3 className="text-[13px] font-extrabold text-primary">Your AC might need a filter clean</h3>
+              <p className="text-[10px] text-secondary mt-0.5 leading-snug">Based on your home's previous history. Book now.</p>
+            </div>
+            <ChevronRight size={18} className="text-blue-400 flex-shrink-0" />
+          </button>
+        </div>
+
         {/* ═══ BROWSE SERVICES ═══ */}
         <div className="px-5 pt-3 pb-2 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <div className="flex items-center justify-between mb-1">
@@ -383,7 +399,7 @@ const Home = () => {
         <div className="px-5 pb-6 animate-fade-in" style={{ animationDelay: "0.25s" }}>
           <button
             onClick={() => navigate("/refer-earn")}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] border border-[#F59E0B]/20 hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent border border-accent/20 hover:shadow-md transition-all active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
               <Gift size={24} className="text-secondary" />
