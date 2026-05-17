@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase, 
   MessageCircle, Phone, Share2, MoreVertical, ShieldCheck, 
-  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight
+  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X
 } from "lucide-react";
 import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
@@ -43,16 +43,19 @@ const ProviderDetail = () => {
 
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
 
   useEffect(() => {
     setLoadingPortfolio(true);
     // Simulating API fetch for portfolio
     setTimeout(() => {
       setPortfolio([
-        { id: 1, title: "Plumbing Fix", image: "/provider_work_gallery_1_1778838516658.png" },
-        { id: 2, title: "Electrical Setup", image: "/provider_work_gallery_2_1778838540729.png" },
-        { id: 3, title: "Bathroom Renovation", image: "/provider_work_gallery_3_1778838557643.png" },
-        { id: 4, title: "Kitchen Drain Clear", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop" },
+        { id: 1, title: "Plumbing Fix", image: "/provider_work_gallery_1_1778838516658.png", desc: "Complete pipe replacement and leak repair." },
+        { id: 2, title: "Electrical Setup", image: "/provider_work_gallery_2_1778838540729.png", desc: "Main panel wiring and safety circuit installation." },
+        { id: 3, title: "Bathroom Renovation", image: "/provider_work_gallery_3_1778838557643.png", desc: "Modern fixture installation and waterproofing." },
+        { id: 4, title: "Kitchen Drain Clear", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop", desc: "Deep clog removal and drainage optimization." },
+        { id: 5, title: "Water Heater Fix", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop", desc: "Thermostat replacement and heating element scaling." },
+        { id: 6, title: "Smart Home Lighting", image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&h=300&fit=crop", desc: "Automated ambient lighting setup and switchboard repair." },
       ]);
       setLoadingPortfolio(false);
     }, 800);
@@ -64,10 +67,21 @@ const ProviderDetail = () => {
     { id: 3, user: "Vikram R.", rating: 5, comment: "Best service I've had in a while. Polite and thorough.", date: "2 weeks ago" },
   ];
 
+  const handleShare = async () => {
+    const shareUrl = `https://roundu.in/provider/${provider?.id}`;
+    const shareText = `Check out ${provider?.name} on RoundU — ${service?.label || "Professional Service"} starting at ₹${provider?.pricePerHr}/hr. Book now!`;
+    try {
+      await navigator.share({ title: provider?.name, text: shareText, url: shareUrl });
+    } catch {
+      // Cancelled or not supported
+    }
+  };
+
   const handleCall = () => {
     showNotification("Connecting via secure masked number...");
     window.open("tel:+911234567890", "_self");
   };
+
 
   const handleBook = () => {
     navigate(`/booking/${provider?.id}`, { state: { provider } });
@@ -110,7 +124,10 @@ const ProviderDetail = () => {
             >
               <Heart size={20} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
             </button>
-            <button className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 active:scale-90 transition-all">
+            <button
+              onClick={handleShare}
+              className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 active:scale-90 transition-all"
+            >
               <Share2 size={20} />
             </button>
           </div>
@@ -217,7 +234,7 @@ const ProviderDetail = () => {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4 px-1">
                <h3 className="text-[17px] font-extrabold text-foreground">Project Gallery</h3>
-               <button className="text-[12px] font-bold text-primary uppercase tracking-wide">View All</button>
+               <button onClick={() => setShowGalleryModal(true)} className="text-[12px] font-bold text-primary uppercase tracking-wide active:opacity-60 transition-opacity">View All</button>
             </div>
             {loadingPortfolio ? (
               <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
@@ -226,7 +243,7 @@ const ProviderDetail = () => {
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6">
                 {portfolio.map((item) => (
-                  <div key={item.id} className="relative w-64 h-44 rounded-[24px] overflow-hidden flex-shrink-0 shadow-md group">
+                  <div key={item.id} onClick={() => setShowGalleryModal(true)} className="relative w-64 h-44 rounded-[24px] overflow-hidden flex-shrink-0 shadow-md group cursor-pointer">
                     <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                     <p className="absolute bottom-4 left-4 text-white text-[13px] font-bold drop-shadow-md">{item.title}</p>
@@ -286,6 +303,39 @@ const ProviderDetail = () => {
 
         </div>
       </div>
+
+      {/* Gallery Modal */}
+      {showGalleryModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in" onClick={() => setShowGalleryModal(false)}>
+          <div className="bg-background w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border flex justify-between items-center bg-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-lg font-extrabold text-foreground">Project Gallery</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{portfolio.length} verified projects completed</p>
+              </div>
+              <button onClick={() => setShowGalleryModal(false)} className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center text-secondary hover:bg-secondary/20 active:scale-95 transition-all">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#F8FAFC]">
+              {portfolio.map((item) => (
+                <div key={item.id} className="bg-white rounded-[24px] overflow-hidden border border-border/60 shadow-sm group">
+                  <div className="aspect-video w-full overflow-hidden relative bg-slate-100">
+                    <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-extrabold text-primary shadow-sm">
+                      Verified Work
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h4 className="text-[16px] font-bold text-foreground mb-1">{item.title}</h4>
+                    <p className="text-[13px] text-muted-foreground font-medium leading-relaxed">{item.desc || "Professional service execution with high quality standards."}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-border z-50">
