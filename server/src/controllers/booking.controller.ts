@@ -6,6 +6,37 @@ import { NotificationModel } from '../models/notification.model';
 export const createBooking = async (req: Request, res: Response) => {
   try {
     const bookingData = { ...req.body };
+
+    // Normalize and sanitize scheduled_at dynamically to prevent timezone offset shifts
+    if (bookingData.scheduled_at) {
+      const parsedDate = new Date(bookingData.scheduled_at);
+      if (!isNaN(parsedDate.getTime())) {
+        bookingData.scheduled_at = parsedDate.toISOString();
+      } else {
+        // Fallback for custom formats: e.g. "YYYY-MM-DD hh:mm AM/PM"
+        const matches = String(bookingData.scheduled_at).match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}\s+(?:AM|PM|am|pm))$/i);
+        if (matches) {
+          try {
+            const datePart = matches[1];
+            const timePart = matches[2].toUpperCase();
+            const [time, modifier] = timePart.split(" ");
+            let [hoursStr, minutesStr] = time.split(":");
+            let hours = parseInt(hoursStr, 10);
+            const minutes = parseInt(minutesStr, 10);
+            if (modifier === "PM" && hours < 12) hours += 12;
+            else if (modifier === "AM" && hours === 12) hours = 0;
+            
+            const [year, month, day] = datePart.split("-").map((num) => parseInt(num, 10));
+            const localDateObj = new Date(year, month - 1, day, hours, minutes, 0, 0);
+            if (!isNaN(localDateObj.getTime())) {
+              bookingData.scheduled_at = localDateObj.toISOString();
+            }
+          } catch (e) {
+            console.error("Sanitization fallback parser error:", e);
+          }
+        }
+      }
+    }
     
     // The frontend might send users.id instead of providers.id for the quote.
     // Try to resolve it to a providers.id if it matches a user.

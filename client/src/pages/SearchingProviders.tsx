@@ -169,6 +169,7 @@ const SearchingProviders = () => {
           price: quote.price,
           lat: currentLocation?.lat,
           lng: currentLocation?.lng,
+          scheduled_at: res.data.scheduled_at,
         });
 
         navigate(`/tracking/${res.data.id}`);

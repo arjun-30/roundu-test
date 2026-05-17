@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Wallet, Smartphone, Check } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Booking } from "@/data/mockData";
+import { getAbsoluteIsoTimestamp } from "@/lib/utils";
 
 import api, { createBooking, loadRazorpay } from "@/lib/api";
 
@@ -94,7 +95,7 @@ const BookingPayment = () => {
               customer_id: user.id,
               provider_id: selectedProvider.id,
               service_id: selectedServiceId,
-              scheduled_at: `${selectedDate} ${selectedTime}`,
+              scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
               address: user.address || "Client Address",
               price: total,
               notes: bookingNotes,

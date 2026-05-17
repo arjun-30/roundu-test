@@ -7,7 +7,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
-import { getDistance } from "@/lib/utils";
+import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
 
 
 type Role = "customer" | "provider" | null;
@@ -279,13 +279,14 @@ function reducer(state: State, action: Action): State {
     case "HANDLE_JOB_ACCEPTED": {
       const { booking } = action;
       if (state.role === "provider" && state.user.id === booking.provider_user_id) {
+        const { date, time } = formatLocalBookingDateTime(booking.scheduled_at);
         const mappedRequest = {
           id: booking.id,
           customerId: booking.customer_id,
           customerName: "Customer",
           serviceId: booking.service_id,
-          date: booking.scheduled_at?.split('T')[0] || "Today",
-          time: booking.scheduled_at?.split('T')[1]?.slice(0, 5) || "Now",
+          date,
+          time,
           address: booking.address,
           price: booking.price,
           status: booking.status || "assigned",
@@ -364,10 +365,31 @@ function reducer(state: State, action: Action): State {
         bookingVoiceNote: false,
         bookingVoiceNoteUrl: null,
       };
-    case "ADD_BOOKING":
-      return { ...state, bookings: [action.booking, ...state.bookings] };
-    case "SET_BOOKINGS":
-      return { ...state, bookings: action.bookings };
+    case "ADD_BOOKING": {
+      const booking = action.booking;
+      const { date, time } = formatLocalBookingDateTime(booking.scheduled_at);
+      const enriched = {
+        ...booking,
+        providerId: booking.provider_id || booking.providerId,
+        serviceId: booking.service_id || booking.serviceId,
+        date: booking.date || date,
+        time: booking.time || time
+      };
+      return { ...state, bookings: [enriched, ...state.bookings] };
+    }
+    case "SET_BOOKINGS": {
+      const enrichedBookings = action.bookings.map((b: any) => {
+        const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
+        return {
+          ...b,
+          providerId: b.provider_id || b.providerId,
+          serviceId: b.service_id || b.serviceId,
+          date,
+          time
+        };
+      });
+      return { ...state, bookings: enrichedBookings };
+    }
     case "UPDATE_BOOKING":
       return {
         ...state,
@@ -552,20 +574,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               const providerId = dashboard.data.provider.id;
               const pbRes = await fetchProviderBookings(providerId);
               if (pbRes.success) {
-                const mappedRequests = pbRes.data.map((b: any) => ({
-                  id: b.id,
-                  customerId: b.customer_id,
-                  customerName: "Customer",
-                  serviceId: b.service_id,
-                  date: b.scheduled_at?.split(' ')[0] || "Today",
-                  time: b.scheduled_at?.split(' ')[1] || "10:00 AM",
-                  address: b.address,
-                  price: b.price,
-                  status: b.status,
-                  notes: b.notes,
-                  voiceNote: b.voice_note || false,
-                  voiceNoteUrl: b.voice_note_url || null
-                }));
+                const mappedRequests = pbRes.data.map((b: any) => {
+                  const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
+                  return {
+                    id: b.id,
+                    customerId: b.customer_id,
+                    customerName: "Customer",
+                    serviceId: b.service_id,
+                    date,
+                    time,
+                    address: b.address,
+                    price: b.price,
+                    status: b.status,
+                    notes: b.notes,
+                    voiceNote: b.voice_note || false,
+                    voiceNoteUrl: b.voice_note_url || null
+                  };
+                });
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
               }
             }

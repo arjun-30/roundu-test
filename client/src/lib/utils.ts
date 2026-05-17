@@ -18,3 +18,75 @@ export const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
+
+/**
+ * Parses any scheduled_at string (UTC or with offset) and formats it into the user's browser-local date and time consistently.
+ */
+export function formatLocalBookingDateTime(scheduledAt: any): { date: string; time: string } {
+  if (!scheduledAt) {
+    return { date: "Today", time: "Now" };
+  }
+  try {
+    const dateObj = new Date(scheduledAt);
+    if (isNaN(dateObj.getTime())) {
+      // Fallback: replace space with T if database returned space separator without T
+      const normalizedStr = typeof scheduledAt === 'string' ? scheduledAt.replace(' ', 'T') : scheduledAt;
+      const parsedFallback = new Date(normalizedStr);
+      if (!isNaN(parsedFallback.getTime())) {
+        return formatDateTime(parsedFallback);
+      }
+      return { date: "Today", time: "Now" };
+    }
+    return formatDateTime(dateObj);
+  } catch (err) {
+    return { date: "Today", time: "Now" };
+  }
+}
+
+function formatDateTime(dateObj: Date): { date: string; time: string } {
+  const dateStr = dateObj.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+  
+  const timeStr = dateObj.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+  
+  return { date: dateStr, time: timeStr };
+}
+
+/**
+ * Standardizes a selected local date and selected local time to a fully qualified UTC ISO 8601 string.
+ */
+export function getAbsoluteIsoTimestamp(dateStr: string, timeStr: string): string {
+  // dateStr format: YYYY-MM-DD
+  // timeStr format: hh:mm AM/PM
+  try {
+    const [time, modifier] = timeStr.split(" ");
+    let [hoursStr, minutesStr] = time.split(":");
+    let hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+
+    if (modifier === "PM" && hours < 12) {
+      hours += 12;
+    } else if (modifier === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    const [year, month, day] = dateStr.split("-").map(num => parseInt(num, 10));
+    const localDateObj = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    
+    if (isNaN(localDateObj.getTime())) {
+      return new Date().toISOString();
+    }
+    return localDateObj.toISOString();
+  } catch (err) {
+    console.error("Error formatting absolute timestamp:", err);
+    return new Date().toISOString();
+  }
+}
+
