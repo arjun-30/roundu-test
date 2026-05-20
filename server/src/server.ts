@@ -262,10 +262,16 @@ async function main() {
       console.log(`[socket] Socket ${socket.id} joined chat room: ${room}`);
     });
 
-    socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string }) => {
+    socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
       const room = `chat:${data.bookingId}`;
-      console.log(`[socket] Chat message in room ${room} from ${data.senderId}: ${data.text}`);
+      console.log(`[socket] Chat message in room ${room} from ${data.senderId}`);
+      // Relay the full payload (including audioBase64 if present) to all other users in the room
       socket.to(room).emit('chat_message_received', data);
+    });
+
+    socket.on('typing_indicator', (data: { bookingId: string; senderId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      socket.to(room).emit('typing_indicator', data);
     });
 
     socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {

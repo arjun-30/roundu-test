@@ -181,7 +181,7 @@ const SearchingProviders = () => {
           scheduled_at: res.data.scheduled_at,
         });
 
-        navigate(`/tracking/${res.data.id}`);
+        navigate(`/chat/${res.data.id}`);
       } else {
         setError("Failed to confirm booking.");
         setAcceptingQuoteId(null);

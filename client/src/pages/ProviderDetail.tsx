@@ -7,12 +7,14 @@ import {
 } from "lucide-react";
 import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
+import { createBooking } from "@/lib/api";
+import { socket } from "@/lib/socket";
 
 const ProviderDetail = () => {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, dispatch } = useApp();
+  const { user, dispatch, currentLocation } = useApp();
   
   // Get provider from state (e.g. from Search) or fallback to mock data
   const initialProvider = location.state?.provider || getProviderById(id);
@@ -59,6 +61,8 @@ const ProviderDetail = () => {
 
   const [notification, setNotification] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -113,8 +117,67 @@ const ProviderDetail = () => {
   };
 
 
-  const handleBook = () => {
-    navigate(`/booking/${provider?.id}`, { state: { provider } });
+  const handleBook = async () => {
+    if (isBooking || !provider || !user?.id) return;
+    setIsBooking(true);
+
+    try {
+      const bookingData = {
+        customer_id: user.id,
+        provider_id: provider.id,
+        service_id: provider.serviceId || (quote?.broadcastId?.split('-')?.[2] ?? 'service'),
+        status: "assigned",
+        scheduled_at: new Date(Date.now() + (provider.etaMin || 15) * 60000).toISOString(),
+        address: user.address || "Client Address",
+        lat: currentLocation?.lat,
+        lng: currentLocation?.lng,
+        price: provider.pricePerHr,
+        notes: "Booking from provider profile",
+      };
+
+      const res = await createBooking(bookingData);
+      if (res.success) {
+        const enrichedBooking = {
+          ...res.data,
+          providerDetails: {
+            name: provider.name,
+            avatar: provider.avatar,
+            rating: provider.rating,
+            experienceYrs: provider.experienceYrs,
+            phone: provider.phone || "",
+          }
+        };
+        dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
+
+        // Notify the provider via socket
+        if (quote) {
+          socket.emit("accept_quote", {
+            broadcastId: quote.broadcastId,
+            acceptedProviderId: provider.id,
+            bookingId: res.data.id,
+            customerName: user.name,
+            customerPhone: user.phone,
+            address: user.address || "Customer Location",
+            serviceId: provider.serviceId,
+            price: provider.pricePerHr,
+            lat: currentLocation?.lat,
+            lng: currentLocation?.lng,
+            scheduled_at: res.data.scheduled_at,
+          });
+        }
+
+        setBookingSuccess(true);
+        showNotification("✅ Booking confirmed! Opening chat...");
+        setTimeout(() => navigate(`/chat/${res.data.id}`), 900);
+      } else {
+        showNotification("Failed to create booking. Try again.");
+        setIsBooking(false);
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification("Network error. Please try again.");
+      setIsBooking(false);
+    }
   };
 
   if (!provider) {
@@ -444,9 +507,19 @@ const ProviderDetail = () => {
             </button>
             <button
               onClick={handleBook}
-              className="flex-1 h-14 rounded-[22px] bg-primary text-white font-extrabold text-[15px] shadow-[0_12px_24px_rgba(21,46,75,0.2)] active:scale-[0.98] transition-all hover:bg-[#1C3D63]"
+              disabled={isBooking}
+              className={`flex-1 h-14 rounded-[22px] text-white font-extrabold text-[15px] shadow-[0_12px_24px_rgba(21,46,75,0.2)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-80 disabled:scale-100 ${bookingSuccess ? 'bg-green-500' : 'bg-primary hover:bg-[#1C3D63]'}`}
             >
-              Book Service — ₹{provider.pricePerHr}
+              {isBooking && !bookingSuccess && (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
+              {bookingSuccess ? (
+                <><CheckCircle2 size={18} /> Confirmed!</>
+              ) : isBooking ? (
+                "Booking..."
+              ) : (
+                `Book Service — ₹${provider.pricePerHr}`
+              )}
             </button>
           </div>
         </div>

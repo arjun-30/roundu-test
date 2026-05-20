@@ -669,8 +669,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
     });
 
-    socket.on("chat_message_received", (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string }) => {
+    socket.on("chat_message_received", (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
       dispatch({ type: "ADD_CHAT_MESSAGE", payload: data });
+      // Show a notification if the user is not currently viewing this chat
+      if (!window.location.pathname.includes(`/chat/${data.bookingId}`)) {
+        const senderLabel = data.senderRole === 'provider' ? 'Provider' : 'Customer';
+        const preview = data.audioBase64 ? '🎤 Voice message' : data.text.slice(0, 50);
+        dispatch({ type: "ADD_NOTIFICATION", text: `💬 ${senderLabel}: ${preview}` });
+      }
     });
 
     return () => {
@@ -684,6 +690,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.disconnect();
     };
   }, []);
+
+  // Auto-join all active booking chat rooms so messages are never missed
+  // This runs whenever bookings change (e.g. new booking added after quote accepted)
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const joinRooms = () => {
+      state.bookings.forEach((b) => {
+        if (b.id) {
+          socket.emit("join_chat_room", { bookingId: b.id });
+        }
+      });
+      // Also join via req- prefix for provider-side requests
+      state.providerRequests.forEach((r: any) => {
+        if (r.id) {
+          const normalId = r.id.replace('req-', '');
+          socket.emit("join_chat_room", { bookingId: normalId });
+        }
+      });
+    };
+    if (socket.connected) {
+      joinRooms();
+    }
+    socket.on('connect', joinRooms);
+    return () => { socket.off('connect', joinRooms); };
+  }, [state.bookings, state.providerRequests, state.isAuthenticated]);
 
   useEffect(() => {
     if (!state.isAuthenticated || !state.user.id) return;
