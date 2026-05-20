@@ -419,15 +419,6 @@ const Chat = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              {(!booking || (booking.status !== "in_progress" && booking.status !== "arrived" && booking.status !== "completed")) && (
-                <button
-                  onMouseDown={startRecording}
-                  onTouchStart={startRecording}
-                  className="w-10 h-10 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <Mic size={18} className="text-primary" />
-                </button>
-              )}
               <input
                 ref={inputRef}
                 value={message}
