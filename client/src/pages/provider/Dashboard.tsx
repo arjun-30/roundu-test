@@ -164,8 +164,8 @@ const Dashboard = () => {
         } 
       });
       
-      // Navigate to Job page
-      navigate(`/provider/job/${data.bookingId}`);
+      // Navigate to Chat — enables immediate customer ↔ provider communication
+      navigate(`/chat/${data.bookingId}`);
     };
     
     socket.on("quote_accepted", handleQuoteAccepted);

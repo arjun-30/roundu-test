@@ -524,7 +524,7 @@ function reducer(state: State, action: Action): State {
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
     case "ADD_CHAT_MESSAGE": {
-      const { bookingId, text, senderId, time } = action.payload;
+      const { bookingId, text, senderId, time, audioBase64 } = action.payload;
       const chatRoom = state.chatHistories[bookingId] || [];
       const isMe = senderId === state.user.id;
       
@@ -535,7 +535,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         chatHistories: {
           ...state.chatHistories,
-          [bookingId]: [...chatRoom, { sender: isMe ? "me" : "other", text, time }]
+          [bookingId]: [...chatRoom, { sender: isMe ? "me" : "other", text, time, audioBase64: audioBase64 || null }]
         }
       };
     }
