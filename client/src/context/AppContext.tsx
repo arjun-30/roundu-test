@@ -146,6 +146,8 @@ type Action =
   | { type: "UPDATE_NEARBY_PROVIDER"; id: string; lat: number; lng: number; name: string }
   | { type: "SET_CURRENT_LOCATION"; lat: number; lng: number }
   | { type: "ADD_LIVE_BROADCAST"; broadcast: JobBroadcast }
+  | { type: "HANDLE_INCOMING_BROADCAST"; broadcast: JobBroadcast }
+  | { type: "CLEAR_LIVE_BROADCASTS" }
   | { type: "REMOVE_LIVE_BROADCAST"; id: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
@@ -366,7 +368,7 @@ function reducer(state: State, action: Action): State {
         bookingVoiceNoteUrl: null,
       };
     case "ADD_BOOKING": {
-      const booking = action.booking;
+      const booking = action.booking as any;
       const { date, time } = formatLocalBookingDateTime(booking.scheduled_at);
       const enriched = {
         ...booking,
@@ -402,6 +404,23 @@ function reducer(state: State, action: Action): State {
         ...state,
         notifications: [
           { id: `n-${Date.now()}`, text: action.text, ts: Date.now() },
+          ...state.notifications,
+        ].slice(0, 20),
+      };
+    case "HANDLE_INCOMING_BROADCAST":
+      if (state.role === "customer") return state;
+      // Deduplicate: if this exact broadcastId is already in the list, ignore
+      if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
+        return state;
+      }
+      return {
+        ...state,
+        liveBroadcasts: [
+          action.broadcast, 
+          ...state.liveBroadcasts.filter((b) => b.customerId !== action.broadcast.customerId)
+        ],
+        notifications: [
+          { id: `n-${Date.now()}`, text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, ts: Date.now() },
           ...state.notifications,
         ].slice(0, 20),
       };
@@ -634,8 +653,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
       console.log("[socket] ✅ incoming_broadcast received:", broadcast);
-      dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
-      dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
+      dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
     });
 
     socket.on("quote_received", (quote: ProviderQuote) => {

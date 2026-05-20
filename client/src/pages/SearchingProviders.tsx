@@ -99,6 +99,11 @@ const SearchingProviders = () => {
         const payload = buildPayload();
         console.log("[socket] emitting broadcast_job:", payload.serviceId, "lat:", payload.lat, "lng:", payload.lng);
         socket.emit("broadcast_job", payload);
+        
+        if (!hasTriggered.current) {
+          dispatch({ type: "ADD_NOTIFICATION", text: "✅ Booking Submitted Successfully. Searching for nearby professionals..." });
+          hasTriggered.current = true;
+        }
       }
     };
 

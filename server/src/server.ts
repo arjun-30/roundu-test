@@ -188,12 +188,9 @@ async function main() {
       }
 
       // Emit to service room + all providers room on every call
-      // This ensures providers who joined AFTER the first broadcast still receive it.
+      // Chaining .to() ensures socket.io deduplicates if a provider is in both rooms
       const roomName = `service:${data.serviceId}`;
-      io.to(roomName).emit('incoming_broadcast', broadcastPayload);
-      io.to('providers').emit('incoming_broadcast', broadcastPayload);
-      // Echo back to sender for debug/test
-      socket.emit('incoming_broadcast', broadcastPayload);
+      io.to(roomName).to('providers').emit('incoming_broadcast', broadcastPayload);
       console.log(`[socket] broadcast sent to ${roomName} + providers room (isNew=${isNew})`);
     });
 
