@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { ArrowLeft, CheckCircle2, Phone, MessageCircle, ChevronRight, Star } from "lucide-react";
+import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
@@ -40,10 +40,11 @@ const SearchingProviders = () => {
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const [isLongWait, setIsLongWait] = useState(false);
   const [error, setError] = useState("");
+  const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
 
   const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote } = useApp();
   const hasTriggered = useRef(false);
-  const broadcastIdRef = useRef(`bc-${user.id || 'anon'}-${Date.now()}`);
+  const [broadcastId] = useState(() => `bc-${user?.id || 'anon'}-${Date.now()}`);
 
   // Convert GPS to SVG Coordinates
   const getProviderPos = (lat: number, lng: number) => {
@@ -80,7 +81,7 @@ const SearchingProviders = () => {
     dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
 
     const buildPayload = () => ({
-      broadcastId: broadcastIdRef.current,
+      broadcastId: broadcastId,
       customerId: user.id,
       customerName: user.name,
       serviceId: serviceId || "electrician",
@@ -124,13 +125,16 @@ const SearchingProviders = () => {
     };
   }, [serviceId, user, dispatch, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote]);
 
-  const handleAcceptQuote = async (quote: any) => {
+  const handleAcceptQuote = async (quote: ProviderQuote) => {
+    if (acceptingQuoteId) return; // Prevent double-clicks
+    
     if (!user || !user.id) {
       setError("Please log in to confirm booking");
       setTimeout(() => navigate("/auth", { replace: true }), 1500);
       return;
     }
     setError("");
+    setAcceptingQuoteId(quote.providerId);
 
     const bookingData = {
       customer_id: user.id,
@@ -157,14 +161,14 @@ const SearchingProviders = () => {
             avatar: quote.providerAvatar,
             rating: quote.rating,
             experienceYrs: quote.reviews,
-            phone: quote.providerPhone
+            phone: (quote as any).providerPhone
           }
         };
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
         
         // Notify the winning provider & other providers the job is taken
         socket.emit("accept_quote", { 
-          broadcastId: broadcastIdRef.current, 
+          broadcastId: broadcastId, 
           acceptedProviderId: quote.providerId,
           bookingId: res.data.id,
           customerName: user.name,
@@ -180,10 +184,12 @@ const SearchingProviders = () => {
         navigate(`/tracking/${res.data.id}`);
       } else {
         setError("Failed to confirm booking.");
+        setAcceptingQuoteId(null);
       }
     } catch (err) {
       console.error(err);
       setError("Error confirming quote. Check your connection.");
+      setAcceptingQuoteId(null);
     }
   };
 
@@ -348,27 +354,27 @@ const SearchingProviders = () => {
               {receivedQuotes.map((q) => (
                 <div 
                   key={q.providerId} 
-                  onClick={() => navigate(`/provider/${q.providerId}`, { state: { quote: q } })}
-                  className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer"
+                  onClick={() => !acceptingQuoteId && navigate(`/provider/${q.providerId}`, { state: { quote: q } })}
+                  className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer active:scale-[0.98] transition-transform hover:shadow-md"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div 
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/provider/${q.providerId}`, { state: { quote: q } });
+                          if (!acceptingQuoteId) navigate(`/provider/${q.providerId}`, { state: { quote: q } });
                         }}
-                        className="w-10 h-10 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF] hover:border-primary transition-colors"
+                        className="w-12 h-12 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF] hover:border-primary transition-colors"
                       >
                         {q.providerAvatar}
                       </div>
                       <div>
-                        <h4 className="text-[15px] font-[600] text-foreground">{q.providerName}</h4>
-                        <div className="flex items-center gap-2 text-[11px] text-[#7A8BA0] mt-0.5">
+                        <h4 className="text-[16px] font-bold text-foreground">{q.providerName}</h4>
+                        <div className="flex items-center gap-2 text-[12px] text-muted-foreground mt-0.5">
                           {q.rating === 0 ? (
-                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-[600] text-[10px] uppercase">New</span>
+                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-bold uppercase text-[10px]">New</span>
                           ) : (
-                            <span className="flex items-center gap-0.5 text-yellow-500 font-[600]"><span className="text-[12px]">★</span> {q.rating}</span>
+                            <span className="flex items-center gap-0.5 text-yellow-500 font-bold"><Star size={12} className="fill-yellow-500 text-yellow-500" /> {q.rating}</span>
                           )}
                           <span>• {q.distanceKm}km away</span>
                         </div>
@@ -379,14 +385,37 @@ const SearchingProviders = () => {
                       <p className="text-[10px] text-green-600 font-[600] bg-green-50 px-1.5 py-0.5 rounded-md mt-1 inline-block">ETA: {q.etaMin} mins</p>
                     </div>
                   </div>
+                  
+                  <div className="flex items-center justify-between border-t border-border pt-3 mt-1">
+                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                       <button disabled className="w-8 h-8 rounded-full bg-secondary/5 flex items-center justify-center text-secondary/40">
+                          <Phone size={14} />
+                       </button>
+                       <button disabled className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary/40">
+                          <MessageCircle size={14} />
+                       </button>
+                    </div>
+                    <div className="text-[12px] font-bold text-primary flex items-center gap-1 group">
+                       View Profile <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
                   <button 
+                    disabled={acceptingQuoteId === q.providerId}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleAcceptQuote(q);
+                      if (!acceptingQuoteId) handleAcceptQuote(q);
                     }}
-                    className="w-full bg-primary text-white py-2.5 rounded-xl text-[13px] font-[600] mt-1 active:scale-95 transition-transform"
+                    className="w-full bg-primary text-white py-2.5 rounded-xl text-[14px] font-bold mt-1 active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
                   >
-                    Accept Quote
+                    {acceptingQuoteId === q.providerId ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Confirming...
+                      </>
+                    ) : (
+                      "Accept Quote"
+                    )}
                   </button>
                 </div>
               ))}

@@ -20,17 +20,41 @@ const ProviderDetail = () => {
 
   // Override fields if coming from a specific quote
   const provider = useMemo(() => {
-    if (!initialProvider) return null;
+    if (initialProvider) {
+      if (quote) {
+        return {
+          ...initialProvider,
+          pricePerHr: quote.price,
+          etaMin: quote.etaMin,
+          distanceKm: quote.distanceKm,
+          rating: quote.rating || initialProvider.rating
+        };
+      }
+      return initialProvider;
+    }
+
+    // Dynamic fallback for real users who aren't in mockData.ts
     if (quote) {
       return {
-        ...initialProvider,
+        id: quote.providerId,
+        name: quote.providerName,
+        avatar: quote.providerAvatar || "P",
         pricePerHr: quote.price,
         etaMin: quote.etaMin,
         distanceKm: quote.distanceKm,
-        rating: quote.rating || initialProvider.rating
+        rating: quote.rating || 0,
+        reviews: 0,
+        experienceYrs: 2,
+        verified: true,
+        jobs: 12,
+        bio: "Independent professional dedicated to quality service.",
+        tags: ["Fast", "Reliable"],
+        available: true,
+        serviceId: ""
       };
     }
-    return initialProvider;
+
+    return null;
   }, [initialProvider, quote]);
 
   const [notification, setNotification] = useState("");
