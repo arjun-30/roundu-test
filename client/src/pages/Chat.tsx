@@ -36,10 +36,10 @@ const Chat = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // 1. Resolve booking / request / participant details
-  const booking = bookings.find((b: any) => b.id === id);
-  const request = providerRequests.find((r: any) => r.id === id || r.id === `req-${id}`);
+  const booking = bookings.find((b: any) => String(b.id) === id || String(b.id) === String(id).replace('req-', ''));
+  const request = providerRequests.find((r: any) => String(r.id) === id || String(r.id) === `req-${id}`);
 
-  const roomId = booking?.id || request?.id?.replace('req-', '') || id || "";
+  const roomId = booking?.id || (request?.id ? String(request.id).replace('req-', '') : null) || id || "";
   const messages = chatHistories[roomId] || [];
 
   let participantName = "User";
@@ -73,10 +73,10 @@ const Chat = () => {
   // 3. Join chat room & listen for typing
   useEffect(() => {
     if (!roomId) return;
-    socket.emit("join_chat_room", { bookingId: roomId });
+    socket.emit("join_chat_room", { bookingId: String(roomId) });
 
     const handleTyping = (data: { bookingId: string; senderId: string }) => {
-      if (data.bookingId === roomId && data.senderId !== user?.id) {
+      if (String(data.bookingId) === String(roomId) && data.senderId !== user?.id) {
         setPartnerTyping(true);
         setTimeout(() => setPartnerTyping(false), 2500);
       }
@@ -100,7 +100,7 @@ const Chat = () => {
   const handleSendMessage = useCallback(() => {
     if (!message.trim() || !roomId) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const payload = { bookingId: roomId, text: message.trim(), senderId: user.id, senderRole: role, time };
+    const payload = { bookingId: String(roomId), text: message.trim(), senderId: user.id, senderRole: role, time };
     socket.emit("send_chat_message", payload);
     dispatch({ type: "ADD_CHAT_MESSAGE", payload });
     setMessage("");

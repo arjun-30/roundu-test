@@ -327,7 +327,7 @@ async function main() {
       console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}`);
       
       // Persist to DB
-      const dbId = data.bookingId.replace('req-', '');
+      const dbId = String(data.bookingId).replace('req-', '');
       try {
         const { BookingModel } = require('./models/booking.model');
         await BookingModel.updateStatus(dbId, data.status);

@@ -431,7 +431,7 @@ function reducer(state: State, action: Action): State {
           r.id === action.id ? { ...r, status: "accepted" } : r
         ),
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, status: "assigned" } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, status: "assigned" } : b
         )
       };
     case "REJECT_REQUEST":
@@ -446,7 +446,7 @@ function reducer(state: State, action: Action): State {
           r.id === action.id ? { ...r, ...action.patch } : r
         ),
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, ...(action.patch as any) } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, ...(action.patch as any) } : b
         )
       };
     case "COMPLETE_REQUEST": {
@@ -457,7 +457,7 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.filter((r) => r.id !== action.id),
         completedJobs: [{ ...req, status: "completed" }, ...state.completedJobs],
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, status: "completed" } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, status: "completed" } : b
         )
       };
     }
@@ -704,7 +704,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Also join via req- prefix for provider-side requests
       state.providerRequests.forEach((r: any) => {
         if (r.id) {
-          const normalId = r.id.replace('req-', '');
+          const normalId = String(r.id).replace('req-', '');
           socket.emit("join_chat_room", { bookingId: normalId });
         }
       });
