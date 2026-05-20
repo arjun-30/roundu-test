@@ -74,12 +74,20 @@ const BookingDetail = () => {
 
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex gap-2">
         {booking.status !== "completed" && (
-          <button
-            onClick={() => navigate(`/tracking/${booking.id}`)}
-            className="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98]"
-          >
-            Track
-          </button>
+          <>
+            <button
+              onClick={() => navigate(`/chat/${booking.id}`)}
+              className="flex-1 py-3.5 rounded-2xl bg-input text-foreground font-bold text-sm hover:bg-muted active:scale-[0.98]"
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => navigate(`/tracking/${booking.id}`)}
+              className="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98]"
+            >
+              Track
+            </button>
+          </>
         )}
         {booking.status === "completed" && !booking.rating && (
           <button
