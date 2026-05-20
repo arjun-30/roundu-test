@@ -424,13 +424,15 @@ const Chat = () => {
                 value={message}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                placeholder="Type a message..."
-                className="flex-1 px-4 py-2.5 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] text-[14px] text-foreground focus:outline-none focus:border-primary/40 transition-colors placeholder:text-muted-foreground/70"
+                placeholder="Type your message..."
+                className="flex-1 h-10 bg-white border border-[#E1E8EF] rounded-full px-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-shadow"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
-                className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center active:scale-90 disabled:opacity-30 disabled:scale-100 transition-all shadow-md"
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  message.trim() ? "bg-primary text-white active:scale-95 shadow-md" : "bg-[#F0F4F8] text-[#A0B0C0]"
+                }`}
               >
                 <Send size={16} />
               </button>
