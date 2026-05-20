@@ -13,8 +13,8 @@ const Location = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="px-6 pt-8 pb-4 flex items-center justify-between">
+    <div className="min-h-[100dvh] flex flex-col bg-background">
+      <div className="px-6 pt-8 pb-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <MapPin className="text-primary" size={20} />
@@ -32,7 +32,7 @@ const Location = () => {
         </button>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 min-h-0" style={{ height: "calc(100dvh - 100px)" }}>
         <div className="w-full h-full rounded-[2rem] overflow-hidden border border-border shadow-2xl">
           <HybridMap onLocationSelect={handleLocationSelect} />
         </div>
