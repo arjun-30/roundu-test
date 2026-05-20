@@ -408,7 +408,7 @@ function reducer(state: State, action: Action): State {
         ].slice(0, 20),
       };
     case "HANDLE_INCOMING_BROADCAST":
-      if (state.role === "customer") return state;
+      if (state.role === "customer" || state.user.id === action.broadcast.customerId) return state;
       // Deduplicate: if this exact broadcastId is already in the list, ignore
       if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
         return state;
