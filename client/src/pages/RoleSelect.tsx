@@ -2,6 +2,7 @@ import { useState } from "react";
 import { User, Wrench, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
+import { fetchProviderDashboard } from "@/lib/api";
 
 const RoleSelect = () => {
   const navigate = useNavigate();
@@ -19,11 +20,10 @@ const RoleSelect = () => {
         navigate("/provider", { replace: true });
         return;
       }
-      
+
       // Otherwise, double-check the database just in case the local state is stale
       setLoading(true);
       try {
-        const { fetchProviderDashboard } = await import("@/lib/api");
         const res = await fetchProviderDashboard(user.id);
         if (res.success) {
           dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
@@ -35,7 +35,7 @@ const RoleSelect = () => {
       } finally {
         setLoading(false);
       }
-      
+
       navigate("/provider/select-service", { replace: true });
     }
   };
@@ -81,9 +81,6 @@ const RoleSelect = () => {
           className="group bg-primary rounded-2xl p-6 text-left transition-all duration-300 hover:bg-secondary hover:scale-[1.02] active:scale-[0.98] animate-fade-in-up shadow-card hover:shadow-xl hover:shadow-primary/20 relative overflow-hidden"
           style={{ animationDelay: "0.35s", opacity: 0 }}
         >
-          <span className="absolute top-4 right-4 text-[10px] font-extrabold px-2 py-1 rounded-md bg-accent text-accent-foreground tracking-wider z-10">
-            PRO
-          </span>
           <div className="flex items-start justify-between">
             <div className="w-14 h-14 rounded-2xl bg-primary-foreground/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
               <Wrench className="text-primary-foreground" size={28} />
@@ -101,6 +98,8 @@ const RoleSelect = () => {
         By continuing, you agree to our Terms & Privacy Policy
       </p>
     </div>
+
+
   );
 };
 

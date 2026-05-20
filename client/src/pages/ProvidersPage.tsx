@@ -15,7 +15,7 @@ const defaultFilters: FilterValues = { maxPrice: 1000, minRating: 0, maxDistance
 const ProvidersPage = () => {
   const { serviceId = "" } = useParams();
   const navigate = useNavigate();
-  const { dispatch, addBooking, user } = useApp();
+  const { dispatch, addBooking, user, currentLocation } = useApp();
   const service = getServiceById(serviceId);
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState("");

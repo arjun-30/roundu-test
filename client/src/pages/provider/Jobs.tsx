@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import EmptyState from "@/components/EmptyState";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { isWithinInterval, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 
 const Jobs = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { providerRequests, completedJobs } = useApp();
   const [tab, setTab] = useState<"upcoming" | "active" | "completed">("upcoming");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   const handleBack = () => {
     if (location.state?.from === "profile") {
@@ -20,8 +24,43 @@ const Jobs = () => {
     }
   };
 
-  const upcomingJobs = providerRequests.filter(r => r.status === "accepted");
-  const activeJobs = providerRequests.filter(r => ["on_the_way", "arrived", "quote_set", "in_progress"].includes(r.status));
+  const parseJobDate = (dateStr: string) => {
+    if (!dateStr || dateStr === "Today") return new Date();
+    try {
+      return parseISO(dateStr);
+    } catch (e) {
+      return new Date();
+    }
+  };
+
+  const filteredJobs = useMemo(() => {
+    const filterByDate = (dateStr: string) => {
+      if (!dateRange || (!dateRange.from && !dateRange.to)) {
+        // Default: This Month
+        const now = new Date();
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
+        const jobDate = parseJobDate(dateStr);
+        return isWithinInterval(jobDate, { start, end });
+      }
+
+      const jobDate = parseJobDate(dateStr);
+      const start = dateRange.from ? startOfDay(dateRange.from) : startOfMonth(new Date());
+      const end = dateRange.to ? endOfDay(dateRange.to) : (dateRange.from ? endOfDay(dateRange.from) : endOfMonth(new Date()));
+      
+      return isWithinInterval(jobDate, { start, end });
+    };
+
+    return {
+      upcoming: providerRequests.filter(r => r.status === "accepted" && filterByDate(r.date)),
+      active: providerRequests.filter(r => ["on_the_way", "arrived", "quote_set", "in_progress"].includes(r.status) && filterByDate(r.date)),
+      completed: completedJobs.filter(r => filterByDate(r.date))
+    };
+  }, [providerRequests, completedJobs, dateRange]);
+
+  const upcomingJobs = filteredJobs.upcoming;
+  const activeJobs = filteredJobs.active;
+  const completedJobsList = filteredJobs.completed;
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative">
@@ -55,18 +94,12 @@ const Jobs = () => {
             tab === "completed" ? "bg-primary text-primary-foreground shadow-sm" : "bg-input text-muted-foreground"
           }`}
         >
-          Completed ({completedJobs.length})
+          Completed ({completedJobsList.length})
         </button>
       </div>
 
       <div className="px-5 mt-4">
-        <div className="bg-input rounded-xl border border-border p-3 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
-           <div className="flex items-center gap-2 text-muted-foreground">
-             <Calendar size={16} />
-             <span className="text-sm font-semibold">Select Date Range</span>
-           </div>
-           <span className="text-xs font-bold text-primary">This Month</span>
-        </div>
+        <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 mt-4">
@@ -133,11 +166,11 @@ const Jobs = () => {
              </div>
           )
         ) : (
-          completedJobs.length === 0 ? (
+          completedJobsList.length === 0 ? (
              <EmptyState icon={CheckCircle2} title="No completed jobs" description="Your completed jobs will be listed here." />
           ) : (
              <div className="space-y-3">
-               {completedJobs.map((job) => {
+               {completedJobsList.map((job) => {
                  const req = providerRequests.find(r => r.id === job.id);
                  const service = req ? getServiceById(req.serviceId) : null;
                  return (

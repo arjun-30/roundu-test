@@ -32,7 +32,10 @@ const Dashboard = () => {
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
   const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  const seenBroadcastIds = useRef(new Set<string>());
+  // Use sessionStorage to persist seen IDs across re-renders/reconnects within same session
+  const seenBroadcastIds = useRef(new Set<string>(
+    JSON.parse(sessionStorage.getItem("seen_broadcast_ids") || "[]")
+  ));
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
@@ -61,7 +64,21 @@ const Dashboard = () => {
     const handleBroadcast = (broadcast: any) => {
       console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
       if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+
+      // 🕐 Reject stale broadcasts — if older than 120 seconds, ignore silently
+      const POPUP_TTL_MS = 120 * 1000;
+      const broadcastAge = Date.now() - (broadcast.createdAt || 0);
+      if (broadcastAge > POPUP_TTL_MS) {
+        console.log("[Dashboard] ⏰ Broadcast expired, skipping:", broadcast.broadcastId);
+        seenBroadcastIds.current.add(broadcast.broadcastId); // mark as seen so it won't show later
+        const updated = Array.from(seenBroadcastIds.current);
+        sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
+        return;
+      }
+
       seenBroadcastIds.current.add(broadcast.broadcastId);
+      const updated = Array.from(seenBroadcastIds.current);
+      sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
       setActiveBroadcast(broadcast);
     };
     socket.on("incoming_broadcast", handleBroadcast);
@@ -112,6 +129,7 @@ const Dashboard = () => {
       bookingId: string; 
       serviceId: string; 
       customerName: string; 
+      customerPhone?: string;
       address: string;
       lat?: number;
       lng?: number;
@@ -119,6 +137,9 @@ const Dashboard = () => {
       date: string;
       time: string;
       status: string;
+      notes?: string;
+      voiceNote?: boolean;
+      voiceNoteUrl?: string | null;
     }) => {
       console.log("[socket] quote_accepted received:", data);
       
@@ -128,6 +149,7 @@ const Dashboard = () => {
         request: {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
+          customerPhone: data.customerPhone || "9999999991",
           serviceId: data.serviceId,
           address: data.address || "Customer Location",
           lat: data.lat,
@@ -136,12 +158,14 @@ const Dashboard = () => {
           date: data.date || new Date().toISOString().slice(0, 10),
           time: data.time || "Now",
           price: data.price || 0,
-          notes: "",
+          notes: data.notes || "",
+          voiceNote: data.voiceNote || false,
+          voiceNoteUrl: data.voiceNoteUrl || undefined,
         } 
       });
       
-      // Navigate to Job page
-      navigate(`/provider/job/${data.bookingId}`);
+      // Navigate to Chat — enables immediate customer ↔ provider communication
+      navigate(`/chat/${data.bookingId}`);
     };
     
     socket.on("quote_accepted", handleQuoteAccepted);
@@ -156,6 +180,7 @@ const Dashboard = () => {
       providerId: user.id,
       providerName: user.name,
       providerAvatar: user.name.charAt(0),
+      providerPhone: user.phone || "9999999992",
       price: Number(quotePrice),
       rating: providerStats.rating || 0,
       distanceKm: 0,
@@ -199,7 +224,11 @@ const Dashboard = () => {
           request={activeBroadcast}
           isBroadcast={true}
           onAccept={() => setQuotingBroadcast(activeBroadcast)}
-          onReject={() => setActiveBroadcast(null)}
+          onReject={() => {
+            // Remove from both local state AND liveBroadcasts context
+            dispatch({ type: "REMOVE_LIVE_BROADCAST", id: activeBroadcast.broadcastId });
+            setActiveBroadcast(null);
+          }}
         />
       )}
 
@@ -222,13 +251,6 @@ const Dashboard = () => {
               {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
-          <button 
-            onClick={() => navigate("/role")}
-            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
-            title="Switch Side"
-          >
-            <User size={18} className="text-foreground" />
-          </button>
           <button 
             onClick={() => navigate("/provider/profile")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
@@ -332,7 +354,15 @@ const Dashboard = () => {
                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
                                <Mic size={10} /> Voice Note Attached
                              </div>
-                             <audio src={b.voiceNoteUrl} controls className="w-full h-7" />
+                             <audio 
+                               src={b.voiceNoteUrl} 
+                               controls 
+                               className="w-full h-7" 
+                               onError={(e) => {
+                                 console.error("Audio playback error:", e);
+                                 (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                               }}
+                             />
                           </div>
                         )}
                         
@@ -678,6 +708,10 @@ const Dashboard = () => {
                           src={selectedJob.voiceNoteUrl} 
                           controls 
                           className="w-full h-8"
+                          onError={(e) => {
+                            console.error("Audio playback error:", e);
+                            (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                          }}
                         />
                       </div>
                     )}
@@ -743,26 +777,8 @@ const Dashboard = () => {
         />
       )}
 
-      {/* Live Job Broadcast Popup (Top-aligned) */}
-      {isOnline && liveBroadcasts.length > 0 && !quotingBroadcast && (
-        <IncomingRequestPopup 
-          request={{
-            ...liveBroadcasts[0],
-            serviceId: liveBroadcasts[0].serviceId,
-            customerName: liveBroadcasts[0].customerName,
-            customerRating: "4.8",
-            distanceKm: "1.2",
-            address: liveBroadcasts[0].address,
-            date: liveBroadcasts[0].date,
-            time: liveBroadcasts[0].time,
-            price: 0,
-            notes: liveBroadcasts[0].notes || "No notes provided."
-          }}
-          isBroadcast={true}
-          onAccept={() => setQuotingBroadcast(liveBroadcasts[0])}
-          onReject={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: liveBroadcasts[0].broadcastId })}
-        />
-      )}
+      {/* Live Job Broadcast Popup removed — activeBroadcast handles all broadcasts directly
+           via socket, avoiding duplicate popups from liveBroadcasts context state */}
 
       {/* Quote Modal */}
       {quotingBroadcast && (

@@ -12,7 +12,7 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 const Navigation = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { providerRequests, user } = useApp();
+  const { providerRequests, user, dispatch } = useApp();
   const [booking, setBooking] = useState<any>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -21,6 +21,7 @@ const Navigation = () => {
   const [locating, setLocating] = useState(true);
   const [steps, setSteps] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const hasMapboxToken = !!import.meta.env.VITE_MAPBOX_TOKEN;
 
   useEffect(() => {
     const found = providerRequests.find((r) => r.id === id);
@@ -55,6 +56,9 @@ const Navigation = () => {
         setCurrentLocation(coords);
         setLocating(false);
 
+        // Update global AppContext so distance filter always stays current
+        dispatch({ type: "SET_CURRENT_LOCATION", lat: position.coords.latitude, lng: position.coords.longitude });
+
         // Move the provider marker on the map
         if (providerMarker.current) {
           providerMarker.current.setLngLat(coords);
@@ -82,11 +86,12 @@ const Navigation = () => {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
     if (!mapContainer.current || !currentLocation || !booking) return;
     if (map.current) return; // initialize map only once
+    if (!hasMapboxToken) return; // skip map init if no Mapbox token
 
     const destination: [number, number] = [(booking as any).lng || 80.27, (booking as any).lat || 13.08]; // Fallback to Chennai if not present
 
@@ -177,6 +182,49 @@ const Navigation = () => {
       <div className="min-h-full flex flex-col items-center justify-center bg-background p-6">
         <Loader2 size={32} className="animate-spin text-primary" />
         <p className="text-muted-foreground mt-2">Acquiring GPS location...</p>
+      </div>
+    );
+  }
+
+  // Graceful fallback when Mapbox token is not configured
+  if (!hasMapboxToken) {
+    const destLat = (booking as any)?.lat;
+    const destLng = (booking as any)?.lng;
+    const mapsUrl = destLat && destLng
+      ? `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking?.address || '')}&travelmode=driving`;
+
+    return (
+      <div className="min-h-full flex flex-col bg-background">
+        <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-card border-b border-border">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-lg font-bold text-foreground">Navigation</h1>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <NavIcon size={36} className="text-primary" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-foreground">Navigate to Customer</h2>
+            <p className="text-sm text-muted-foreground mt-1">{booking?.address}</p>
+            {destLat && destLng && (
+              <p className="text-xs text-muted-foreground mt-1">📍 {destLat.toFixed(5)}, {destLng.toFixed(5)}</p>
+            )}
+          </div>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/30"
+          >
+            <NavIcon size={18} /> Open in Google Maps
+          </a>
+          <p className="text-[10px] text-muted-foreground text-center">
+            For turn-by-turn navigation inside the app, configure VITE_MAPBOX_TOKEN.
+          </p>
+        </div>
       </div>
     );
   }

@@ -1,40 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Camera, Loader2, Landmark, FileText } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Loader2, Landmark } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
-// Verhoeff algorithm tables for Aadhaar validation
-const d = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
-  [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
-  [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
-  [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
-  [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
-  [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
-  [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
-  [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
-  [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-];
-const p = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
-  [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
-  [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
-  [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
-  [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
-  [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
-  [7, 0, 4, 6, 9, 1, 3, 2, 5, 8]
-];
-
-function validateVerhoeff(num: string) {
-  let c = 0;
-  const myArray = num.split('').reverse().map(Number);
-  for (let i = 0; i < myArray.length; i++) {
-    c = d[c][p[i % 8][myArray[i]]];
-  }
-  return c === 0;
-}
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const DigiLockerKYC = () => {
   const navigate = useNavigate();
@@ -43,20 +12,15 @@ const DigiLockerKYC = () => {
 
   const [activeStep, setActiveStep] = useState<number>(kyc.aadhaarVerified ? 2 : 1);
 
-  // Aadhaar State
-  const [aadhaar, setAadhaar] = useState('');
-  const [aadhaarOtp, setAadhaarOtp] = useState(["", "", "", "", "", ""]);
-  const [showAadhaarOtp, setShowAadhaarOtp] = useState(false);
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-
   // Bank & PAN State
   const [accName, setAccName] = useState(user.name);
   const [accNum, setAccNum] = useState('');
   const [accNumConfirm, setAccNumConfirm] = useState('');
   const [ifsc, setIfsc] = useState('');
   const [pan, setPan] = useState('');
-  const [isScanningPan, setIsScanningPan] = useState(false);
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isVerifyingAadhaar, setIsVerifyingAadhaar] = useState(false);
   const [notification, setNotification] = useState("");
   const [error, setError] = useState("");
 
@@ -70,97 +34,136 @@ const DigiLockerKYC = () => {
     setTimeout(() => setError(""), 3000);
   };
 
+  const getToken = () => localStorage.getItem("roundu_token") || "";
+
   useEffect(() => {
-    if (showAadhaarOtp) {
-      otpRefs.current[0]?.focus();
-    }
-  }, [showAadhaarOtp]);
+    const checkAadhaarStatus = async () => {
+      const requestId = localStorage.getItem('setu_aadhaar_request_id');
+      if (requestId && !kyc.aadhaarVerified) {
+        setIsVerifyingAadhaar(true);
+        try {
+          const res = await fetch(`${API_URL}/kyc/aadhaar/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+            body: JSON.stringify({ requestId })
+          });
+          const data = await res.json();
+          if (data.success && data.data.verified) {
+            dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
+            localStorage.removeItem('setu_aadhaar_request_id');
+            showNotification('Aadhaar Verified Successfully');
+            setActiveStep(2);
+          } else if (data.data?.status === 'failed' || data.data?.status === 'abandoned') {
+            localStorage.removeItem('setu_aadhaar_request_id');
+            showError('Aadhaar verification failed or was cancelled.');
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsVerifyingAadhaar(false);
+        }
+      }
+    };
+    checkAadhaarStatus();
+  }, [kyc.aadhaarVerified, dispatch]);
 
-  const handleSendAadhaarOtp = () => {
-    if (!/^[2-9]{1}[0-9]{11}$/.test(aadhaar)) {
-      showError('Invalid Aadhaar format. It must be 12 digits and cannot start with 0 or 1.');
-      return;
+  const handleConnectDigiLocker = async () => {
+    setIsConnecting(true);
+    try {
+      const res = await fetch(`${API_URL}/kyc/aadhaar/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ clientRedirectUrl: window.location.href })
+      });
+      const data = await res.json();
+      if (data.success && data.data.url) {
+        localStorage.setItem('setu_aadhaar_request_id', data.data.id);
+        window.location.href = data.data.url;
+      } else {
+        showError(data.message || 'Failed to connect to DigiLocker');
+      }
+    } catch (err) {
+      showError('Network error connecting to DigiLocker');
+    } finally {
+      setIsConnecting(false);
     }
-    if (!validateVerhoeff(aadhaar)) {
-      showError('Entered Aadhaar number is invalid. Check and try again.');
-      return;
-    }
-    showNotification('OTP sent to Aadhaar linked mobile');
-    setShowAadhaarOtp(true);
-    setAadhaarOtp(["", "", "", "", "", ""]);
   };
 
-  const handleOtpChange = (i: number, v: string) => {
-    const digit = v.replace(/\D/g, "").slice(-1);
-    const next = [...aadhaarOtp];
-    next[i] = digit;
-    setAadhaarOtp(next);
-    if (digit && i < 5) otpRefs.current[i + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !aadhaarOtp[i] && i > 0) otpRefs.current[i - 1]?.focus();
-    if (e.key === "Enter" && aadhaarOtp.join("").length === 6) verifyAadhaar();
-  };
-
-  const verifyAadhaar = () => {
-    if (aadhaarOtp.join("").length < 6) {
-      showError('Enter valid 6-digit OTP');
-      return;
-    }
-    dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
-    showNotification('Aadhaar Verified Successfully');
-    setShowAadhaarOtp(false);
-    setActiveStep(2);
-  };
-
-  const verifyBank = () => {
-    if (!/^[a-zA-Z\s]+$/.test(accName)) {
-      showError('Enter a valid Account Holder Name (only alphabets)');
-      return;
-    }
-    if (!/^\d{9,18}$/.test(accNum)) {
-      showError('Invalid Bank Account. Must be numeric and between 9 to 18 digits.');
-      return;
-    }
-    if (accNum !== accNumConfirm) {
-      showError('Account numbers do not match');
-      return;
-    }
-    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      showError('Invalid IFSC Code. Example: SBIN0003994 (4 letters, 0, 6 alphanumeric characters)');
-      return;
-    }
-    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
-      showError('Invalid PAN format. Example: ABCDE1234F (5 letters, 4 numbers, 1 letter)');
-      return;
-    }
-
-    dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
-    showNotification('Bank Account & PAN Verified Successfully');
-  };
-
-  const scanPan = () => {
-    setIsScanningPan(true);
-    showNotification("Accessing camera...");
-    setTimeout(() => {
-      setIsScanningPan(false);
-      setPan("ABCDE1234F");
-      showNotification("PAN details extracted via OCR!");
-    }, 2500);
-  };
-
-  const verifyBankWithAnimation = () => {
-    if (!accNum || !ifsc) {
-      showError("Enter bank details first");
+  const verifyBankAndPan = async () => {
+    if (!accNum || accNum !== accNumConfirm || !ifsc || !pan) {
+      showError("Enter valid bank and PAN details");
       return;
     }
     setIsVerifyingBank(true);
-    showNotification("Sending ₹1 micro-deposit for verification...");
-    setTimeout(() => {
+    
+    try {
+      // 1. Verify PAN
+      const panRes = await fetch(`${API_URL}/kyc/pan/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ pan })
+      });
+      const panData = await panRes.json();
+      if (!panData.success || !panData.data.verified) {
+        showError(panData.data?.message || 'PAN verification failed');
+        setIsVerifyingBank(false);
+        return;
+      }
+
+      // 2. Verify Bank Async
+      const bankRes = await fetch(`${API_URL}/kyc/bav/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ ifsc, accountNumber: accNum })
+      });
+      const bankData = await bankRes.json();
+      
+      if (!bankData.success || !bankData.data.requestId) {
+        showError('Bank verification initiation failed');
+        setIsVerifyingBank(false);
+        return;
+      }
+
+      const requestId = bankData.data.requestId;
+      showNotification("Bank verification in progress...");
+      
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        if (attempts > 10) {
+          clearInterval(poll);
+          showError("Bank verification timeout. Check back later.");
+          setIsVerifyingBank(false);
+          return;
+        }
+
+        const checkRes = await fetch(`${API_URL}/kyc/bav/${requestId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        const checkData = await checkRes.json();
+        
+        if (checkData.success && checkData.data.verified) {
+          clearInterval(poll);
+          dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
+          
+          await fetch(`${API_URL}/kyc/complete`, {
+             method: 'POST',
+             headers: { Authorization: `Bearer ${getToken()}` }
+          });
+          
+          showNotification('Bank Account & PAN Verified Successfully');
+          setIsVerifyingBank(false);
+        } else if (checkData.data?.status === 'failed') {
+          clearInterval(poll);
+          showError(checkData.data?.message || 'Bank verification failed');
+          setIsVerifyingBank(false);
+        }
+      }, 3000);
+
+    } catch (err) {
+      showError('Network error during verification');
       setIsVerifyingBank(false);
-      verifyBank();
-    }, 3000);
+    }
   };
 
   const allVerified = kyc.aadhaarVerified && kyc.bankVerified;
@@ -168,52 +171,6 @@ const DigiLockerKYC = () => {
   const handleNext = () => {
     navigate('/provider/video-portfolio');
   };
-
-  if (showAadhaarOtp && !kyc.aadhaarVerified) {
-    return (
-      <div className="min-h-full flex flex-col px-6 py-8 bg-background">
-        <button
-          onClick={() => setShowAadhaarOtp(false)}
-          className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center text-foreground active:scale-95"
-        >
-          <ArrowLeft size={20} />
-        </button>
-
-        <div className="mt-10 mb-8 animate-fade-in">
-          <h1 className="text-3xl font-extrabold text-foreground leading-tight">Verify your Aadhaar</h1>
-          <p className="text-muted-foreground mt-3 text-sm">
-            We sent a 6-digit code to your Aadhaar linked mobile
-          </p>
-        </div>
-
-        <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
-          {aadhaarOtp.map((d, i) => (
-            <input
-              key={i}
-              ref={(el) => (otpRefs.current[i] = el)}
-              value={d}
-              onChange={(e) => handleOtpChange(i, e.target.value)}
-              onKeyDown={(e) => handleOtpKeyDown(i, e)}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              className="w-12 h-14 text-center text-2xl font-extrabold rounded-2xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            />
-          ))}
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground mb-6">
-          Didn't get a code? <button className="font-semibold text-primary">Resend</button>
-        </p>
-
-        <button
-          onClick={verifyAadhaar}
-          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:bg-secondary active:scale-[0.98] transition-all"
-        >
-          Verify & Continue
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -243,17 +200,20 @@ const DigiLockerKYC = () => {
               <p className="text-xs text-white/70 max-w-[200px] leading-relaxed">
                 Fast & secure identity verification for service providers
               </p>
-              <button 
-                onClick={() => {
-                  showNotification("Connecting to DigiLocker...");
-                  setTimeout(() => {
-                    showNotification("DigiLocker linked successfully!");
-                  }, 1500);
-                }}
-                className="mt-2 w-full py-3 bg-white text-[#003876] font-extrabold text-sm rounded-xl hover:bg-gray-100 transition-colors shadow-lg active:scale-95"
-              >
-                Connect DigiLocker
-              </button>
+              {kyc.aadhaarVerified ? (
+                <div className="mt-2 flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg font-bold">
+                  <CheckCircle2 size={18} /> Verified
+                </div>
+              ) : (
+                <button 
+                  onClick={handleConnectDigiLocker}
+                  disabled={isConnecting || isVerifyingAadhaar}
+                  className="mt-2 w-full py-3 bg-white text-[#003876] font-extrabold text-sm rounded-xl hover:bg-gray-100 transition-colors shadow-lg active:scale-95 disabled:opacity-75 flex items-center justify-center gap-2"
+                >
+                  {(isConnecting || isVerifyingAadhaar) && <Loader2 size={16} className="animate-spin" />}
+                  {isVerifyingAadhaar ? 'Verifying...' : 'Connect DigiLocker'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -282,25 +242,7 @@ const DigiLockerKYC = () => {
 
           {activeStep === 1 && !kyc.aadhaarVerified && (
             <div className="p-4 pt-0 border-t border-border animate-fade-in-up">
-              <p className="text-xs text-muted-foreground mb-3">Enter your 12-digit Aadhaar number to fetch details via DigiLocker.</p>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="Aadhaar Number *"
-                value={aadhaar}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^\d*$/.test(val) && val.length <= 12) setAadhaar(val);
-                }}
-                className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground mb-3"
-              />
-              <button
-                onClick={handleSendAadhaarOtp}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-all"
-              >
-                Send OTP
-              </button>
+              <p className="text-xs text-muted-foreground mb-3">Click the "Connect DigiLocker" button above to authenticate with Setu and verify your Aadhaar securely.</p>
             </div>
           )}
         </div>
@@ -347,15 +289,8 @@ const DigiLockerKYC = () => {
                       value={pan}
                       maxLength={10}
                       onChange={(e) => setPan(e.target.value.toUpperCase())}
-                      className="w-full bg-background border border-border rounded-xl p-3 pr-12 text-sm focus:outline-none focus:border-primary text-foreground uppercase"
+                      className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground uppercase"
                     />
-                    <button
-                      onClick={scanPan}
-                      disabled={isScanningPan}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-primary active:scale-90 transition-transform disabled:opacity-50"
-                    >
-                      {isScanningPan ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
-                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
@@ -393,7 +328,7 @@ const DigiLockerKYC = () => {
                 </div>
 
                 <button
-                  onClick={verifyBankWithAnimation}
+                  onClick={verifyBankAndPan}
                   disabled={isVerifyingBank}
                   className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                 >
@@ -418,7 +353,6 @@ const DigiLockerKYC = () => {
         {/* TODO: Rollback this bypass function. Remove the Autofill button below in production. */}
         <button
           onClick={() => {
-            setAadhaar('202604241536');
             setAccNum('1735155000065034');
             setAccNumConfirm('1735155000065034');
             setIfsc('SBIN0003994');

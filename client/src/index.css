@@ -52,29 +52,29 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 213 55% 19%;
 
-    /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(213 55% 19%), hsl(213 51% 25%));
-    --gradient-bg: linear-gradient(180deg, hsl(210 20% 98%), hsl(210 20% 95%));
-    --gradient-accent: linear-gradient(135deg, hsl(38 92% 50%), hsl(33 95% 48%));
-    --shadow-card: 0 4px 16px -4px hsla(220, 17%, 17%, 0.08);
-    --shadow-glow: 0 8px 24px -8px hsla(38, 92%, 50%, 0.35);
-    --glass-bg: hsla(0, 0%, 100%, 0.85);
-    --glass-border: hsla(220, 13%, 91%, 1);
+    /* Custom tokens - Simplified */
+    --gradient-primary: hsl(213 55% 19%);
+    --gradient-bg: hsl(210 20% 98%);
+    --gradient-accent: hsl(38 92% 50%);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-glow: none;
+    --glass-bg: hsl(0, 0%, 100%);
+    --glass-border: var(--border);
   }
 
   .provider-theme {
-    --background: 213 31% 95%; /* #eef2f7 */
-    --foreground: 221 76% 5%;   /* #030916 */
-    --primary: 212 56% 19%;     /* #152E4B */
+    --background: 210 20% 98%;
+    --foreground: 221 76% 5%;
+    --primary: 212 56% 19%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 32 93% 34%;    /* #A95D06 */
+    --secondary: 32 93% 34%;
     --secondary-foreground: 0 0% 100%;
-    --accent: 38 91% 50%;       /* #F59E0B */
+    --accent: 38 91% 50%;
     --accent-foreground: 221 76% 5%;
-    --card: 0 0% 100%;          /* #ffffff */
+    --card: 0 0% 100%;
     --card-foreground: 221 76% 5%;
-    --border: 213 31% 88%;
-    --input: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 95%;
     --ring: 212 56% 19%;
   }
 }
@@ -92,38 +92,33 @@
 
 @layer utilities {
   .glass-card {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(16px);
-    box-shadow: var(--shadow-card);
+    @apply bg-card border border-border shadow-sm;
   }
 
   .scrollbar-hide::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar { display: none; }
   .scrollbar-hide, .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
   .gradient-primary {
-    background: var(--gradient-primary);
+    @apply bg-primary;
   }
 
   .gradient-bg {
-    background: var(--gradient-bg);
+    @apply bg-background;
   }
 
   .gradient-accent {
-    background: var(--gradient-accent);
+    @apply bg-accent;
   }
 
   .text-gradient-accent {
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    @apply text-accent;
   }
 
   .shadow-card {
-    box-shadow: var(--shadow-card);
+    @apply shadow-sm;
   }
 
   .shadow-glow {
-    box-shadow: var(--shadow-glow);
+    box-shadow: none;
   }
 }

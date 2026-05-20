@@ -83,6 +83,16 @@ export function useVoiceRecorder(maxDurationSec = 120) {
 
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType });
+        
+        if (blob.size === 0) {
+          setState((prev) => ({
+            ...prev,
+            isRecording: false,
+            error: "Recorded audio is empty. Please try again.",
+          }));
+          return;
+        }
+
         const url = URL.createObjectURL(blob);
 
         setState((prev) => ({
@@ -106,8 +116,8 @@ export function useVoiceRecorder(maxDurationSec = 120) {
         stream.getTracks().forEach((t) => t.stop());
       };
 
-      // Start recording — collect data every 250ms
-      recorder.start(250);
+      // Start recording — produce a single clean chunk
+      recorder.start();
       startTimeRef.current = Date.now();
 
       setState((prev) => ({
@@ -129,7 +139,7 @@ export function useVoiceRecorder(maxDurationSec = 120) {
           recorder.stop();
           if (timerRef.current) clearInterval(timerRef.current);
         }
-      }, 200);
+      }, 500);
     } catch (err: any) {
       let errorMsg = "Could not access microphone.";
       if (err.name === "NotAllowedError") {

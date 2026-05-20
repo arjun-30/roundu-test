@@ -8,6 +8,7 @@ build/
 .idea/
 .vscode/
 *.log
+cashfree documentations/
 
 # Project specific
 implementation_plan.md

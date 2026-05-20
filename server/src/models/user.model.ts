@@ -1,4 +1,5 @@
 import { getPool } from '../config/database';
+import { env } from '../config/env';
 
 export interface User {
   id: string;

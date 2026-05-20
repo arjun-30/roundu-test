@@ -27,7 +27,7 @@ async function main() {
     path: "/socket.io/",
     cors: { 
       origin: true, // Echo origin to bypass CORS
-      credentials: true,
+      credentials: false, // Allow non-credentialed connections from Android WebView
       methods: ["GET", "POST"]
     },
     allowEIO3: true,
@@ -36,11 +36,6 @@ async function main() {
 
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
-
-  // Version endpoint — confirms which code Railway is running
-  app.get('/version', (_req: any, res: any) => {
-    res.json({ version: 'v2-echo-sender', providers_room: true, sender_echo: true, ts: Date.now() });
-  });
 
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
@@ -86,9 +81,15 @@ async function main() {
           console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
         });
         
-        // Send active broadcasts for their services
+        // Send active broadcasts for their services (skip expired ones — 120s popup TTL)
+        const BROADCAST_TTL_MS = 120 * 1000;
         activeBroadcasts.forEach((payload, id) => {
           if (serviceIds.includes(payload.serviceId)) {
+            const age = Date.now() - (payload.createdAt || 0);
+            if (age > BROADCAST_TTL_MS) {
+              console.log(`[socket] skipping expired broadcast ${id} (age: ${Math.floor(age/1000)}s) for provider ${data.userId}`);
+              return;
+            }
             socket.emit('incoming_broadcast', payload);
             console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
           }
@@ -150,38 +151,47 @@ async function main() {
     socket.on('broadcast_job', (data: any) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
       
-      // Deduplicate: if this broadcastId was already emitted, skip
-      if (activeBroadcasts.has(data.broadcastId)) {
-        console.log(`[socket] duplicate broadcast_job skipped: ${data.broadcastId}`);
+      const isNew = !activeBroadcasts.has(data.broadcastId);
+
+      const broadcastPayload = isNew
+        ? {
+            broadcastId: data.broadcastId,
+            customerId: data.customerId,
+            customerName: data.customerName || "Customer",
+            serviceId: data.serviceId,
+            address: data.address || "Client Address",
+            lat: data.lat ?? null,
+            lng: data.lng ?? null,
+            date: data.date,
+            time: data.time,
+            notes: data.notes,
+            voiceNote: data.voiceNote || false,
+            voiceNoteUrl: data.voiceNoteUrl || null,
+            status: "active",
+            createdAt: Date.now()   // only set on first emit so TTL is accurate
+          }
+        : activeBroadcasts.get(data.broadcastId); // reuse stored payload (preserves createdAt)
+
+      if (isNew) {
+        // Store and schedule auto-expire only on first emit
+        activeBroadcasts.set(data.broadcastId, broadcastPayload);
+        setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
+      } else {
+        console.log(`[socket] re-broadcast: ${data.broadcastId} (age: ${Math.floor((Date.now() - broadcastPayload.createdAt) / 1000)}s)`);
+      }
+
+      // Check TTL before re-broadcasting (120s = popup lifetime)
+      const POPUP_TTL_MS = 120 * 1000;
+      if (!isNew && (Date.now() - broadcastPayload.createdAt) > POPUP_TTL_MS) {
+        console.log(`[socket] broadcast expired, skipping re-emit: ${data.broadcastId}`);
         return;
       }
-      
-      const broadcastPayload = {
-        broadcastId: data.broadcastId,
-        customerId: data.customerId,
-        customerName: data.customerName || "Customer",
-        serviceId: data.serviceId,
-        address: data.address || "Client Address",
-        date: data.date,
-        time: data.time,
-        notes: data.notes,
-        status: "active",
-        createdAt: Date.now()
-      };
 
-      // Store in active broadcasts
-      activeBroadcasts.set(data.broadcastId, broadcastPayload);
-
-      // Auto-expire after 10 minutes
-      setTimeout(() => activeBroadcasts.delete(data.broadcastId), 10 * 60 * 1000);
-
-      // Always emit to BOTH the service room AND the providers room.
+      // Emit to service room + all providers room on every call
+      // Chaining .to() ensures socket.io deduplicates if a provider is in both rooms
       const roomName = `service:${data.serviceId}`;
-      io.to(roomName).emit('incoming_broadcast', broadcastPayload);
-      io.to('providers').emit('incoming_broadcast', broadcastPayload);
-      // Also echo directly back to sender (for debug/test)
-      socket.emit('incoming_broadcast', broadcastPayload);
-      console.log(`[socket] broadcast sent to ${roomName} + providers room + sender echo`);
+      io.to(roomName).to('providers').emit('incoming_broadcast', broadcastPayload);
+      console.log(`[socket] broadcast sent to ${roomName} + providers room (isNew=${isNew})`);
     });
 
     socket.on('accept_quote', (data: any) => {
@@ -207,13 +217,16 @@ async function main() {
           bookingId: data.bookingId,
           serviceId,
           customerName,
+          customerPhone: data.customerPhone || null,
           address,
-          lat: data.lat || null,
-          lng: data.lng || null,
+          lat: data.lat ?? broadcast?.lat ?? null,
+          lng: data.lng ?? broadcast?.lng ?? null,
           price: data.price || 0,
-          date: new Date().toISOString().slice(0, 10),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          scheduled_at: data.scheduled_at || data.scheduledAt || new Date().toISOString(),
           status: 'assigned',
+          notes: broadcast?.notes || '',
+          voiceNote: broadcast?.voiceNote || false,
+          voiceNoteUrl: broadcast?.voiceNoteUrl || null,
         });
         
         console.log(`[socket] quote_accepted sent to user:${data.acceptedProviderId} for booking ${data.bookingId}`);
@@ -232,6 +245,7 @@ async function main() {
         providerId: data.providerId,
         providerName: data.providerName,
         providerAvatar: data.providerAvatar,
+        providerPhone: data.providerPhone,
         price: data.price,
         rating: data.rating,
         distanceKm: data.distanceKm,
@@ -239,6 +253,25 @@ async function main() {
         reviews: data.reviews,
         submittedAt: Date.now()
       });
+    });
+
+    // Chat real-time messaging sockets
+    socket.on('join_chat_room', (data: { bookingId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      socket.join(room);
+      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}`);
+    });
+
+    socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
+      const room = `chat:${data.bookingId}`;
+      console.log(`[socket] Chat message in room ${room} from ${data.senderId}`);
+      // Relay the full payload (including audioBase64 if present) to all other users in the room
+      socket.to(room).emit('chat_message_received', data);
+    });
+
+    socket.on('typing_indicator', (data: { bookingId: string; senderId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      socket.to(room).emit('typing_indicator', data);
     });
 
     socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {

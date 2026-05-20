@@ -1,21 +1,51 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
-  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench
+  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
+  Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, popularTasks } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
+import { useCurrentLocation } from "@/hooks/useLocation";
+import { reverseGeocode } from "@/lib/mapProvider";
+import LocationModal from "@/components/LocationModal";
+import { providers as allProviders } from "@/data/mockData";
+import { getDistance } from "@/lib/utils";
 
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, dispatch, notifications, bookings } = useApp();
+  const { user, dispatch, notifications, bookings, currentLocation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  // Auto-fetch GPS on mount → reverse geocode → update user.address
+  const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
+    dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+    setLocating(true);
+    try {
+      const result = await reverseGeocode(lat, lng);
+      if (result.address) {
+        const shortAddr = result.area
+          ? `${result.area}${result.city ? ", " + result.city : ""}`
+          : result.address.split(",").slice(0, 2).join(",");
+        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+      }
+    } catch (err) {
+      console.warn("Reverse geocode failed:", err);
+      // Still show coords as fallback
+      dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
+    } finally {
+      setLocating(false);
+    }
+  }, [dispatch]);
+  const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
   const isConnected = (id: string) => {
-    return bookings?.some((b: any) => 
+    return bookings?.some((b: { serviceId?: string; service_id?: string; status: string }) => 
       (b.serviceId === id || b.service_id === id) && 
       ["assigned", "on_the_way", "arrived", "in_progress"].includes(b.status)
     );
@@ -36,7 +66,20 @@ const Home = () => {
     { icon: HelpCircle, label: "Help & Support", path: "/support" },
   ];
 
-  menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/role" });
+  if (user.role === "provider") {
+    menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/provider" });
+  }
+
+  const nearbyList = useMemo(() => {
+    if (!currentLocation) return allProviders.slice(0, 5);
+    return allProviders
+      .map(p => ({
+        ...p,
+        distance: getDistance(currentLocation!, { lat: p.lat, lng: p.lng })
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5);
+  }, [currentLocation]);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28 relative">
@@ -62,7 +105,7 @@ const Home = () => {
           }`}
         >
           {/* Menu Header */}
-          <div className="px-5 pt-8 pb-5 bg-gradient-to-br from-[#152E4B] to-[#1C3D63] relative overflow-hidden">
+          <div className="px-5 pt-8 pb-5 bg-primary relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
             <button
               onClick={() => setMenuOpen(false)}
@@ -132,21 +175,30 @@ const Home = () => {
               Hi {user.name.split(" ")[0]}! 👋
             </h1>
             <p 
-              onClick={() => navigate("/location")}
-              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary"
+              onClick={() => setIsLocationModalOpen(true)}
+              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary transition-colors"
             >
-              <MapPin size={11} className="text-primary" /> {user.address || "Set Location"}
+              <MapPin size={11} className="text-primary" />
+              {locating || gpsLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 size={10} className="animate-spin" /> Detecting...
+                </span>
+              ) : (
+                user.address || "Set Location"
+              )}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/role")}
-            className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
-            title="Switch Side"
-          >
-            <Wrench size={18} className="text-secondary" />
-          </button>
+          {user.role === "provider" && (
+            <button
+              onClick={() => navigate("/provider")}
+              className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
+              title="Switch Side"
+            >
+              <Wrench size={18} className="text-secondary" />
+            </button>
+          )}
           <button
             onClick={() => navigate("/wallet")}
             className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"
@@ -187,7 +239,7 @@ const Home = () => {
         <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
           <button
             onClick={() => goToProviders("ac_cleaning")}
-            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 hover:shadow-md transition-all active:scale-[0.98]"
           >
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
               <Sparkles size={18} className="text-secondary" />
@@ -251,7 +303,7 @@ const Home = () => {
             {quickFixes.map((fix) => (
               <button
                 key={fix.id}
-                onClick={() => goToProviders(fix.id === "pipe" || fix.id === "drain" ? "plumber" : fix.id === "fan" || fix.id === "switch" ? "electrician" : "security")}
+                onClick={() => goToProviders(fix.id === "pipe" || fix.id === "drain" ? "plumber" : fix.id === "fan" || fix.id === "switch" ? "electrician" : fix.id === "cleaning" ? "housekeeping" : fix.id === "driver" ? "drivers" : fix.id === "carwash" ? "carwash" : "security")}
                 className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-[#1C3D63] active:scale-95 transition-all flex-shrink-0 shadow-sm"
               >
                 <fix.icon size={14} strokeWidth={2.5} />
@@ -309,11 +361,45 @@ const Home = () => {
           </div>
         </div>
 
+        {/* ═══ NEARBY PROFESSIONALS ═══ */}
+        <div className="pt-5 pb-2 animate-fade-in" style={{ animationDelay: "0.22s" }}>
+          <div className="px-5 flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-[17px] font-extrabold text-foreground">Nearby Professionals</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
+            </div>
+          </div>
+          <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
+            {nearbyList.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/provider/${p.id}`)}
+                className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
+              >
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary mx-auto mb-2 text-lg">
+                  {p.name.charAt(0)}
+                </div>
+                <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                  <span className="text-[10px] font-bold text-foreground">{p.rating}</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    {(p as any).distance ? `${(p as any).distance.toFixed(1)}km` : "0.8km"}
+                  </span>
+                </div>
+                <div className="mt-2 text-[10px] font-extrabold text-primary uppercase bg-primary/5 py-1 rounded-lg">
+                  Available
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* ═══ REFER & EARN ═══ */}
         <div className="px-5 pb-6 animate-fade-in" style={{ animationDelay: "0.25s" }}>
           <button
             onClick={() => navigate("/refer-earn")}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] border border-[#F59E0B]/20 hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent border border-accent/20 hover:shadow-md transition-all active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
               <Gift size={24} className="text-secondary" />
@@ -331,6 +417,10 @@ const Home = () => {
 
 
 
+      <LocationModal 
+        isOpen={isLocationModalOpen} 
+        onClose={() => setIsLocationModalOpen(false)} 
+      />
       <BottomNav />
     </div>
   );

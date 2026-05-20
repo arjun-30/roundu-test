@@ -7,20 +7,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
+import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
 
-const getDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
-  const R = 6371;
-  const dLat = ((l2.lat - l1.lat) * Math.PI) / 180;
-  const dLng = ((l2.lng - l1.lng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((l1.lat * Math.PI) / 180) *
-      Math.cos((l2.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
 
 type Role = "customer" | "provider" | null;
 
@@ -30,6 +18,8 @@ export interface JobBroadcast {
   customerName: string;
   serviceId: string;
   address: string;
+  lat?: number | null;
+  lng?: number | null;
   date: string;
   time: string;
   notes: string;
@@ -59,6 +49,15 @@ interface UserProfile {
   email: string;
   address: string;
   role?: "customer" | "provider";
+  savedAddresses?: SavedAddress[];
+}
+
+export interface SavedAddress {
+  id: string;
+  label: "Home" | "Work" | "Other";
+  address: string;
+  lat: number;
+  lng: number;
 }
 
 interface State {
@@ -111,6 +110,7 @@ interface State {
     frequency: string;
     budget: string;
   };
+  chatHistories: Record<string, { sender: "me" | "other"; text: string; time: string }[]>;
 }
 
 type Action =
@@ -146,6 +146,8 @@ type Action =
   | { type: "UPDATE_NEARBY_PROVIDER"; id: string; lat: number; lng: number; name: string }
   | { type: "SET_CURRENT_LOCATION"; lat: number; lng: number }
   | { type: "ADD_LIVE_BROADCAST"; broadcast: JobBroadcast }
+  | { type: "HANDLE_INCOMING_BROADCAST"; broadcast: JobBroadcast }
+  | { type: "CLEAR_LIVE_BROADCASTS" }
   | { type: "REMOVE_LIVE_BROADCAST"; id: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
@@ -153,6 +155,7 @@ type Action =
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
   | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
+  | { type: "ADD_CHAT_MESSAGE"; payload: { bookingId: string; text: string; senderId: string; senderRole: string; time: string } }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
@@ -178,6 +181,10 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
+    savedAddresses: [
+      { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
+      { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
+    ],
   },
   selectedServiceId: null,
   selectedProviderId: null,
@@ -216,6 +223,7 @@ const initialState: State = {
     frequency: "",
     budget: "",
   },
+  chatHistories: {},
 };
 
 function reducer(state: State, action: Action): State {
@@ -273,13 +281,14 @@ function reducer(state: State, action: Action): State {
     case "HANDLE_JOB_ACCEPTED": {
       const { booking } = action;
       if (state.role === "provider" && state.user.id === booking.provider_user_id) {
+        const { date, time } = formatLocalBookingDateTime(booking.scheduled_at);
         const mappedRequest = {
           id: booking.id,
           customerId: booking.customer_id,
           customerName: "Customer",
           serviceId: booking.service_id,
-          date: booking.scheduled_at?.split('T')[0] || "Today",
-          time: booking.scheduled_at?.split('T')[1]?.slice(0, 5) || "Now",
+          date,
+          time,
           address: booking.address,
           price: booking.price,
           status: booking.status || "assigned",
@@ -325,6 +334,9 @@ function reducer(state: State, action: Action): State {
     case "SET_AUTH":
       return { ...state, isAuthenticated: action.value };
     case "SET_ROLE":
+      if (action.role) {
+        localStorage.setItem("roundu_role", action.role);
+      }
       return { ...state, role: action.role };
     case "UPDATE_USER":
       return { ...state, user: { ...state.user, ...action.user } };
@@ -355,10 +367,31 @@ function reducer(state: State, action: Action): State {
         bookingVoiceNote: false,
         bookingVoiceNoteUrl: null,
       };
-    case "ADD_BOOKING":
-      return { ...state, bookings: [action.booking, ...state.bookings] };
-    case "SET_BOOKINGS":
-      return { ...state, bookings: action.bookings };
+    case "ADD_BOOKING": {
+      const booking = action.booking as any;
+      const { date, time } = formatLocalBookingDateTime(booking.scheduled_at);
+      const enriched = {
+        ...booking,
+        providerId: booking.provider_id || booking.providerId,
+        serviceId: booking.service_id || booking.serviceId,
+        date: booking.date || date,
+        time: booking.time || time
+      };
+      return { ...state, bookings: [enriched, ...state.bookings] };
+    }
+    case "SET_BOOKINGS": {
+      const enrichedBookings = action.bookings.map((b: any) => {
+        const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
+        return {
+          ...b,
+          providerId: b.provider_id || b.providerId,
+          serviceId: b.service_id || b.serviceId,
+          date,
+          time
+        };
+      });
+      return { ...state, bookings: enrichedBookings };
+    }
     case "UPDATE_BOOKING":
       return {
         ...state,
@@ -371,6 +404,23 @@ function reducer(state: State, action: Action): State {
         ...state,
         notifications: [
           { id: `n-${Date.now()}`, text: action.text, ts: Date.now() },
+          ...state.notifications,
+        ].slice(0, 20),
+      };
+    case "HANDLE_INCOMING_BROADCAST":
+      if (state.role === "customer" || state.user.id === action.broadcast.customerId) return state;
+      // Deduplicate: if this exact broadcastId is already in the list, ignore
+      if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
+        return state;
+      }
+      return {
+        ...state,
+        liveBroadcasts: [
+          action.broadcast, 
+          ...state.liveBroadcasts.filter((b) => b.customerId !== action.broadcast.customerId)
+        ],
+        notifications: [
+          { id: `n-${Date.now()}`, text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, ts: Date.now() },
           ...state.notifications,
         ].slice(0, 20),
       };
@@ -473,6 +523,22 @@ function reducer(state: State, action: Action): State {
       };
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
+    case "ADD_CHAT_MESSAGE": {
+      const { bookingId, text, senderId, time, audioBase64 } = action.payload;
+      const chatRoom = state.chatHistories[bookingId] || [];
+      const isMe = senderId === state.user.id;
+      
+      const isDuplicate = chatRoom.some(m => m.text === text && m.time === time && m.sender === (isMe ? "me" : "other"));
+      if (isDuplicate) return state;
+
+      return {
+        ...state,
+        chatHistories: {
+          ...state.chatHistories,
+          [bookingId]: [...chatRoom, { sender: isMe ? "me" : "other", text, time, audioBase64: audioBase64 || null }]
+        }
+      };
+    }
     case "LOGOUT":
       localStorage.removeItem("roundu_token");
       localStorage.removeItem("roundu_user");
@@ -501,11 +567,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
+        // Exclude homeType — column doesn't exist in onboarding_responses table
+        const { homeType: _homeType, ...onboardingFields } = state.onboardingData;
         const { error } = await supabase
           .from('onboarding_responses')
           .upsert({
             phone: state.phone,
-            ...state.onboardingData,
+            ...onboardingFields,
             updated_at: new Date().toISOString()
           });
         if (error) console.error('Supabase sync error:', error);
@@ -525,20 +593,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               const providerId = dashboard.data.provider.id;
               const pbRes = await fetchProviderBookings(providerId);
               if (pbRes.success) {
-                const mappedRequests = pbRes.data.map((b: any) => ({
-                  id: b.id,
-                  customerId: b.customer_id,
-                  customerName: "Customer",
-                  serviceId: b.service_id,
-                  date: b.scheduled_at?.split(' ')[0] || "Today",
-                  time: b.scheduled_at?.split(' ')[1] || "10:00 AM",
-                  address: b.address,
-                  price: b.price,
-                  status: b.status,
-                  notes: b.notes,
-                  voiceNote: b.voice_note || false,
-                  voiceNoteUrl: b.voice_note_url || null
-                }));
+                const mappedRequests = pbRes.data.map((b: any) => {
+                  const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
+                  return {
+                    id: b.id,
+                    customerId: b.customer_id,
+                    customerName: "Customer",
+                    serviceId: b.service_id,
+                    date,
+                    time,
+                    address: b.address,
+                    price: b.price,
+                    status: b.status,
+                    notes: b.notes,
+                    voiceNote: b.voice_note || false,
+                    voiceNoteUrl: b.voice_note_url || null
+                  };
+                });
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
               }
             }
@@ -582,8 +653,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
       console.log("[socket] ✅ incoming_broadcast received:", broadcast);
-      dispatch({ type: "ADD_LIVE_BROADCAST", broadcast });
-      dispatch({ type: "ADD_NOTIFICATION", text: `🚨 Job Alert: ${broadcast.serviceId} requested at ${broadcast.address}` });
+      dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
     });
 
     socket.on("quote_received", (quote: ProviderQuote) => {
@@ -599,6 +669,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
     });
 
+    socket.on("chat_message_received", (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
+      dispatch({ type: "ADD_CHAT_MESSAGE", payload: data });
+      // Show a notification if the user is not currently viewing this chat
+      if (!window.location.pathname.includes(`/chat/${data.bookingId}`)) {
+        const senderLabel = data.senderRole === 'provider' ? 'Provider' : 'Customer';
+        const preview = data.audioBase64 ? '🎤 Voice message' : data.text.slice(0, 50);
+        dispatch({ type: "ADD_NOTIFICATION", text: `💬 ${senderLabel}: ${preview}` });
+      }
+    });
+
     return () => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
@@ -606,9 +686,35 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.off("quote_received");
       socket.off("job_accepted");
       socket.off("job_status_updated");
+      socket.off("chat_message_received");
       socket.disconnect();
     };
   }, []);
+
+  // Auto-join all active booking chat rooms so messages are never missed
+  // This runs whenever bookings change (e.g. new booking added after quote accepted)
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const joinRooms = () => {
+      state.bookings.forEach((b) => {
+        if (b.id) {
+          socket.emit("join_chat_room", { bookingId: b.id });
+        }
+      });
+      // Also join via req- prefix for provider-side requests
+      state.providerRequests.forEach((r: any) => {
+        if (r.id) {
+          const normalId = r.id.replace('req-', '');
+          socket.emit("join_chat_room", { bookingId: normalId });
+        }
+      });
+    };
+    if (socket.connected) {
+      joinRooms();
+    }
+    socket.on('connect', joinRooms);
+    return () => { socket.off('connect', joinRooms); };
+  }, [state.bookings, state.providerRequests, state.isAuthenticated]);
 
   useEffect(() => {
     if (!state.isAuthenticated || !state.user.id) return;
@@ -657,6 +763,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const selectedProvider = state.selectedProviderId
     ? allProviders.find((p) => p.id === state.selectedProviderId) ?? null
     : null;
+
+  useEffect(() => {
+    localStorage.setItem("roundu_user", JSON.stringify(state.user));
+  }, [state.user]);
 
   return (
     <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking }}>

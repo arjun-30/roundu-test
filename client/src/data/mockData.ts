@@ -28,6 +28,9 @@ export interface Provider {
   tags: string[];
   available: boolean;
   videoUrl?: string;
+  lat: number;
+  lng: number;
+  phone?: string;
 }
 
 export interface Booking {
@@ -66,6 +69,7 @@ export interface ProviderRequest {
   lat?: number;
   lng?: number;
   quote?: number;
+  customerPhone?: string;
 }
 
 export const services: Service[] = [
@@ -176,12 +180,13 @@ export const popularTasks: PopularTask[] = [
 ];
 
 const baseProviders: Omit<Provider, "id" | "serviceId">[] = [
-  { name: "Rajesh Kumar", rating: 4.9, reviews: 238, pricePerHr: 299, distanceKm: 1.2, etaMin: 30, experienceYrs: 8, avatar: "RK", verified: true, topRated: true, bio: "Certified expert with 8+ years of hands-on experience. Quick, clean and reliable.", tags: ["Verified", "Fast"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
-  { name: "Suresh Menon", rating: 4.7, reviews: 156, pricePerHr: 249, distanceKm: 2.5, etaMin: 45, experienceYrs: 5, avatar: "SM", verified: true, topRated: false, bio: "Friendly professional focused on quality work and customer satisfaction.", tags: ["Experienced"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
-  { name: "Deepak Jain", rating: 4.8, reviews: 312, pricePerHr: 349, distanceKm: 0.8, etaMin: 20, experienceYrs: 10, avatar: "DJ", verified: true, topRated: true, bio: "Top-rated specialist serving the city for over a decade.", tags: ["Verified", "Top Rated"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
-  { name: "Vikram Singh", rating: 4.6, reviews: 89, pricePerHr: 199, distanceKm: 3.1, etaMin: 50, experienceYrs: 3, avatar: "VS", verified: false, topRated: false, bio: "Affordable and dependable service for all your needs.", tags: ["Budget"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
-  { name: "Arun Patel", rating: 4.9, reviews: 421, pricePerHr: 399, distanceKm: 1.8, etaMin: 35, experienceYrs: 12, avatar: "AP", verified: true, topRated: true, bio: "Premium professional with years of expertise and outstanding reviews.", tags: ["Verified", "Premium"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4" },
+  { name: "Rajesh Kumar", rating: 4.9, reviews: 238, pricePerHr: 299, distanceKm: 1.2, etaMin: 30, experienceYrs: 8, avatar: "RK", verified: true, topRated: true, bio: "Certified expert with 8+ years of hands-on experience. Quick, clean and reliable.", tags: ["Verified", "Fast"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9716, lng: 77.5946, phone: "9999999991" },
+  { name: "Suresh Menon", rating: 4.7, reviews: 156, pricePerHr: 249, distanceKm: 2.5, etaMin: 45, experienceYrs: 5, avatar: "SM", verified: true, topRated: false, bio: "Friendly professional focused on quality work and customer satisfaction.", tags: ["Experienced"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9783, lng: 77.6408, phone: "9999999992" },
+  { name: "Deepak Jain", rating: 4.8, reviews: 312, pricePerHr: 349, distanceKm: 0.8, etaMin: 20, experienceYrs: 10, avatar: "DJ", verified: true, topRated: true, bio: "Top-rated specialist serving the city for over a decade.", tags: ["Verified", "Top Rated"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9698, lng: 77.7499, phone: "9999999993" },
+  { name: "Vikram Singh", rating: 4.6, reviews: 89, pricePerHr: 199, distanceKm: 3.1, etaMin: 50, experienceYrs: 3, avatar: "VS", verified: false, topRated: false, bio: "Affordable and dependable service for all your needs.", tags: ["Budget"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9279, lng: 77.6271, phone: "9999999994" },
+  { name: "Arun Patel", rating: 4.9, reviews: 421, pricePerHr: 399, distanceKm: 1.8, etaMin: 35, experienceYrs: 12, avatar: "AP", verified: true, topRated: true, bio: "Premium professional with years of expertise and outstanding reviews.", tags: ["Verified", "Premium"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 13.0358, lng: 77.5970, phone: "9999999995" },
 ];
+
 
 // Generate 5 providers per service
 export const providers: Provider[] = services.flatMap((s) =>
@@ -206,6 +211,7 @@ export const initialProviderRequests: ProviderRequest[] = [
     price: 299,
     status: "pending",
     notes: "Fan installation needed.",
+    customerPhone: "9876543210",
   },
   {
     id: "req-2",
@@ -217,6 +223,7 @@ export const initialProviderRequests: ProviderRequest[] = [
     price: 349,
     status: "pending",
     notes: "Wiring inspection.",
+    customerPhone: "9876543211",
   },
 ];
 

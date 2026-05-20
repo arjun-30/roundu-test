@@ -11,7 +11,7 @@ const ServiceCard = ({ service, onClick, variant = "tile" }: ServiceCardProps) =
     return (
       <button
         onClick={onClick}
-        className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all active:scale-[0.97] text-left shadow-card w-full"
+        className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all active:scale-[0.97] text-left shadow-card w-full h-full"
       >
         <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
           <service.icon size={20} className="text-primary-foreground" />
@@ -27,7 +27,7 @@ const ServiceCard = ({ service, onClick, variant = "tile" }: ServiceCardProps) =
   return (
     <button
       onClick={onClick}
-      className="bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 transition-all active:scale-[0.97] shadow-card"
+      className="bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 transition-all active:scale-[0.97] shadow-card w-full h-full flex flex-col"
     >
       <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-3">
         <service.icon size={22} className="text-primary-foreground" />

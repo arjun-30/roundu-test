@@ -39,6 +39,9 @@ const envSchema = z.object({
   MSG91_SENDER_ID: z.string().default('ROUNDU'),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  CASHFREE_CLIENT_ID: z.string().optional(),
+  CASHFREE_CLIENT_SECRET: z.string().optional(),
+  CASHFREE_BASE_URL: z.string().default('https://sandbox.cashfree.com/verification'),
 });
 
 const parsed = envSchema.safeParse(process.env);

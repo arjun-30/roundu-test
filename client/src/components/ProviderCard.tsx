@@ -17,7 +17,13 @@ const ProviderCard = ({ provider, onClick, onBook }: ProviderCardProps) => {
     >
       <div className="flex items-start gap-3">
         <div className="relative">
-          <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.();
+            }}
+            className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0 hover:bg-secondary transition-colors"
+          >
             {provider.avatar}
           </div>
           {provider.verified && (

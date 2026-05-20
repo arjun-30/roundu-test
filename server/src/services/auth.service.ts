@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { getPool } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
+import { env } from '../config/env';
 
 export const AuthService = {
   async generateOTP(phone: string): Promise<string> {

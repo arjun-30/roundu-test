@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle, Mic } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
@@ -94,8 +94,9 @@ const Job = () => {
   };
 
   const handleCall = () => {
+    const phone = job?.customerPhone || "+919876543210";
     showNotification("Connecting via secure masked number...");
-    window.open("tel:+911234567890", "_self");
+    window.open(`tel:${phone}`, "_self");
   };
 
   const openNavigation = () => {
