@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Camera, MapPin } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Camera, MapPin, Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { reverseGeocode } from '@/lib/mapProvider';
 
 const EXPERIENCE_LEVELS = ["0-1", "1-3", "3-5", "5-10", "10+"];
 const RADIUS_OPTIONS = [2, 5, 10, 15, 25, 50];
@@ -32,6 +33,46 @@ const PersonalDetails = () => {
 
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
+
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState("");
+
+  const handleAutoDetect = () => {
+    if (!navigator.geolocation) {
+      setDetectError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsDetecting(true);
+    setDetectError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const result = await reverseGeocode(latitude, longitude);
+          if (result.address) setAddress(result.address);
+          if (result.city) setCity(result.city);
+          if (result.pincode) setPincode(result.pincode);
+        } catch (err) {
+          console.error("Reverse geocoding error:", err);
+          setDetectError("Failed to resolve address. Please enter manually.");
+        } finally {
+          setIsDetecting(false);
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        if (err.code === err.PERMISSION_DENIED) {
+          setDetectError("Location access denied. Please enable permission.");
+        } else {
+          setDetectError("Failed to detect location. Please check settings.");
+        }
+        setIsDetecting(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,10 +185,28 @@ const PersonalDetails = () => {
         <section className="space-y-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider">Location</h3>
-            <button className="text-xs font-bold text-primary flex items-center gap-1">
-              <MapPin size={12} /> Auto-detect
+            <button 
+              type="button"
+              onClick={handleAutoDetect}
+              disabled={isDetecting}
+              className="text-xs font-bold text-primary flex items-center gap-1 active:scale-95 transition-transform disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {isDetecting ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" /> Detecting...
+                </>
+              ) : (
+                <>
+                  <MapPin size={12} /> Auto-detect
+                </>
+              )}
             </button>
           </div>
+          {detectError && (
+            <p className="text-[11px] text-destructive font-bold mt-1 px-1">
+              {detectError}
+            </p>
+          )}
           <input 
             type="text" 
             placeholder="Full Address *" 

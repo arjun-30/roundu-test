@@ -221,7 +221,7 @@ export async function geocode(address: string): Promise<LatLng> {
   return { lat, lng };
 }
 
-export async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; area: string; city: string }> {
+export async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; area: string; city: string; pincode: string }> {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Mapbox reverse geocoding HTTP ${res.status}`);
@@ -229,13 +229,25 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
   const feature = data.features?.[0];
   if (!feature) throw new Error("Mapbox reverse geocoding: no results");
   
-  const city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text || "";
+  let city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text || "";
+  if (!city && feature.context) {
+    city = feature.context.find((c: any) => c.id.startsWith("district"))?.text || 
+           feature.context.find((c: any) => c.id.startsWith("region"))?.text || "";
+  }
   const area = feature.text || "";
+  let pincode = feature.context?.find((c: any) => c.id.startsWith("postcode"))?.text || "";
+  if (!pincode && feature.place_name) {
+    const match = feature.place_name.match(/\b\d{6}\b/);
+    if (match) {
+      pincode = match[0];
+    }
+  }
   
   return { 
     address: feature.place_name,
     area: area,
-    city: city
+    city: city,
+    pincode: pincode
   };
 }
 
