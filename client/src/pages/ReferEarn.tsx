@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Gift, Share2, Copy, Users, Wallet,
@@ -6,18 +6,24 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
-const generateReferralCode = (userId: string, phone: string): string => {
-  const base = (userId || phone || "").replace(/\D/g, "").slice(-6);
-  return `RU${base || Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-};
-
 const ReferEarn = () => {
   const navigate = useNavigate();
   const { user } = useApp();
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [notification, setNotification] = useState("");
 
-  const referralCode = generateReferralCode(user.id, user.phone);
+  const referralCode = useMemo(() => {
+    let base = (user?.id || user?.phone || "").replace(/\D/g, "").slice(-6);
+    if (!base && user?.name) {
+      base = user.name.split("").map(c => c.charCodeAt(0)).join("").slice(-6);
+    }
+    if (!base || base.length < 4) {
+      base = "387407"; // Stable premium default
+    }
+    return `RU${base.toUpperCase()}`;
+  }, [user?.id, user?.phone, user?.name]);
+
   const referralLink = `https://roundu.in/invite?ref=${referralCode}`;
   const shareMessage = `🎉 Get ₹500 off your first professional service on RoundU! Use my code *${referralCode}* or click: ${referralLink}`;
 
@@ -47,6 +53,16 @@ const ReferEarn = () => {
 
   // Triggers native iOS/Android share sheet — works on HTTPS (production)
   const handleShare = async () => {
+    // 1. Automatically copy invite code/link to clipboard as requested
+    try { await navigator.clipboard.writeText(shareMessage); } catch {
+      const el = document.createElement("textarea");
+      el.value = shareMessage;
+      document.body.appendChild(el); el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+
+    // 2. Trigger native OS share sheet
     try {
       await navigator.share({
         title: "Join RoundU & Get ₹500 Off!",
@@ -54,7 +70,9 @@ const ReferEarn = () => {
         url: referralLink,
       });
     } catch {
-      // Cancelled or not supported — do nothing, no popup
+      // 3. Fallback for localhost / local network HTTP testing
+      setNotification("Invite Link Copied! (Note: Native Share Sheet opens on Vercel HTTPS)");
+      setTimeout(() => setNotification(""), 4000);
     }
   };
 
@@ -79,6 +97,13 @@ const ReferEarn = () => {
           <Share2 size={18} />
         </button>
       </div>
+
+      {notification && (
+        <div className="absolute top-24 left-6 right-6 z-50 bg-primary text-white p-4 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-3 animate-bounce border border-primary-foreground/20">
+          <Check size={18} className="text-emerald-400 shrink-0" />
+          <span>{notification}</span>
+        </div>
+      )}
 
       <div className="flex-1 px-6 space-y-6 relative z-10 pt-4 overflow-y-auto">
         {/* Hero */}
