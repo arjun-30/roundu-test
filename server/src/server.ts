@@ -265,8 +265,52 @@ async function main() {
     socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
       const room = `chat:${data.bookingId}`;
       console.log(`[socket] Chat message in room ${room} from ${data.senderId}`);
-      // Relay the full payload (including audioBase64 if present) to all other users in the room
-      socket.to(room).emit('chat_message_received', data);
+
+      let modifiedText = data.text;
+      let violationDetected = false;
+
+      // 1. Regex Masking (Prices and Phone Numbers)
+      // Mask Phone Numbers (10 digits, optionally separated by spaces/dashes)
+      const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+      if (phoneRegex.test(modifiedText)) {
+        violationDetected = true;
+        modifiedText = modifiedText.replace(phoneRegex, "[REDACTED NUMBER]");
+      }
+
+      // Mask Prices (e.g. ₹500, Rs 500, 500 Rs, $500)
+      const priceRegex = /(?:₹|Rs\.?|\$)\s*\d+(?:,\d+)*(?:\.\d+)?|\d+(?:,\d+)*(?:\.\d+)?\s*(?:Rs\.?|rupees|bucks|inr)/gi;
+      if (priceRegex.test(modifiedText)) {
+        violationDetected = true;
+        modifiedText = modifiedText.replace(priceRegex, "[REDACTED PRICE]");
+      }
+
+      // 2. Keyword Filtering
+      const restrictedKeywords = ['cash', 'discount', 'gpay', 'phonepe', 'pay outside', 'cheap', 'direct', 'negotiate'];
+      restrictedKeywords.forEach(keyword => {
+        const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        if (keywordRegex.test(modifiedText)) {
+          violationDetected = true;
+          modifiedText = modifiedText.replace(keywordRegex, "***");
+        }
+      });
+
+      const messagePayload = { ...data, text: modifiedText };
+
+      // Relay the modified payload to all other users in the room
+      socket.to(room).emit('chat_message_received', messagePayload);
+
+      // 3. System Warning Injection
+      if (violationDetected) {
+        const warningPayload = {
+          bookingId: data.bookingId,
+          text: "System Warning: Negotiating prices or sharing contact/payment details outside the app violates platform policy and may result in account suspension.",
+          senderId: "system",
+          senderRole: "system",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        // Emit warning to both the sender and the receiver
+        io.to(room).emit('chat_message_received', warningPayload);
+      }
     });
 
     socket.on('typing_indicator', (data: { bookingId: string; senderId: string }) => {

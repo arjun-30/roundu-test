@@ -234,6 +234,14 @@ const Chat = () => {
         </button>
       </div>
 
+      {/* Safety Banner */}
+      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10 shadow-sm">
+        <div className="mt-0.5 text-xs">⚠️</div>
+        <p className="text-[11px] text-orange-800 font-medium leading-tight">
+          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app. Violations may lead to account suspension.
+        </p>
+      </div>
+
       {/* Notification banner */}
       {notification && (
         <div className="bg-primary/90 text-white px-4 py-2 text-xs font-semibold text-center animate-fade-in z-20">
@@ -256,6 +264,19 @@ const Chat = () => {
         ) : (
           messages.map((msg: any, index: number) => {
             const isMe = msg.sender === "me";
+            const isSystem = msg.senderRole === "system";
+
+            if (isSystem) {
+              return (
+                <div key={index} className="flex justify-center my-2 animate-fade-in">
+                  <div className="bg-red-50 border border-red-100 px-3 py-2 rounded-xl max-w-[85%] text-center shadow-sm">
+                    <p className="text-[11px] text-red-600 font-bold leading-snug">{msg.text}</p>
+                    <p className="text-[9px] text-red-400 mt-0.5">{msg.time}</p>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} animate-msg-in`}>
                 {!isMe && (
@@ -398,13 +419,15 @@ const Chat = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <button
-                onMouseDown={startRecording}
-                onTouchStart={startRecording}
-                className="w-10 h-10 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] flex items-center justify-center active:scale-90 transition-all"
-              >
-                <Mic size={18} className="text-primary" />
-              </button>
+              {(!booking || (booking.status !== "in_progress" && booking.status !== "arrived" && booking.status !== "completed")) && (
+                <button
+                  onMouseDown={startRecording}
+                  onTouchStart={startRecording}
+                  className="w-10 h-10 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <Mic size={18} className="text-primary" />
+                </button>
+              )}
               <input
                 ref={inputRef}
                 value={message}
