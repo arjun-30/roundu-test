@@ -286,7 +286,6 @@ async function main() {
           }
         }
 
-        const broadcast = activeBroadcasts.get(data.broadcastId);
         const customerId = data.customerId || broadcast?.customerId;
 
         if (customerId) {
