@@ -17,6 +17,11 @@ import { socket } from "@/lib/socket";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts } = useApp() as any;
+
+  // Sync role to provider on mount
+  useEffect(() => {
+    dispatch({ type: "SET_ROLE", role: "provider" });
+  }, [dispatch]);
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);

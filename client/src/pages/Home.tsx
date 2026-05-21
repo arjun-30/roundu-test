@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
@@ -21,6 +21,11 @@ const Home = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  // Sync role to customer on mount
+  useEffect(() => {
+    dispatch({ type: "SET_ROLE", role: "customer" });
+  }, [dispatch]);
 
   // Auto-fetch GPS on mount → reverse geocode → update user.address
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {

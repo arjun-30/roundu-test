@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, CalendarCheck, Gift, CheckCircle2, Star, Clock, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, Bell, CalendarCheck, Gift, CheckCircle2, Star, Clock, ChevronRight, X, AlertCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
@@ -11,6 +11,7 @@ const Notifications = () => {
     notifications, 
     dispatch, 
     user, 
+    role,
     currentLocation, 
     bookingNotes, 
     bookingVoiceNote, 
@@ -19,21 +20,26 @@ const Notifications = () => {
 
   const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
 
+  // Filter notifications strictly by targetRole matching the current active role:
+  const filteredNotifications = (notifications || []).filter((n: any) => {
+    return n.targetRole === role;
+  });
+
   const getIcon = (type: string) => {
     switch(type) {
-      case "booking": return <CalendarCheck size={18} className="text-blue-500" />;
-      case "offer": return <Gift size={18} className="text-amber-500" />;
-      case "payment": return <CheckCircle2 size={18} className="text-green-500" />;
-      default: return <Bell size={18} className="text-muted-foreground" />;
+      case "booking": return <CalendarCheck size={16} className="text-blue-500" />;
+      case "offer": return <Gift size={16} className="text-amber-500" />;
+      case "payment": return <CheckCircle2 size={16} className="text-green-500" />;
+      default: return <Bell size={16} className="text-slate-500" />;
     }
   };
 
   const getIconBg = (type: string) => {
     switch(type) {
-      case "booking": return "bg-secondary/10 border-blue-100";
+      case "booking": return "bg-blue-50 border-blue-100";
       case "offer": return "bg-amber-50 border-amber-100";
       case "payment": return "bg-green-50 border-green-100";
-      default: return "bg-background border-border";
+      default: return "bg-slate-50 border-slate-100";
     }
   };
 
@@ -76,7 +82,6 @@ const Notifications = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        // Clear searching page caches
         sessionStorage.removeItem("searching_providers_state");
         sessionStorage.removeItem("searching_providers_scroll");
         sessionStorage.removeItem("searching_providers_quotes");
@@ -93,7 +98,6 @@ const Notifications = () => {
         };
         dispatch({ type: "ADD_BOOKING", booking: enrichedBooking });
 
-        // Notify socket
         socket.emit("accept_quote", {
           broadcastId: quote.broadcastId,
           acceptedProviderId: quote.providerId,
@@ -108,7 +112,6 @@ const Notifications = () => {
           scheduled_at: res.data.scheduled_at,
         });
 
-        // Dismiss this quote notification
         dispatch({ type: "REMOVE_NOTIFICATION", id: notificationId });
         navigate(`/chat/${res.data.id}`);
       } else {
@@ -123,102 +126,110 @@ const Notifications = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-background pb-24 font-sans select-none">
-      <div className="bg-white px-5 pt-6 pb-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+    <div className="min-h-full flex flex-col bg-[#F8FAFC] pb-24 font-sans select-none">
+      <div className="bg-white px-5 pt-6 pb-4 flex items-center justify-between border-b border-slate-100 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all">
-            <ArrowLeft size={20} className="text-primary" />
+          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition-all">
+            <ArrowLeft size={18} className="text-slate-700" />
           </button>
-          <h1 className="text-xl font-extrabold text-foreground">Notifications</h1>
+          <h1 className="text-lg font-bold text-slate-900">Notifications</h1>
         </div>
-        <button 
-          onClick={() => {
-            notifications.forEach((n: any) => {
-              dispatch({ type: "REMOVE_NOTIFICATION", id: n.id });
-            });
-          }}
-          className="text-[11px] font-extrabold text-secondary bg-secondary/10 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors uppercase tracking-wider"
-        >
-          Clear all
-        </button>
+        {filteredNotifications.length > 0 && (
+          <button 
+            onClick={() => {
+              filteredNotifications.forEach((n: any) => {
+                dispatch({ type: "REMOVE_NOTIFICATION", id: n.id });
+              });
+            }}
+            className="text-[10px] font-extrabold text-slate-500 bg-slate-100/80 px-2.5 py-1.5 rounded-md hover:bg-slate-200 transition-colors uppercase tracking-wider"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-5 space-y-3">
-        {notifications.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground font-medium">
-            <Bell size={40} className="mx-auto mb-3 opacity-30" />
-            <p>No new notifications</p>
+      <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-2.5">
+        {filteredNotifications.length === 0 ? (
+          <div className="text-center py-16 text-slate-400 font-medium">
+            <div className="w-12 h-12 bg-white rounded-full border border-slate-100 flex items-center justify-center mx-auto mb-3 shadow-sm">
+              <Bell size={20} className="text-slate-400 opacity-60" />
+            </div>
+            <p className="text-xs">No new notifications</p>
           </div>
         ) : (
-          notifications.map((n: any) => {
+          filteredNotifications.map((n: any) => {
+            // ==========================================
+            // CUSTOMER CARD: new_quote_received
+            // ==========================================
             if (n.type === "new_quote_received") {
               const quote = n.metadata;
               if (!quote) return null;
               return (
-                <div key={n.id} className="bg-white border border-[#FFD966] rounded-2xl p-4 shadow-[0_4px_20px_rgba(245,158,11,0.06)] relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#F59E0B]" />
+                <div key={n.id} className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm flex flex-col gap-3 relative transition-all hover:shadow-md hover:border-slate-200">
                   
-                  <div className="flex justify-between items-start mb-3 pt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">💰</span>
-                      <span className="text-[11px] font-bold text-[#B45309] uppercase tracking-wider">New Quote Received</span>
+                  {/* Top Row: Provider Avatar, Name, Quote Info & ETA Badge */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        onClick={() => navigate(`/provider/${quote.providerId}`, { state: { quote } })}
+                        className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center font-bold text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer text-sm shadow-sm"
+                      >
+                        {quote.providerAvatar || quote.providerName.charAt(0)}
+                      </div>
+                      
+                      <div className="min-w-0">
+                        <h4 className="text-[13px] font-bold text-slate-800 leading-tight">{quote.providerName}</h4>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
+                          {quote.rating === 0 ? (
+                            <span className="text-amber-600 font-bold uppercase text-[9px]">New</span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 text-amber-500 font-semibold">
+                              <Star size={10} className="fill-amber-500 text-amber-500" /> {quote.rating}
+                            </span>
+                          )}
+                          <span>•</span>
+                          <span>{quote.distanceKm}km away</span>
+                          <span>•</span>
+                          <span className="lowercase">{formatTime(n.ts)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{formatTime(n.ts)}</span>
+
+                    <div className="text-right flex items-center gap-3">
+                      <div className="flex flex-col items-end">
+                        <span className="text-base font-extrabold text-slate-900 leading-none">₹{quote.price}</span>
+                        <span className="text-[9px] text-[#B45309] font-bold bg-[#FEF3C7] px-1.5 py-0.5 rounded-full mt-1 border border-amber-200/50">
+                          ETA: {quote.etaMin} mins
+                        </span>
+                      </div>
+                      
                       <button 
                         onClick={() => dispatch({ type: "REMOVE_NOTIFICATION", id: n.id })}
-                        className="p-1 hover:bg-gray-100 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                        className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
                       >
                         <X size={14} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        onClick={() => navigate(`/provider/${quote.providerId}`, { state: { quote } })}
-                        className="w-11 h-11 rounded-full bg-[#FFF8E6] flex items-center justify-center font-extrabold text-[#B45309] border border-[#FFD966] hover:border-[#F59E0B] transition-colors cursor-pointer"
-                      >
-                        {quote.providerAvatar || quote.providerName.charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="text-[14px] font-extrabold text-foreground">{quote.providerName}</h4>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                          {quote.rating === 0 ? (
-                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-bold uppercase text-[9px]">New</span>
-                          ) : (
-                            <span className="flex items-center gap-0.5 text-yellow-500 font-bold">
-                              <Star size={11} className="fill-yellow-500 text-yellow-500" /> {quote.rating}
-                            </span>
-                          )}
-                          <span>• {quote.distanceKm}km away</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[16px] font-extrabold text-primary">₹{quote.price}</p>
-                      <p className="text-[9px] text-green-700 font-bold bg-green-50 px-1.5 py-0.5 rounded-md mt-1 inline-block border border-green-100">ETA: {quote.etaMin} mins</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
+                  {/* Bottom Row Buttons (Smaller modern buttons with equal spacing) */}
+                  <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-3">
                     <button 
                       onClick={() => navigate(`/provider/${quote.providerId}`, { state: { quote } })}
-                      className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold bg-white active:scale-95 transition-all hover:bg-gray-50 flex items-center justify-center gap-1"
+                      className="py-1.5 border border-slate-200 text-slate-600 rounded-lg text-[11px] font-semibold bg-white active:scale-95 transition-all hover:bg-slate-50 flex items-center justify-center"
                     >
-                      View Profile <ChevronRight size={12} />
+                      View Profile
                     </button>
                     <button 
                       onClick={() => handleDeclineQuote(quote, n.id)}
-                      className="px-3.5 py-2.5 border border-[#FECACA] text-[#DC2626] rounded-xl text-xs font-bold bg-[#FEF2F2] active:scale-95 transition-all hover:bg-[#FEE2E2]"
+                      className="py-1.5 border border-red-100 text-red-500 rounded-lg text-[11px] font-semibold bg-red-50/50 active:scale-95 transition-all hover:bg-red-50 hover:text-red-600 flex items-center justify-center"
                     >
                       Decline
                     </button>
                     <button 
                       disabled={acceptingQuoteId === quote.providerId}
                       onClick={() => handleAcceptQuote(quote, n.id)}
-                      className="flex-1 py-2.5 bg-primary text-white rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-70 disabled:scale-100"
+                      className="py-1.5 bg-primary text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-1 hover:bg-primary/95 disabled:opacity-70 disabled:scale-100"
                     >
                       {acceptingQuoteId === quote.providerId ? (
                         <>
@@ -234,61 +245,67 @@ const Notifications = () => {
               );
             }
 
+            // ==========================================
+            // PROVIDER CARD: quote_sent_confirmation
+            // ==========================================
             if (n.type === "quote_sent_confirmation") {
               return (
-                <div key={n.id} className="bg-white border border-[#A7F3D0] rounded-2xl p-4 shadow-[0_4px_20px_rgba(16,185,129,0.06)] relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#10B981]" />
-                  
-                  <div className="flex justify-between items-start mb-2 pt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">✅</span>
-                      <span className="text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Quote Sent Successfully</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{formatTime(n.ts)}</span>
-                      <button 
-                        onClick={() => dispatch({ type: "REMOVE_NOTIFICATION", id: n.id })}
-                        className="p-1 hover:bg-gray-100 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
+                <div key={n.id} className="bg-white border border-emerald-100 rounded-xl p-3.5 shadow-sm flex gap-3 relative transition-all hover:shadow-md hover:border-emerald-200">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600 shadow-sm">
+                    <CheckCircle2 size={16} />
                   </div>
                   
-                  <p className="text-[13px] leading-snug text-gray-600 font-semibold mb-2">
-                    {n.text}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-[10px] text-[#047857] font-bold bg-[#ECFDF5] px-2.5 py-1 rounded-lg inline-flex border border-[#A7F3D0]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                    <span>Waiting for customer response...</span>
+                  <div className="flex-1 min-w-0 pr-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[13px] font-bold text-emerald-800">✅ Quote Sent Successfully</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">{formatTime(n.ts)}</span>
+                    </div>
+                    
+                    <p className="text-[12.5px] text-slate-600 font-semibold mt-1">
+                      {n.text}
+                    </p>
+                    
+                    <div className="flex items-center gap-1.5 text-[9.5px] text-[#047857] font-bold bg-[#ECFDF5] px-2 py-0.5 rounded-full mt-2 w-fit border border-emerald-200/50">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>⏳ Waiting for customer response</span>
+                    </div>
                   </div>
+
+                  <button 
+                    onClick={() => dispatch({ type: "REMOVE_NOTIFICATION", id: n.id })}
+                    className="absolute top-3 right-3 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               );
             }
 
-            // Fallback default style for other notification types
+            // ==========================================
+            // DEFAULT / GENERAL CARDS (Role Specific)
+            // ==========================================
             return (
-              <div key={n.id} className="p-4 rounded-2xl border transition-all bg-white border-blue-100 shadow-[0_4px_20px_rgba(37,99,235,0.08)] ring-1 ring-blue-50 relative group">
+              <div key={n.id} className="p-3.5 rounded-xl border bg-white border-slate-100 shadow-sm relative flex items-start gap-3 transition-all hover:shadow-md hover:border-slate-200">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border flex-shrink-0 shadow-sm ${getIconBg(n.type || "default")}`}>
+                  {getIcon(n.type || "default")}
+                </div>
+                
+                <div className="flex-1 min-w-0 pr-6">
+                  <div className="flex justify-between items-baseline mb-0.5">
+                    <h3 className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
+                      {n.type === "booking" ? "Booking Update" : n.type === "offer" ? "Special Offer" : n.type === "payment" ? "Payment Receipt" : n.type === "chat" ? "New Message" : "Alert"}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 font-medium">{formatTime(n.ts)}</span>
+                  </div>
+                  <p className="text-[12.5px] leading-relaxed text-slate-600 font-semibold">{n.text}</p>
+                </div>
+
                 <button 
                   onClick={() => dispatch({ type: "REMOVE_NOTIFICATION", id: n.id })}
-                  className="absolute top-3.5 right-3.5 p-1 hover:bg-gray-100 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute top-3 right-3 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <X size={14} />
                 </button>
-                <div className="flex gap-3.5">
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center border flex-shrink-0 ${getIconBg(n.type || "default")}`}>
-                    {getIcon(n.type || "default")}
-                  </div>
-                  <div className="flex-1 pr-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-[14px] font-extrabold text-foreground">
-                        {n.type === "booking" ? "Booking Update" : n.type === "offer" ? "Special Offer" : n.type === "payment" ? "Payment Receipt" : "Alert"}
-                      </h3>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{formatTime(n.ts)}</span>
-                    </div>
-                    <p className="text-[13px] leading-snug mt-0.5 text-gray-600 font-semibold">{n.text}</p>
-                  </div>
-                </div>
               </div>
             );
           })

@@ -78,7 +78,7 @@ interface State {
   bookings: Booking[];
   providerRequests: ProviderRequest[];
   completedJobs: ProviderRequest[];
-  notifications: { id: string; text: string; ts: number; type?: string; metadata?: any }[];
+  notifications: { id: string; text: string; ts: number; type?: string; metadata?: any; targetRole?: "customer" | "provider" }[];
   nearbyProviders: Record<string, { id: string; lat: number; lng: number; lastSeen: number; name: string }>;
   currentLocation: { lat: number; lng: number } | null;
   // Provider Onboarding Draft
@@ -134,7 +134,7 @@ type Action =
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
   | { type: "UPDATE_BOOKING"; id: string; patch: Partial<Booking> }
-  | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any }
+  | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any; targetRole?: "customer" | "provider" }
   | { type: "REMOVE_NOTIFICATION"; id: string }
   | { type: "ACCEPT_REQUEST"; id: string }
   | { type: "REJECT_REQUEST"; id: string }
@@ -272,11 +272,23 @@ function reducer(state: State, action: Action): State {
       // Check if request already exists
       if (state.providerRequests.some(r => r.id === request.id)) return state;
 
+      const isAssigned = request.status === "assigned" || request.status === "accepted";
+      const notificationText = isAssigned
+        ? `🎉 ${request.customerName} accepted your quote for ${request.serviceId}!`
+        : `📦 New ${request.serviceId} job request from ${request.customerName}!`;
+      const notificationType = isAssigned ? "quote_accepted" : "new_job_request";
+
       return { 
         ...state, 
         providerRequests: [request, ...state.providerRequests],
         notifications: [
-          { id: `n-${Date.now()}`, text: `📦 New ${request.serviceId} job from ${request.customerName}!`, ts: Date.now() },
+          { 
+            id: `n-${Date.now()}`, 
+            text: notificationText, 
+            ts: Date.now(),
+            type: notificationType,
+            targetRole: "provider"
+          },
           ...state.notifications,
         ].slice(0, 20)
       };
@@ -320,18 +332,53 @@ function reducer(state: State, action: Action): State {
       const { bookingId, status } = action.data;
       const normalizedId = bookingId.replace('req-', '');
       if (state.role === "customer") {
+        const statusTexts: Record<string, string> = {
+          on_the_way: "🚀 Provider is on the way!",
+          arrived: "📍 Provider has arrived at your location!",
+          in_progress: "🛠️ Job in progress...",
+          completed: "✅ Job completed successfully!",
+        };
+        const text = statusTexts[status];
+        const newNotifications = text ? [
+          {
+            id: `n-${Date.now()}`,
+            text,
+            ts: Date.now(),
+            type: "booking",
+            targetRole: "customer"
+          },
+          ...state.notifications
+        ].slice(0, 20) : state.notifications;
+
         return {
           ...state,
           bookings: state.bookings.map((b) =>
             (b.id === normalizedId || b.id === bookingId) ? { ...b, status: status as any } : b
           ),
+          notifications: newNotifications,
         };
       } else {
+        const statusTexts: Record<string, string> = {
+          completed: "💰 Payment received! Job completed successfully.",
+        };
+        const text = statusTexts[status];
+        const newNotifications = text ? [
+          {
+            id: `n-${Date.now()}`,
+            text,
+            ts: Date.now(),
+            type: "payment",
+            targetRole: "provider"
+          },
+          ...state.notifications
+        ].slice(0, 20) : state.notifications;
+
         return {
           ...state,
           providerRequests: state.providerRequests.map((r) =>
             (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any } : r
           ),
+          notifications: newNotifications,
         };
       }
     }
@@ -387,7 +434,21 @@ function reducer(state: State, action: Action): State {
         date: booking.date || date,
         time: booking.time || time
       };
-      return { ...state, bookings: [enriched, ...state.bookings] };
+      const providerName = booking.providerDetails?.name || "Provider";
+      return { 
+        ...state, 
+        bookings: [enriched, ...state.bookings],
+        notifications: [
+          {
+            id: `n-${Date.now()}`,
+            text: `✅ Booking confirmed with ${providerName}!`,
+            ts: Date.now(),
+            type: "booking",
+            targetRole: "customer"
+          },
+          ...state.notifications
+        ].slice(0, 20)
+      };
     }
     case "SET_BOOKINGS": {
       const enrichedBookings = action.bookings.map((b: any) => {
@@ -418,7 +479,8 @@ function reducer(state: State, action: Action): State {
             text: action.text,
             ts: Date.now(),
             type: action.notificationType || "default",
-            metadata: action.metadata
+            metadata: action.metadata,
+            targetRole: action.targetRole || state.role || "customer"
           },
           ...state.notifications,
         ].slice(0, 20),
@@ -446,7 +508,13 @@ function reducer(state: State, action: Action): State {
           ...state.liveBroadcasts.filter((b) => b.customerId !== action.broadcast.customerId)
         ],
         notifications: [
-          { id: `n-${Date.now()}`, text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, ts: Date.now() },
+          { 
+            id: `n-${Date.now()}`, 
+            text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, 
+            ts: Date.now(),
+            type: "incoming_broadcast",
+            targetRole: "provider"
+          },
           ...state.notifications,
         ].slice(0, 20),
       };
@@ -739,9 +807,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "ADD_RECEIVED_QUOTE", quote });
       dispatch({
         type: "ADD_NOTIFICATION",
-        text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}`,
+        text: `💰 New Quote Received from ${quote.providerName} — ₹${quote.price}`,
         notificationType: "new_quote_received",
-        metadata: quote
+        metadata: quote,
+        targetRole: "customer"
       });
     });
 
@@ -752,9 +821,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const serviceLabel = data.serviceId ? (data.serviceId.charAt(0).toUpperCase() + data.serviceId.slice(1)) : "Service";
       dispatch({
         type: "ADD_NOTIFICATION",
-        text: `💰 You quoted ₹${data.price} for ${serviceLabel} Service`,
+        text: `You quoted ₹${data.price} for ${serviceLabel} Service`,
         notificationType: "quote_sent_confirmation",
-        metadata: data
+        metadata: data,
+        targetRole: "provider"
       });
     });
 
@@ -772,7 +842,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (!window.location.pathname.includes(`/chat/${data.bookingId}`)) {
         const senderLabel = data.senderRole === 'provider' ? 'Provider' : 'Customer';
         const preview = data.audioBase64 ? '🎤 Voice message' : data.text.slice(0, 50);
-        dispatch({ type: "ADD_NOTIFICATION", text: `💬 ${senderLabel}: ${preview}` });
+        const targetRole = data.senderRole === 'provider' ? 'customer' : 'provider';
+        dispatch({
+          type: "ADD_NOTIFICATION",
+          text: `💬 ${senderLabel}: ${preview}`,
+          notificationType: "chat",
+          targetRole
+        });
       }
     });
 

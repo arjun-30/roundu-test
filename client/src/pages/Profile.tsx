@@ -51,7 +51,10 @@ const Profile = () => {
         
         {user.role === "provider" && (
           <button
-            onClick={() => navigate("/provider")}
+            onClick={() => {
+              dispatch({ type: "SET_ROLE", role: "provider" });
+              navigate("/provider");
+            }}
             className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-card mt-4"
           >
             <Repeat size={18} /> Switch as Provider
