@@ -313,6 +313,7 @@ const BookingPayment = () => {
         }
       }
     }
+  };
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28">
