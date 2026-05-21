@@ -11,10 +11,16 @@ const EditProfile = () => {
   const { user, providerRegistrationDraft, dispatch } = useApp();
 
   const handleBack = () => {
-    if (location.state?.from === "profile") {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else if (location.state?.from === "profile") {
       navigate("/provider/profile");
     } else {
-      navigate("/provider");
+      if (user.role === "provider") {
+        navigate("/provider");
+      } else {
+        navigate("/profile");
+      }
     }
   };
 

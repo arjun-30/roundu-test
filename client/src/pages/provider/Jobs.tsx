@@ -17,10 +17,10 @@ const Jobs = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   const handleBack = () => {
-    if (location.state?.from === "profile") {
-      navigate("/provider/profile");
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
     } else {
-      navigate("/provider");
+      navigate(location.state?.from === "profile" ? "/provider/profile" : "/provider");
     }
   };
 

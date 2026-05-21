@@ -12,7 +12,9 @@ const Job = () => {
   const { providerRequests, dispatch } = useApp();
 
   const handleBack = () => {
-    if (location.state?.from === "profile") {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else if (location.state?.from === "profile") {
       navigate("/provider/profile");
     } else if (location.state?.from === "jobs") {
       navigate("/provider/jobs");
