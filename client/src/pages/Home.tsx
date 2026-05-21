@@ -6,7 +6,7 @@ import {
   Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { services, quickFixes, popularTasks } from "@/data/mockData";
+import { services, quickFixes, popularTasks, smartSuggestions, SmartSuggestion } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
@@ -21,11 +21,58 @@ const Home = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [activeSuggIdx, setActiveSuggIdx] = useState(0);
 
   // Sync role to customer on mount
   useEffect(() => {
     dispatch({ type: "SET_ROLE", role: "customer" });
   }, [dispatch]);
+
+  // ─── Smart Suggestion Selection ───────────────────────────────────────────
+  // Determine current season from month (India-centric)
+  const currentSeason: SmartSuggestion["season"] = useMemo(() => {
+    const m = new Date().getMonth(); // 0-based
+    if (m >= 2 && m <= 5) return "summer";      // Mar–Jun
+    if (m >= 6 && m <= 9) return "monsoon";     // Jul–Oct
+    if (m >= 10 && m <= 11) return "festival";  // Nov–Dec
+    return "winter";                             // Jan–Feb
+  }, []);
+
+  // Build a ranked list: seasonal matches first, then booking-history matches, then rest
+  const rankedSuggestions = useMemo(() => {
+    const bookedServiceIds = new Set(
+      (bookings || []).map((b: any) => b.serviceId || b.service_id)
+    );
+    const scored = smartSuggestions.map((s) => {
+      let score = s.priority;
+      if (s.season === currentSeason) score += 5;
+      if (s.season === "all") score += 1;
+      // Slightly boost if user has booked this service before (familiarity)
+      if (bookedServiceIds.has(s.serviceId)) score += 2;
+      return { ...s, score };
+    });
+    // Sort descending, then deduplicate consecutive serviceIds for variety
+    scored.sort((a, b) => b.score - a.score);
+    const seen = new Set<string>();
+    const deduped: typeof scored = [];
+    for (const s of scored) {
+      if (!seen.has(s.serviceId) || deduped.length < 4) {
+        deduped.push(s);
+        seen.add(s.serviceId);
+      }
+      if (deduped.length >= 5) break;
+    }
+    return deduped;
+  }, [bookings, currentSeason]);
+
+  // Auto-rotate suggestion cards every 5 seconds
+  useEffect(() => {
+    if (rankedSuggestions.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveSuggIdx((i) => (i + 1) % rankedSuggestions.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [rankedSuggestions.length]);
 
   // Auto-fetch GPS on mount → reverse geocode → update user.address
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
@@ -240,22 +287,92 @@ const Home = () => {
 
 
 
-        {/* ═══ AI RECOMMENDATIONS ═══ */}
-        <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
-          <button
-            onClick={() => goToProviders("ac_cleaning")}
-            className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 hover:shadow-md transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <Sparkles size={18} className="text-secondary" />
+        {/* ═══ SMART RECOMMENDATIONS CAROUSEL ═══ */}
+        {rankedSuggestions.length > 0 && (
+          <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={13} className="text-secondary" />
+                <span className="text-[11px] font-extrabold text-secondary uppercase tracking-widest">
+                  Recommended for You
+                </span>
+              </div>
+              {/* Dot indicators */}
+              <div className="flex gap-1">
+                {rankedSuggestions.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveSuggIdx(i)}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activeSuggIdx
+                        ? "w-4 h-1.5 bg-primary"
+                        : "w-1.5 h-1.5 bg-muted-foreground/30"
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="text-left flex-1">
-              <h3 className="text-[13px] font-extrabold text-primary">Your AC might need a filter clean</h3>
-              <p className="text-[10px] text-secondary mt-0.5 leading-snug">Based on your home's previous history. Book now.</p>
+
+            {/* Card stack — horizontal scroll, snap per card */}
+            <div
+              className="overflow-x-auto scrollbar-hide flex gap-3 snap-x snap-mandatory pb-1"
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                const idx = Math.round(el.scrollLeft / el.clientWidth);
+                setActiveSuggIdx(idx);
+              }}
+              ref={(el) => {
+                if (el) {
+                  const cardW = el.clientWidth;
+                  el.scrollTo({ left: activeSuggIdx * (cardW + 12), behavior: "smooth" });
+                }
+              }}
+            >
+              {rankedSuggestions.map((sugg, idx) => (
+                <button
+                  key={sugg.id}
+                  onClick={() => {
+                    setActiveSuggIdx(idx);
+                    goToProviders(sugg.serviceId);
+                  }}
+                  className="flex-shrink-0 w-full snap-start flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-border shadow-[0_2px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-all active:scale-[0.98] text-left"
+                  style={{ minWidth: "calc(100% - 0px)" }}
+                >
+                  {/* Emoji icon circle */}
+                  <div className={`w-11 h-11 rounded-full ${sugg.accentColor} flex items-center justify-center flex-shrink-0 text-xl`}>
+                    {sugg.emoji}
+                  </div>
+
+                  {/* Text content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[9px] font-extrabold tracking-wider uppercase text-muted-foreground">
+                        {sugg.category}
+                      </span>
+                      {(sugg.season === currentSeason) && (
+                        <span className="text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                          Seasonal
+                        </span>
+                      )}
+                    </div>
+                    <h3 className={`text-[13px] font-extrabold leading-tight ${sugg.textColor}`}>
+                      {sugg.title}
+                    </h3>
+                    <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug line-clamp-1">
+                      {sugg.subtitle}
+                    </p>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center">
+                    <ChevronRight size={14} className="text-primary" />
+                  </div>
+                </button>
+              ))}
             </div>
-            <ChevronRight size={18} className="text-blue-400 flex-shrink-0" />
-          </button>
-        </div>
+          </div>
+        )}
 
         {/* ═══ BROWSE SERVICES ═══ */}
         <div className="px-5 pt-3 pb-2 animate-fade-in" style={{ animationDelay: "0.1s" }}>
