@@ -860,6 +860,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "UPDATE_ONLINE_STATUS", payload: data });
     });
 
+    socket.on("session_expired", (data: { reason: string }) => {
+      alert("Session Expired: " + data.reason);
+      dispatch({ type: "LOGOUT" });
+      window.location.href = "/";
+    });
+
+    const handleWindowSessionExpired = (e: any) => {
+      alert("Session Expired: " + (e.detail?.reason || "Logged in from another device."));
+      dispatch({ type: "LOGOUT" });
+      window.location.href = "/";
+    };
+    window.addEventListener("session_expired", handleWindowSessionExpired);
+
     return () => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
@@ -871,6 +884,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.off("chat_message_received");
       socket.off("message_seen");
       socket.off("user_status_changed");
+      socket.off("session_expired");
+      window.removeEventListener("session_expired", handleWindowSessionExpired);
       socket.disconnect();
     };
   }, []);

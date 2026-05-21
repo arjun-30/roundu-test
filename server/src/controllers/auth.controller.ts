@@ -46,10 +46,21 @@ export const verifyOTP = async (req: Request, res: Response) => {
     if (!user) {
       user = await UserModel.create({ phone, role: 'customer' });
     }
+
+    // Single-device session enforcement
+    // 1. Tell existing active devices to logout via Socket.IO
+    const io = req.app.locals.io;
+    if (io) {
+      io.to(`user:${user.id}`).emit('session_expired', { reason: 'Logged in from another device' });
+      console.log(`[auth] Emitted session_expired to user:${user.id}`);
+    }
+
+    // 2. Increment session_version in DB to invalidate old JWTs API access
+    const newSessionVersion = await UserModel.incrementSessionVersion(user.id);
     
-    // Create JWT (uses JWT_ACCESS_SECRET + issuer/audience expected by middleware)
+    // Create JWT with the new session version
     const token = signAccessToken(
-      { sub: user.id, role: (user.role || 'customer') as UserRole, phone },
+      { sub: user.id, role: (user.role || 'customer') as UserRole, phone, v: newSessionVersion },
       '7d',
     );
 
@@ -72,9 +83,15 @@ export const verifyWidgetToken = async (req: Request, res: Response) => {
     if (!user) {
       user = await UserModel.create({ phone: mobile });
     }
+
+    const io = req.app.locals.io;
+    if (io) {
+      io.to(`user:${user.id}`).emit('session_expired', { reason: 'Logged in from another device' });
+    }
+    const newSessionVersion = await UserModel.incrementSessionVersion(user.id);
     
     const token = signAccessToken(
-      { sub: user.id, role: ((user as any).role || 'customer') as UserRole, phone: mobile },
+      { sub: user.id, role: ((user as any).role || 'customer') as UserRole, phone: mobile, v: newSessionVersion },
       '7d',
     );
 
