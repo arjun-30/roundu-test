@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProviderModel } from '../models/provider.model';
 import { getPool } from '../config/database';
 import { WalletModel } from '../models/wallet.model';
+import { isProviderBusy } from '../utils/bookingHelper';
 
 export const getProviderDashboard = async (req: Request, res: Response) => {
   try {
@@ -40,9 +41,15 @@ export const searchProviders = async (req: Request, res: Response) => {
 
     const providers = await ProviderModel.findByServiceId(serviceId as string);
     
-    // In a real app, we would join with users table to get names
-    // For now, let's assume ProviderModel.findByServiceId returns enriched data
-    res.json({ success: true, data: providers });
+    const filteredProviders = [];
+    for (const p of providers) {
+      const busy = await isProviderBusy(p.id);
+      if (!busy) {
+        filteredProviders.push(p);
+      }
+    }
+
+    res.json({ success: true, data: filteredProviders });
   } catch (error) {
     console.error('Search providers error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

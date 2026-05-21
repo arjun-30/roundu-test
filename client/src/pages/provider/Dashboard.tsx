@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Bell, Wallet, User, MapPin, Calendar, Clock, Check, X, 
-  Power, Star, TrendingUp, AlertTriangle, Lightbulb, 
+import {
+  Bell, Wallet, User, MapPin, Calendar, Clock, Check, X,
+  Power, Star, TrendingUp, AlertTriangle, Lightbulb,
   ChevronRight, Inbox, Briefcase, FileText, Image as ImageIcon, Video, Play, Mic, Eye,
   ClipboardCheck, Images, Wrench, LogOut
 } from "lucide-react";
@@ -20,11 +20,11 @@ const Dashboard = () => {
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
-  
+
   const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
   const [quotePrice, setQuotePrice] = useState("");
   const [quoteEta, setQuoteEta] = useState("15");
-  
+
   const [showPip, setShowPip] = useState(false);
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
@@ -40,6 +40,33 @@ const Dashboard = () => {
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
   const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
+
+  const isBusy = providerRequests.some((r: any) => {
+    if (["in_progress", "on_the_way", "arrived"].includes(r.status)) {
+      return true;
+    }
+    if (["assigned", "accepted"].includes(r.status)) {
+      let start = r.scheduled_at ? new Date(r.scheduled_at) : null;
+      if (!start || isNaN(start.getTime())) {
+        if (r.date && r.time) {
+          if (r.time.toLowerCase() === 'now') {
+            start = new Date();
+          } else {
+            start = new Date(`${r.date} ${r.time}`);
+          }
+        }
+      }
+      if (start && !isNaN(start.getTime())) {
+        const durationHours = r.duration || 2;
+        const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
+        const now = new Date();
+        if (now >= start && now <= end) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
 
   const toggleOnline = () => {
     dispatch({ type: "SET_ONLINE", value: !isOnline });
@@ -116,19 +143,39 @@ const Dashboard = () => {
   useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
       dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
+
+      if (activeBroadcast && activeBroadcast.broadcastId === data.broadcastId) {
+        setActiveBroadcast(null);
+        alert("This request is no longer available. Customer already selected another provider.");
+      }
+      if (quotingBroadcast && quotingBroadcast.broadcastId === data.broadcastId) {
+        setQuotingBroadcast(null);
+        alert("This request is no longer available. Customer already selected another provider.");
+      }
     };
     socket.on("job_taken", handleJobTaken);
     return () => {
       socket.off("job_taken", handleJobTaken);
     };
+  }, [dispatch, activeBroadcast, quotingBroadcast]);
+
+  useEffect(() => {
+    const handleQuoteError = (data: { message: string }) => {
+      dispatch({ type: "ADD_NOTIFICATION", text: `⚠️ Quote Error: ${data.message}` });
+      alert(`Quote Error: ${data.message}`);
+    };
+    socket.on("quote_error", handleQuoteError);
+    return () => {
+      socket.off("quote_error", handleQuoteError);
+    };
   }, [dispatch]);
 
   useEffect(() => {
-    const handleQuoteAccepted = (data: { 
-      broadcastId: string; 
-      bookingId: string; 
-      serviceId: string; 
-      customerName: string; 
+    const handleQuoteAccepted = (data: {
+      broadcastId: string;
+      bookingId: string;
+      serviceId: string;
+      customerName: string;
       customerPhone?: string;
       address: string;
       lat?: number;
@@ -142,10 +189,10 @@ const Dashboard = () => {
       voiceNoteUrl?: string | null;
     }) => {
       console.log("[socket] quote_accepted received:", data);
-      
+
       // Add to providerRequests so Job.tsx can find it
-      dispatch({ 
-        type: "ADD_PROVIDER_REQUEST", 
+      dispatch({
+        type: "ADD_PROVIDER_REQUEST",
         request: {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
@@ -161,20 +208,20 @@ const Dashboard = () => {
           notes: data.notes || "",
           voiceNote: data.voiceNote || false,
           voiceNoteUrl: data.voiceNoteUrl || undefined,
-        } 
+        }
       });
-      
+
       // Navigate to Chat — enables immediate customer ↔ provider communication
       navigate(`/chat/${data.bookingId}`);
     };
-    
+
     socket.on("quote_accepted", handleQuoteAccepted);
     return () => { socket.off("quote_accepted", handleQuoteAccepted); };
   }, [dispatch, navigate]);
 
   const handleSubmitQuote = () => {
     if (!quotingBroadcast || !quotePrice) return;
-    
+
     socket.emit("submit_quote", {
       broadcastId: quotingBroadcast.broadcastId,
       providerId: user.id,
@@ -187,7 +234,7 @@ const Dashboard = () => {
       etaMin: Number(quoteEta),
       reviews: 0
     });
-    
+
     dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
     setActiveBroadcast(null);
@@ -198,7 +245,7 @@ const Dashboard = () => {
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
       {/* PIP Modal */}
       {showPip && pipType && (
-        <PIPModal 
+        <PIPModal
           type={pipType}
           rating={providerStats.rating}
           onClose={pipType === "low_rating" ? () => {
@@ -241,9 +288,10 @@ const Dashboard = () => {
         <div className="flex gap-2 items-center">
           {/* Online/Offline Toggle */}
           <div className="flex flex-col items-center gap-1 mr-2 mt-1">
-            <button 
+            <button
+              disabled={isBusy}
               onClick={toggleOnline}
-              className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${isOnline ? 'bg-success' : 'bg-muted-foreground/30'}`}
+              className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${isOnline ? 'bg-success' : 'bg-muted-foreground/30'} ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
@@ -251,14 +299,14 @@ const Dashboard = () => {
               {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
-          <button 
+          <button
             onClick={() => navigate("/provider/profile")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
             title="Provider Profile"
           >
             <User size={18} className="text-foreground" />
           </button>
-          <button 
+          <button
             onClick={() => navigate("/notifications")}
             className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
             title="Notifications"
@@ -270,6 +318,19 @@ const Dashboard = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* Active Booking Lock Banner */}
+        {isBusy && (
+          <div className="mx-5 mb-3 mt-4 bg-amber-50 border-amber-200 border rounded-xl p-3.5 flex items-start gap-3 relative animate-fade-in">
+            <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-800">Active Job Lock</p>
+              <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                You are currently on an active job. Finish this job or wait until scheduled time ends to accept new bookings.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Dynamic Warning Banner */}
         {(() => {
           let warning = null;
@@ -325,7 +386,7 @@ const Dashboard = () => {
         })()}
 
         {/* Live Job Broadcasts (Moved to Top) */}
-        {isOnline && liveBroadcasts.length > 0 && (
+        {isOnline && !isBusy && liveBroadcasts.length > 0 && (
           <div className="px-5 mb-6 mt-4">
             <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
@@ -345,35 +406,35 @@ const Dashboard = () => {
                         <p className="text-sm font-bold text-foreground">{b.customerName}</p>
                         <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
-                           <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
-                           <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
+                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
                         </div>
                         {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
                         {b.voiceNoteUrl && (
                           <div className="mt-2 bg-white/50 rounded-lg p-2 border border-[#FFD966]/50">
-                             <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
-                               <Mic size={10} /> Voice Note Attached
-                             </div>
-                             <audio 
-                               src={b.voiceNoteUrl} 
-                               controls 
-                               className="w-full h-7" 
-                               onError={(e) => {
-                                 console.error("Audio playback error:", e);
-                                 (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
-                               }}
-                             />
+                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
+                              <Mic size={10} /> Voice Note Attached
+                            </div>
+                            <audio
+                              src={b.voiceNoteUrl}
+                              controls
+                              className="w-full h-7"
+                              onError={(e) => {
+                                console.error("Audio playback error:", e);
+                                (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                              }}
+                            />
                           </div>
                         )}
-                        
+
                         <div className="flex gap-2 mt-3">
-                          <button 
+                          <button
                             onClick={() => setQuotingBroadcast(b)}
                             className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
                           >
                             Provide Quote
                           </button>
-                          <button 
+                          <button
                             onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
                             className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
                           >
@@ -442,8 +503,8 @@ const Dashboard = () => {
         <div className="px-5 mb-6">
           <h2 className="text-sm font-bold text-foreground mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => navigate('/provider/jobs')} 
+            <button
+              onClick={() => navigate('/provider/jobs')}
               className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
             >
               <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
@@ -454,9 +515,9 @@ const Dashboard = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
               </div>
             </button>
-            
-            <button 
-              onClick={() => navigate('/provider/earnings')} 
+
+            <button
+              onClick={() => navigate('/provider/earnings')}
               className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
             >
               <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
@@ -467,9 +528,9 @@ const Dashboard = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">₹{earnings} earned</p>
               </div>
             </button>
-            
-            <button 
-              onClick={() => navigate('/provider/portfolio')} 
+
+            <button
+              onClick={() => navigate('/provider/portfolio')}
               className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
             >
               <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
@@ -480,9 +541,9 @@ const Dashboard = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">Showcase work</p>
               </div>
             </button>
-            
-            <button 
-              onClick={() => navigate('/provider/documents')} 
+
+            <button
+              onClick={() => navigate('/provider/documents')}
               className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
             >
               <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
@@ -496,16 +557,21 @@ const Dashboard = () => {
           </div>
         </div>
 
-
         {/* Incoming Requests */}
         <div className="px-5 mb-6">
           <h2 className="text-sm font-bold text-foreground mb-3">Incoming Requests</h2>
           {!isOnline ? (
-             <div className="bg-muted border border-border border-dashed rounded-2xl p-6 text-center shadow-sm">
-               <Power size={24} className="text-muted-foreground mx-auto mb-2" />
-               <p className="text-sm font-bold text-foreground">You are currently offline</p>
-               <p className="text-xs text-muted-foreground mt-1">Go online to receive new job requests in your area.</p>
-             </div>
+            <div className="bg-muted border border-border border-dashed rounded-2xl p-6 text-center shadow-sm">
+              <Power size={24} className="text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-bold text-foreground">You are currently offline</p>
+              <p className="text-xs text-muted-foreground mt-1">Go online to receive new job requests in your area.</p>
+            </div>
+          ) : isBusy ? (
+            <div className="bg-amber-50/50 border border-amber-200 border-dashed rounded-2xl p-6 text-center shadow-sm">
+              <AlertTriangle size={24} className="text-amber-500 mx-auto mb-2" />
+              <p className="text-sm font-bold text-amber-800">You are currently busy</p>
+              <p className="text-xs text-amber-600 mt-1">Finish your current active job to receive new incoming direct requests.</p>
+            </div>
           ) : pending.length === 0 ? (
             <EmptyState icon={Inbox} title="No new requests" description="New jobs will appear here." />
           ) : (
@@ -532,6 +598,7 @@ const Dashboard = () => {
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => {
+                          socket.emit("update_job_status", { jobId: r.id, status: "accepted" });
                           dispatch({ type: "ACCEPT_REQUEST", id: r.id });
                           navigate(`/provider/job/${r.id}`);
                         }}
@@ -600,7 +667,7 @@ const Dashboard = () => {
             {completedJobs.slice(0, 3).map((job, idx) => {
               const req = providerRequests.find(r => r.id === job.id);
               const service = req ? getServiceById(req.serviceId) : null;
-              
+
               return (
                 <div key={job.id} className={`p-4 flex items-center justify-between ${idx !== 0 ? 'border-t border-border' : ''}`}>
                   <div className="flex items-center gap-3">
@@ -639,7 +706,7 @@ const Dashboard = () => {
                 <X size={20} className="text-muted-foreground" />
               </button>
             </div>
-            
+
             <div className="p-5 overflow-y-auto space-y-4 pb-20">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg flex-shrink-0">
@@ -650,31 +717,31 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">{getServiceById(selectedJob.serviceId)?.label}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-input rounded-xl p-3 shadow-sm border border-border/50">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><Calendar size={12}/> Date</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><Calendar size={12} /> Date</p>
                   <p className="text-sm font-semibold text-foreground">{selectedJob.date}</p>
                 </div>
                 <div className="bg-input rounded-xl p-3 shadow-sm border border-border/50">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><Clock size={12}/> Time</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><Clock size={12} /> Time</p>
                   <p className="text-sm font-semibold text-foreground">{selectedJob.time}</p>
                 </div>
               </div>
 
               <div className="bg-input rounded-xl p-3 shadow-sm border border-border/50">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><MapPin size={12}/> Address</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1 flex items-center gap-1"><MapPin size={12} /> Address</p>
                 <p className="text-sm font-semibold text-foreground">{selectedJob.address}</p>
               </div>
 
               <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 shadow-sm">
-                <p className="text-[10px] text-emerald-600 uppercase font-bold mb-1 flex items-center gap-1"><Wallet size={12}/> Earnings</p>
+                <p className="text-[10px] text-emerald-600 uppercase font-bold mb-1 flex items-center gap-1"><Wallet size={12} /> Earnings</p>
                 <p className="text-xl font-extrabold text-emerald-700">₹{selectedJob.price}</p>
               </div>
 
               {selectedJob.notes && (
                 <div className="bg-orange-50 rounded-xl p-3 border border-orange-100 shadow-sm">
-                  <p className="text-[10px] text-orange-600 uppercase font-bold mb-1 flex items-center gap-1"><FileText size={12}/> Notes from Customer</p>
+                  <p className="text-[10px] text-orange-600 uppercase font-bold mb-1 flex items-center gap-1"><FileText size={12} /> Notes from Customer</p>
                   <p className="text-xs text-orange-900 italic leading-relaxed">"{selectedJob.notes}"</p>
                 </div>
               )}
@@ -704,9 +771,9 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-wider">
                           <Mic size={14} /> Voice Note
                         </div>
-                        <audio 
-                          src={selectedJob.voiceNoteUrl} 
-                          controls 
+                        <audio
+                          src={selectedJob.voiceNoteUrl}
+                          controls
                           className="w-full h-8"
                           onError={(e) => {
                             console.error("Audio playback error:", e);
@@ -743,6 +810,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => {
+                  socket.emit("update_job_status", { jobId: selectedJob.id, status: "accepted" });
                   dispatch({ type: "ACCEPT_REQUEST", id: selectedJob.id });
                   navigate(`/provider/job/${selectedJob.id}`);
                 }}
@@ -758,11 +826,12 @@ const Dashboard = () => {
 
       {/* Direct Request Popup (Top-aligned) */}
       {(simulatedRequest || activeDirectRequest) && (
-        <IncomingRequestPopup 
+        <IncomingRequestPopup
           request={simulatedRequest || activeDirectRequest}
           isBroadcast={false}
           onAccept={() => {
             const req = simulatedRequest || activeDirectRequest;
+            socket.emit("update_job_status", { jobId: req.id, status: "accepted" });
             dispatch({ type: "ACCEPT_REQUEST", id: req.id });
             if (simulatedRequest) setSimulatedRequest(null);
             if (activeDirectRequest) setActiveDirectRequest(null);
@@ -786,12 +855,12 @@ const Dashboard = () => {
           <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
             <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-muted-foreground mb-1 block">Your Price (₹)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={quotePrice}
                   onChange={(e) => setQuotePrice(e.target.value)}
                   placeholder="e.g. 450"
@@ -800,8 +869,8 @@ const Dashboard = () => {
               </div>
               <div>
                 <label className="text-xs font-bold text-muted-foreground mb-1 block">Estimated Arrival (Mins)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={quoteEta}
                   onChange={(e) => setQuoteEta(e.target.value)}
                   placeholder="e.g. 15"
@@ -811,13 +880,13 @@ const Dashboard = () => {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button 
+              <button
                 onClick={() => setQuotingBroadcast(null)}
                 className="flex-1 py-3 rounded-xl border border-border text-sm font-bold text-muted-foreground"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleSubmitQuote}
                 className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md"
               >

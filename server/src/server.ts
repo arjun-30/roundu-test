@@ -5,6 +5,8 @@ import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
 import { ChatModel } from './models/chat.model';
+import { ProviderModel } from './models/provider.model';
+import { isProviderBusy, checkScheduleConflict, parseDateTime } from './utils/bookingHelper';
 
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
@@ -12,6 +14,7 @@ async function main() {
   try {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
@@ -218,9 +221,9 @@ async function main() {
       const address = data.address || broadcast?.address || '';
 
       if (broadcast || data.bookingId) {
-        // Notify other providers in the service room the job is taken
+        // Notify other providers in the service room and providers room the job is taken
         if (serviceId) {
-          io.to(`service:${serviceId}`).emit('job_taken', { 
+          io.to(`service:${serviceId}`).to('providers').emit('job_taken', { 
             broadcastId: data.broadcastId, 
             acceptedProviderId: data.acceptedProviderId 
           });
@@ -253,21 +256,55 @@ async function main() {
       }
     });
 
-    socket.on('submit_quote', (data: any) => {
+    socket.on('submit_quote', async (data: any) => {
       console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
-      io.emit('quote_received', {
-        broadcastId: data.broadcastId,
-        providerId: data.providerId,
-        providerName: data.providerName,
-        providerAvatar: data.providerAvatar,
-        providerPhone: data.providerPhone,
-        price: data.price,
-        rating: data.rating,
-        distanceKm: data.distanceKm,
-        etaMin: data.etaMin,
-        reviews: data.reviews,
-        submittedAt: Date.now()
-      });
+      
+      try {
+        const provider = await ProviderModel.findByUserId(data.providerId);
+        const providerId = provider ? provider.id : data.providerId;
+
+        // Check if provider is currently busy on an active job
+        const isBusy = await isProviderBusy(providerId);
+        if (isBusy) {
+          socket.emit('quote_error', {
+            message: 'You are currently busy on an active job.'
+          });
+          return;
+        }
+
+        // Check if provider has schedule conflict for the broadcast slot
+        const broadcast = activeBroadcasts.get(data.broadcastId);
+        if (broadcast) {
+          const proposedStart = parseDateTime(broadcast.date, broadcast.time);
+          const proposedDuration = broadcast.duration || 2;
+          const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
+          if (conflictCheck.conflict) {
+            socket.emit('quote_error', {
+              message: conflictCheck.message || 'Schedule conflict: You have another booking that overlaps with this request.'
+            });
+            return;
+          }
+        }
+
+        io.emit('quote_received', {
+          broadcastId: data.broadcastId,
+          providerId: data.providerId,
+          providerName: data.providerName,
+          providerAvatar: data.providerAvatar,
+          providerPhone: data.providerPhone,
+          price: data.price,
+          rating: data.rating,
+          distanceKm: data.distanceKm,
+          etaMin: data.etaMin,
+          reviews: data.reviews,
+          submittedAt: Date.now()
+        });
+      } catch (err) {
+        console.error('[socket] error handling submit_quote:', err);
+        socket.emit('quote_error', {
+          message: 'An error occurred while processing your quote.'
+        });
+      }
     });
 
     // Chat real-time messaging sockets

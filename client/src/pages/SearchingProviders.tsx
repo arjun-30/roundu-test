@@ -351,7 +351,9 @@ const SearchingProviders = () => {
           {/* Received Quotes Section */}
           {receivedQuotes.length > 0 ? (
             <div className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar">
-              {receivedQuotes.map((q) => (
+              {receivedQuotes
+                .filter((q) => !acceptingQuoteId || q.providerId === acceptingQuoteId)
+                .map((q) => (
                 <div 
                   key={q.providerId} 
                   onClick={() => !acceptingQuoteId && navigate(`/provider/${q.providerId}`, { state: { quote: q } })}

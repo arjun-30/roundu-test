@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BookingModel } from '../models/booking.model';
 import { ProviderModel } from '../models/provider.model';
 import { NotificationModel } from '../models/notification.model';
+import { isProviderBusy, checkScheduleConflict } from '../utils/bookingHelper';
 
 export const createBooking = async (req: Request, res: Response) => {
   try {
@@ -42,8 +43,29 @@ export const createBooking = async (req: Request, res: Response) => {
     // Try to resolve it to a providers.id if it matches a user.
     if (bookingData.provider_id) {
       const provider = await ProviderModel.findByUserId(bookingData.provider_id);
-      if (provider) {
-        bookingData.provider_id = provider.id;
+      const providerId = provider ? provider.id : bookingData.provider_id;
+      bookingData.provider_id = providerId;
+
+      // 1. Check if provider is currently busy
+      const isBusy = await isProviderBusy(providerId);
+      if (isBusy) {
+        return res.status(400).json({
+          success: false,
+          message: 'Provider is currently busy on an active job.'
+        });
+      }
+
+      // 2. Check if provider has a schedule conflict
+      if (bookingData.scheduled_at) {
+        const proposedStart = new Date(bookingData.scheduled_at);
+        const proposedDuration = bookingData.duration || 2;
+        const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
+        if (conflictCheck.conflict) {
+          return res.status(400).json({
+            success: false,
+            message: conflictCheck.message || 'Schedule conflict: Provider has another booking at this time.'
+          });
+        }
       }
     }
 
