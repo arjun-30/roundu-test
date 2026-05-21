@@ -57,23 +57,14 @@ const Wallet = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3">
+        <div className="flex justify-center animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-4 w-full max-w-[200px] justify-center">
             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
               <TrendingUp size={18} className="text-green-500" />
             </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total Earned</p>
+            <div className="text-left">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total Income</p>
               <p className="text-sm font-extrabold text-foreground">₹2,450</p>
-            </div>
-          </div>
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-              <TrendingDown size={18} className="text-red-500" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total Spent</p>
-              <p className="text-sm font-extrabold text-foreground">₹1,820</p>
             </div>
           </div>
         </div>
