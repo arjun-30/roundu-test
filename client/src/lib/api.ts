@@ -5,6 +5,28 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('roundu_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const errorCode = error.response?.data?.code;
+      if (errorCode === 'SESSION_EXPIRED' || errorCode === 'UNAUTHENTICATED') {
+        // Trigger a custom event that AppContext can listen to for a clean logout
+        window.dispatchEvent(new CustomEvent('session_expired', { detail: { reason: error.response?.data?.message || 'Session expired' } }));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const fetchProviderDashboard = async (userId: string) => {
   const res = await api.get(`/providers/dashboard?userId=${userId}`);
   return res.data;

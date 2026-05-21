@@ -77,5 +77,21 @@ export const UserModel = {
 
   async delete(id: string): Promise<void> {
     await getPool().query('DELETE FROM users WHERE id = $1', [id]);
+  },
+
+  async incrementSessionVersion(id: string): Promise<number> {
+    try {
+      const res = await getPool().query(
+        'UPDATE users SET session_version = COALESCE(session_version, 1) + 1 WHERE id = $1 RETURNING session_version',
+        [id]
+      );
+      return res.rows[0]?.session_version || 1;
+    } catch (err) {
+      if (env.isDevelopment) {
+        console.warn('[UserModel] DB Error in incrementSessionVersion, returning 1');
+        return 1;
+      }
+      throw err;
+    }
   }
 };

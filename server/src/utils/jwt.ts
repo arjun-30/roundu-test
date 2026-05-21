@@ -6,6 +6,7 @@ export interface AccessTokenPayload extends JwtPayload {
   sub: string;
   role: UserRole;
   phone?: string;
+  v?: number; // session version
 }
 
 const ISSUER = 'roundu-api';
@@ -28,7 +29,7 @@ function getRefreshSecret(): string {
 }
 
 export function signAccessToken(
-  payload: { sub: string; role: UserRole; phone?: string },
+  payload: { sub: string; role: UserRole; phone?: string; v?: number },
   expiresIn: string = process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
 ): string {
   const opts: SignOptions = { expiresIn: expiresIn as SignOptions['expiresIn'], issuer: ISSUER, audience: AUDIENCE };
