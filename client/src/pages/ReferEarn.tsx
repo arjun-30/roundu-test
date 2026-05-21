@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Gift, Share2, Copy, Users, Wallet,
   ChevronRight, Award, Check, Link2,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { fetchReferralCode } from "@/lib/api";
 
 const ReferEarn = () => {
   const navigate = useNavigate();
@@ -13,7 +14,37 @@ const ReferEarn = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [notification, setNotification] = useState("");
 
+  const [dbReferralCode, setDbReferralCode] = useState("");
+  const [dbShareUrl, setDbShareUrl] = useState("");
+  const [totalEarned, setTotalEarned] = useState(0);
+  const [totalReferrals, setTotalReferrals] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadCode = async () => {
+      try {
+        const response = await fetchReferralCode();
+        if (response.success && active) {
+          setDbReferralCode(response.data.code);
+          setDbShareUrl(response.data.shareUrl);
+          setTotalEarned(response.data.totalEarned);
+          setTotalReferrals(response.data.totalReferrals);
+        }
+      } catch (err) {
+        console.error("Failed to load referral code:", err);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+    loadCode();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const referralCode = useMemo(() => {
+    if (dbReferralCode) return dbReferralCode;
     let base = (user?.id || user?.phone || "").replace(/\D/g, "").slice(-6);
     if (!base && user?.name) {
       base = user.name.split("").map(c => c.charCodeAt(0)).join("").slice(-6);
@@ -22,9 +53,9 @@ const ReferEarn = () => {
       base = "387407"; // Stable premium default
     }
     return `RU${base.toUpperCase()}`;
-  }, [user?.id, user?.phone, user?.name]);
+  }, [dbReferralCode, user?.id, user?.phone, user?.name]);
 
-  const referralLink = `https://roundu.in/invite?ref=${referralCode}`;
+  const referralLink = dbShareUrl || `https://roundu.in/invite?ref=${referralCode}`;
   const shareMessage = `🎉 Get ₹500 off your first professional service on RoundU! Use my code *${referralCode}* or click: ${referralLink}`;
 
   const copyCode = async () => {
@@ -163,7 +194,7 @@ const ReferEarn = () => {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Friends Invited</p>
-              <p className="text-xl font-black text-foreground">0</p>
+              <p className="text-xl font-black text-foreground">{isLoading ? "..." : totalReferrals}</p>
             </div>
           </div>
           <div className="bg-card border border-border p-5 rounded-3xl flex flex-col items-center text-center gap-3">
@@ -172,7 +203,7 @@ const ReferEarn = () => {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Credits Earned</p>
-              <p className="text-xl font-black text-foreground">₹0</p>
+              <p className="text-xl font-black text-foreground">{isLoading ? "..." : `₹${totalEarned}`}</p>
             </div>
           </div>
         </div>

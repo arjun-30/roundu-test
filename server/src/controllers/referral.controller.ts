@@ -1,4 +1,4 @@
-﻿// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
+// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
 // Controller: referral.controller.ts
 
 import { Request, Response, NextFunction } from 'express';
@@ -7,6 +7,8 @@ import {
   getOrCreateReferralCode,
   applyReferralCode,
   getReferralHistory,
+  getReferralLeaderboard,
+  getUserReferralRank,
 } from '../services/referral.service';
 import { sendSuccess } from '../utils/response';
 
@@ -65,6 +67,30 @@ export async function getHistory(
 
     const result = await getReferralHistory(getDb(req), userId, page, limit);
     sendSuccess(res, { ...result, page, limit });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/referrals/leaderboard
+// ---------------------------------------------------------------------------
+export async function getLeaderboard(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const limit = Math.min(100, parseInt(req.query.limit as string) || 20);
+
+    const leaderboard = await getReferralLeaderboard(getDb(req), limit);
+    const currentUser = await getUserReferralRank(getDb(req), userId);
+
+    sendSuccess(res, {
+      leaderboard,
+      currentUser,
+    });
   } catch (err) {
     next(err);
   }

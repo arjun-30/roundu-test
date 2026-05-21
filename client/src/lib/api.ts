@@ -87,4 +87,19 @@ export const getChatHistory = async (bookingId: string) => {
   return res.data;
 };
 
+export const fetchReferralCode = async () => {
+  const res = await api.get('/referrals/my-code');
+  return res.data;
+};
+
+export const applyReferralCode = async (code: string) => {
+  const res = await api.post('/referrals/apply', { code });
+  return res.data;
+};
+
+export const fetchReferralLeaderboard = async () => {
+  const res = await api.get('/referrals/leaderboard');
+  return res.data;
+};
+
 export default api;

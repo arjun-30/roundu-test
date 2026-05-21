@@ -1,4 +1,4 @@
-﻿// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
+// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
 // Model: referral.model.ts
 // Mirrors migration: 014_referrals.sql
 
@@ -31,4 +31,18 @@ export interface ReferralEvent {
   currency: string;
   status: ReferralStatus;
   createdAt: Date;
+}
+
+export interface ReferrerLeaderboardEntry {
+  rank: number;
+  name: string;
+  referrals: number;
+  earnings: number;
+  userId: string;
+}
+
+export interface UserReferralRank {
+  rank: number | null;
+  referrals: number;
+  earnings: number;
 }

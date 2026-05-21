@@ -2,7 +2,7 @@
 // Service: referral.service.ts
 
 import { Pool } from 'pg';
-import { ReferralCode, ReferralEvent } from '../models/referral.model';
+import { ReferralCode, ReferralEvent, ReferrerLeaderboardEntry, UserReferralRank } from '../models/referral.model';
 
 const REWARD_AMOUNT = 50;     // INR credit per successful referral
 const REWARD_CURRENCY = 'INR';
@@ -227,4 +227,67 @@ export async function getReferralHistory(
     })),
     total: parseInt(countRow.rows[0].count, 10),
   };
+}
+
+/**
+ * Get the referral leaderboard of top referrers based on settled referrals.
+ */
+export async function getReferralLeaderboard(
+  db: Pool,
+  limit: number = 20,
+): Promise<ReferrerLeaderboardEntry[]> {
+  const query = `
+    WITH rankings AS (
+      SELECT
+        u.id AS user_id,
+        u.name,
+        COUNT(r.id)::int AS referrals,
+        COALESCE(SUM(r.reward_amount), 0)::int AS earnings,
+        DENSE_RANK() OVER (ORDER BY COUNT(r.id) DESC, COALESCE(SUM(r.reward_amount), 0) DESC) AS rank
+      FROM users u
+      JOIN referrals r ON r.referrer_id = u.id
+      WHERE r.status = 'settled'
+      GROUP BY u.id, u.name
+    )
+    SELECT rank, name, referrals, earnings, user_id AS "userId"
+    FROM rankings
+    ORDER BY rank ASC, name ASC
+    LIMIT $1;
+  `;
+  const result = await db.query<ReferrerLeaderboardEntry>(query, [limit]);
+  return result.rows;
+}
+
+/**
+ * Get the referral leaderboard rank and stats for a specific user.
+ */
+export async function getUserReferralRank(
+  db: Pool,
+  userId: string,
+): Promise<UserReferralRank> {
+  const query = `
+    WITH rankings AS (
+      SELECT
+        u.id AS user_id,
+        COUNT(r.id)::int AS referrals,
+        COALESCE(SUM(r.reward_amount), 0)::int AS earnings,
+        DENSE_RANK() OVER (ORDER BY COUNT(r.id) DESC, COALESCE(SUM(r.reward_amount), 0) DESC) AS rank
+      FROM users u
+      JOIN referrals r ON r.referrer_id = u.id
+      WHERE r.status = 'settled'
+      GROUP BY u.id
+    )
+    SELECT rank, referrals, earnings
+    FROM rankings
+    WHERE user_id = $1;
+  `;
+  const result = await db.query<UserReferralRank>(query, [userId]);
+  if (result.rows.length === 0) {
+    return {
+      rank: null,
+      referrals: 0,
+      earnings: 0,
+    };
+  }
+  return result.rows[0];
 }

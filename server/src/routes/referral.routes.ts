@@ -1,11 +1,11 @@
-﻿// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
+// Owner: Dev 4 — Referrals + Offers + Portfolio + Tracking
 // Routes: referral.routes.ts
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { applyReferralSchema } from '../validators/referral.validator';
-import { getMyCode, applyCode, getHistory } from '../controllers/referral.controller';
+import { getMyCode, applyCode, getHistory, getLeaderboard } from '../controllers/referral.controller';
 
 const router = Router();
 
@@ -14,6 +14,9 @@ router.use(authenticate);
 
 // GET  /api/referrals/my-code
 router.get('/my-code', getMyCode);
+
+// GET  /api/referrals/leaderboard
+router.get('/leaderboard', getLeaderboard);
 
 // POST /api/referrals/apply
 router.post('/apply', validate(applyReferralSchema), applyCode);
