@@ -8,11 +8,12 @@ import {
 import { useApp } from "@/context/AppContext";
 import { getProviderById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
+import { getChatHistory } from "@/lib/api";
 
 const Chat = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, role, bookings, providerRequests, chatHistories, dispatch } = useApp() as any;
+  const { user, role, bookings, providerRequests, chatHistories, onlineUsers, dispatch } = useApp() as any;
 
   const [message, setMessage] = useState("");
   const [notification, setNotification] = useState("");
@@ -45,9 +46,11 @@ const Chat = () => {
   let participantName = "User";
   let participantAvatar = "U";
   let participantPhone = "";
+  let participantId = "";
 
   if (role === "customer") {
     const providerId = booking?.providerId || booking?.provider_id;
+    participantId = providerId || "";
     const providerDetails = booking?.providerDetails || (providerId ? getProviderById(providerId) : null);
     participantName = providerDetails?.name || "Provider";
     participantAvatar = typeof providerDetails?.avatar === "string" && providerDetails.avatar.length <= 2
@@ -55,10 +58,13 @@ const Chat = () => {
       : (providerDetails?.name?.charAt(0) || "P");
     participantPhone = providerDetails?.phone || "";
   } else if (role === "provider") {
+    participantId = request?.customerId || booking?.customerId || booking?.customer_id || "";
     participantName = request?.customerName || booking?.customerName || "Customer";
     participantAvatar = participantName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "C";
     participantPhone = request?.customerPhone || booking?.customerPhone || "";
   }
+
+  const isPartnerOnline = onlineUsers[participantId] || false;
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -70,10 +76,32 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, partnerTyping]);
 
-  // 3. Join chat room & listen for typing
+  // 3. Join chat room, listen for typing, fetch history, and mark seen
   useEffect(() => {
     if (!roomId) return;
     socket.emit("join_chat_room", { bookingId: String(roomId) });
+
+    // Fetch history
+    if (!chatHistories[roomId] || chatHistories[roomId].length === 0) {
+      getChatHistory(roomId).then(res => {
+        if (res.success) {
+          const formatted = res.data.map((m: any) => ({
+            id: m.id,
+            sender: m.senderId === user.id ? "me" : "other",
+            text: m.text,
+            time: m.time,
+            audioBase64: m.audioBase64,
+            isSeen: m.isSeen
+          }));
+          dispatch({ type: "SET_CHAT_HISTORY", payload: { bookingId: roomId, messages: formatted } });
+        }
+      }).catch(err => console.error("Failed to load chat history:", err));
+    }
+
+    // Mark seen
+    if (participantId) {
+      socket.emit("mark_messages_seen", { bookingId: String(roomId), recipientId: user.id });
+    }
 
     const handleTyping = (data: { bookingId: string; senderId: string }) => {
       if (String(data.bookingId) === String(roomId) && data.senderId !== user?.id) {
@@ -83,7 +111,7 @@ const Chat = () => {
     };
     socket.on("typing_indicator", handleTyping);
     return () => { socket.off("typing_indicator", handleTyping); };
-  }, [roomId, user?.id]);
+  }, [roomId, user?.id, participantId]);
 
   // 4. Typing indicator emission
   const handleInputChange = (val: string) => {
@@ -212,8 +240,10 @@ const Chat = () => {
         <div className="flex-1 min-w-0">
           <h1 className="text-[15px] font-bold text-foreground truncate">{participantName}</h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <p className="text-[10px] text-emerald-600 font-semibold">Active Booking</p>
+            <span className={`w-1.5 h-1.5 rounded-full ${isPartnerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+            <p className={`text-[10px] font-semibold ${isPartnerOnline ? 'text-emerald-600' : 'text-gray-500'}`}>
+              {isPartnerOnline ? 'Online' : 'Offline'}
+            </p>
           </div>
         </div>
 
@@ -328,7 +358,7 @@ const Chat = () => {
                   <div className={`flex items-center gap-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                     <p className="text-[9px] text-muted-foreground font-medium">{msg.time}</p>
                     {isMe && (
-                      <CheckCheck size={11} className="text-primary/60" />
+                      <CheckCheck size={12} className={msg.isSeen ? "text-blue-500" : "text-gray-400"} />
                     )}
                   </div>
                 </div>

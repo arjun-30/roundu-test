@@ -190,3 +190,17 @@ CREATE TABLE IF NOT EXISTS kyc_encrypted_vault (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'unverified';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS masked_aadhaar VARCHAR(4);
+
+-- Chat Messages Table
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id VARCHAR(50) NOT NULL,
+    sender_id VARCHAR(50) NOT NULL,
+    sender_role VARCHAR(20) NOT NULL,
+    text TEXT NOT NULL,
+    audio_base64 TEXT,
+    is_seen BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_booking ON chat_messages(booking_id);

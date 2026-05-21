@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
+import { ChatModel } from './models/chat.model';
 
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
@@ -36,11 +37,16 @@ async function main() {
 
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
+  const onlineUserConnections = new Map<string, Set<string>>();
 
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
       console.log(`[socket] client connected: ${socket.id}`);
     }
+
+    const broadcastStatus = (userId: string, isOnline: boolean) => {
+      io.emit('user_status_changed', { userId, isOnline });
+    };
 
     socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
@@ -50,6 +56,15 @@ async function main() {
       if (data.userId) {
         socket.join(`user:${data.userId}`);
         console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
+        
+        // Track online status
+        let userSockets = onlineUserConnections.get(data.userId);
+        if (!userSockets) {
+          userSockets = new Set();
+          onlineUserConnections.set(data.userId, userSockets);
+          broadcastStatus(data.userId, true); // First connection
+        }
+        userSockets.add(socket.id);
       }
 
       if (data.role === 'provider') {
@@ -296,8 +311,22 @@ async function main() {
 
       const messagePayload = { ...data, text: modifiedText };
 
-      // Relay the modified payload to all other users in the room
-      socket.to(room).emit('chat_message_received', messagePayload);
+      // Persist to Database asynchronously
+      ChatModel.createMessage({
+        booking_id: String(data.bookingId),
+        sender_id: data.senderId,
+        sender_role: data.senderRole,
+        text: modifiedText,
+        audio_base64: data.audioBase64
+      }).then((dbMsg) => {
+        const payloadWithDbId = { ...messagePayload, id: dbMsg.id, is_seen: false };
+        // Relay the modified payload to all other users in the room
+        socket.to(room).emit('chat_message_received', payloadWithDbId);
+      }).catch(err => {
+        console.error('[socket] Error saving chat message:', err);
+        // Fallback to relay without DB ID if it fails
+        socket.to(room).emit('chat_message_received', messagePayload);
+      });
 
       // 3. System Warning Injection
       if (violationDetected) {
@@ -316,6 +345,17 @@ async function main() {
     socket.on('typing_indicator', (data: { bookingId: string; senderId: string }) => {
       const room = `chat:${data.bookingId}`;
       socket.to(room).emit('typing_indicator', data);
+    });
+
+    socket.on('mark_messages_seen', async (data: { bookingId: string; recipientId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      try {
+        await ChatModel.markMessagesAsSeen(String(data.bookingId), data.recipientId);
+        // Notify the room that messages were read
+        socket.to(room).emit('message_seen', { bookingId: data.bookingId, seenBy: data.recipientId });
+      } catch (err) {
+        console.error('[socket] Error marking messages as seen:', err);
+      }
     });
 
     socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {
@@ -346,6 +386,18 @@ async function main() {
     socket.on('disconnect', () => {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);
+      }
+      
+      const userId = socket.data.userId;
+      if (userId) {
+        const userSockets = onlineUserConnections.get(userId);
+        if (userSockets) {
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            onlineUserConnections.delete(userId);
+            broadcastStatus(userId, false); // Last connection closed
+          }
+        }
       }
     });
   });

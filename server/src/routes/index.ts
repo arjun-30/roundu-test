@@ -9,8 +9,11 @@ import paymentRouter from './payment.routes';
 import uploadRouter from './upload.routes';
 import kycRouter from './kyc.routes';
 import webhookRouter from './webhook.routes';
+import chatRouter from './chat.routes';
 
 const router = Router();
+
+router.use('/chat', chatRouter);
 
 router.use('/auth', authRouter);
 router.use('/users', userRouter);
