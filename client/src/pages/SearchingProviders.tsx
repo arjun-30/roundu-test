@@ -163,12 +163,31 @@ const SearchingProviders = () => {
     sessionStorage.setItem("searching_providers_state", JSON.stringify(stateToCache));
   }, [serviceId, broadcastId, statusIndex, activeDotIndex, isLongWait]);
 
+  // Cache receivedQuotes in sessionStorage
+  useEffect(() => {
+    if (receivedQuotes.length > 0) {
+      sessionStorage.setItem("searching_providers_quotes", JSON.stringify(receivedQuotes));
+    }
+  }, [receivedQuotes]);
+
   // ── Broadcast Job ────────────────────────────────────────────────────────
   // Emits broadcast_job immediately (with coords if GPS already resolved)
   // AND re-emits every 5s for late-connecting providers, always using the
   // latest coordsRef value so GPS doesn't need to race the first render.
   useEffect(() => {
-    if (!isRestoredRef.current) {
+    if (isRestoredRef.current) {
+      try {
+        const cachedQuotes = sessionStorage.getItem("searching_providers_quotes");
+        if (cachedQuotes) {
+          const parsed = JSON.parse(cachedQuotes);
+          parsed.forEach((q: any) => {
+            dispatch({ type: "ADD_RECEIVED_QUOTE", quote: q });
+          });
+        }
+      } catch (e) {
+        console.error("Failed to restore quotes from cache:", e);
+      }
+    } else {
       dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
     }
 
@@ -248,6 +267,7 @@ const SearchingProviders = () => {
       if (res.success) {
         sessionStorage.removeItem("searching_providers_state");
         sessionStorage.removeItem("searching_providers_scroll");
+        sessionStorage.removeItem("searching_providers_quotes");
         const enrichedBooking = {
           ...res.data,
           providerDetails: {
@@ -293,7 +313,12 @@ const SearchingProviders = () => {
       {/* Top Bar */}
       <div className="px-5 pt-6 pb-2 flex items-center gap-4 relative z-20">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            sessionStorage.removeItem("searching_providers_state");
+            sessionStorage.removeItem("searching_providers_scroll");
+            sessionStorage.removeItem("searching_providers_quotes");
+            navigate(-1);
+          }}
           className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-border active:scale-90 transition-transform"
         >
           <ArrowLeft size={20} className="text-primary" />
@@ -546,6 +571,7 @@ const SearchingProviders = () => {
               onClick={() => {
                 sessionStorage.removeItem("searching_providers_state");
                 sessionStorage.removeItem("searching_providers_scroll");
+                sessionStorage.removeItem("searching_providers_quotes");
                 navigate(`/book-service/${serviceId}`, { state: { cancelled: true }, replace: true });
               }}
               className="text-[13px] font-[600] text-[#7A8BA0] hover:text-red-500 transition-colors pb-2"

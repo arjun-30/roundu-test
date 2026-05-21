@@ -286,17 +286,33 @@ async function main() {
           }
         }
 
-        io.emit('quote_received', {
+        const broadcast = activeBroadcasts.get(data.broadcastId);
+        const customerId = data.customerId || broadcast?.customerId;
+
+        if (customerId) {
+          io.to(`user:${customerId}`).emit('new_quote_received', {
+            broadcastId: data.broadcastId,
+            serviceId: broadcast?.serviceId || data.serviceId,
+            providerId: data.providerId,
+            providerName: data.providerName,
+            providerAvatar: data.providerAvatar,
+            providerPhone: data.providerPhone,
+            price: data.price,
+            rating: data.rating,
+            distanceKm: data.distanceKm,
+            etaMin: data.etaMin,
+            reviews: data.reviews,
+            submittedAt: Date.now()
+          });
+          console.log(`[socket] new_quote_received sent to customer user:${customerId}`);
+        } else {
+          console.warn(`[socket] submit_quote: no customerId found for broadcast ${data.broadcastId}`);
+        }
+
+        socket.emit('quote_sent_confirmation', {
           broadcastId: data.broadcastId,
-          providerId: data.providerId,
-          providerName: data.providerName,
-          providerAvatar: data.providerAvatar,
-          providerPhone: data.providerPhone,
           price: data.price,
-          rating: data.rating,
-          distanceKm: data.distanceKm,
-          etaMin: data.etaMin,
-          reviews: data.reviews,
+          serviceId: broadcast?.serviceId || data.serviceId,
           submittedAt: Date.now()
         });
       } catch (err) {

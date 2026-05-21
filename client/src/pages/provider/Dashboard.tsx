@@ -16,7 +16,7 @@ import { socket } from "@/lib/socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications } = useApp() as any;
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts } = useApp() as any;
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
@@ -224,6 +224,7 @@ const Dashboard = () => {
 
     socket.emit("submit_quote", {
       broadcastId: quotingBroadcast.broadcastId,
+      customerId: quotingBroadcast.customerId,
       providerId: user.id,
       providerName: user.name,
       providerAvatar: user.name.charAt(0),
@@ -235,7 +236,7 @@ const Dashboard = () => {
       reviews: 0
     });
 
-    dispatch({ type: "REMOVE_LIVE_BROADCAST", id: quotingBroadcast.broadcastId });
+    dispatch({ type: "ADD_QUOTED_BROADCAST", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
     setActiveBroadcast(null);
     setQuotePrice("");
@@ -266,7 +267,7 @@ const Dashboard = () => {
       )}
 
       {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
-      {activeBroadcast && !quotingBroadcast && (
+      {activeBroadcast && !quotingBroadcast && !(quotedBroadcasts && quotedBroadcasts.includes(activeBroadcast.broadcastId)) && (
         <IncomingRequestPopup
           request={activeBroadcast}
           isBroadcast={true}
@@ -395,6 +396,7 @@ const Dashboard = () => {
             <div className="space-y-3">
               {liveBroadcasts.map((b) => {
                 const service = getServiceById(b.serviceId);
+                const isQuoted = b.status === "waiting_for_customer" || (quotedBroadcasts && quotedBroadcasts.includes(b.broadcastId));
                 return (
                   <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
@@ -428,18 +430,29 @@ const Dashboard = () => {
                         )}
 
                         <div className="flex gap-2 mt-3">
-                          <button
-                            onClick={() => setQuotingBroadcast(b)}
-                            className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
-                          >
-                            Provide Quote
-                          </button>
-                          <button
-                            onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
-                            className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
-                          >
-                            Skip
-                          </button>
+                          {isQuoted ? (
+                            <button
+                              disabled
+                              className="flex-1 py-2.5 bg-muted text-muted-foreground border border-border rounded-lg text-xs font-bold shadow-sm cursor-not-allowed flex items-center justify-center gap-1.5"
+                            >
+                              ⏳ Waiting for customer response
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setQuotingBroadcast(b)}
+                                className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                              >
+                                Provide Quote
+                              </button>
+                              <button
+                                onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
+                                className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
+                              >
+                                Skip
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

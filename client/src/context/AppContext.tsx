@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect } from "react";
+import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef } from "react";
 import {
   Booking, Provider, ProviderRequest,
   initialProviderRequests, initialCompletedJobs,
@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
 import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
+import { toast } from "sonner";
 
 
 type Role = "customer" | "provider" | null;
@@ -77,7 +78,7 @@ interface State {
   bookings: Booking[];
   providerRequests: ProviderRequest[];
   completedJobs: ProviderRequest[];
-  notifications: { id: string; text: string; ts: number }[];
+  notifications: { id: string; text: string; ts: number; type?: string; metadata?: any }[];
   nearbyProviders: Record<string, { id: string; lat: number; lng: number; lastSeen: number; name: string }>;
   currentLocation: { lat: number; lng: number } | null;
   // Provider Onboarding Draft
@@ -103,6 +104,7 @@ interface State {
   };
   liveBroadcasts: JobBroadcast[];
   receivedQuotes: ProviderQuote[];
+  quotedBroadcasts: string[];
   onboardingData: {
     serviceIds: string[];
     homeType: string;
@@ -132,7 +134,8 @@ type Action =
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
   | { type: "UPDATE_BOOKING"; id: string; patch: Partial<Booking> }
-  | { type: "ADD_NOTIFICATION"; text: string }
+  | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any }
+  | { type: "REMOVE_NOTIFICATION"; id: string }
   | { type: "ACCEPT_REQUEST"; id: string }
   | { type: "REJECT_REQUEST"; id: string }
   | { type: "UPDATE_REQUEST"; id: string; patch: Partial<ProviderRequest> }
@@ -150,6 +153,7 @@ type Action =
   | { type: "HANDLE_INCOMING_BROADCAST"; broadcast: JobBroadcast }
   | { type: "CLEAR_LIVE_BROADCASTS" }
   | { type: "REMOVE_LIVE_BROADCAST"; id: string }
+  | { type: "ADD_QUOTED_BROADCAST"; id: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
@@ -220,6 +224,7 @@ const initialState: State = {
   },
   liveBroadcasts: [],
   receivedQuotes: [],
+  quotedBroadcasts: [],
   onboardingData: {
     serviceIds: [],
     homeType: "",
@@ -408,9 +413,20 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         notifications: [
-          { id: `n-${Date.now()}`, text: action.text, ts: Date.now() },
+          {
+            id: `n-${Date.now()}`,
+            text: action.text,
+            ts: Date.now(),
+            type: action.notificationType || "default",
+            metadata: action.metadata
+          },
           ...state.notifications,
         ].slice(0, 20),
+      };
+    case "REMOVE_NOTIFICATION":
+      return {
+        ...state,
+        notifications: state.notifications.filter((n) => n.id !== action.id)
       };
     case "HANDLE_INCOMING_BROADCAST":
       if (state.role === "customer" || state.user.id === action.broadcast.customerId) return state;
@@ -418,16 +434,29 @@ function reducer(state: State, action: Action): State {
       if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
         return state;
       }
+      const hasQuoted = state.quotedBroadcasts?.includes(action.broadcast.broadcastId);
+      const enrichedBroadcast = {
+        ...action.broadcast,
+        status: hasQuoted ? "waiting_for_customer" : action.broadcast.status
+      };
       return {
         ...state,
         liveBroadcasts: [
-          action.broadcast, 
+          enrichedBroadcast, 
           ...state.liveBroadcasts.filter((b) => b.customerId !== action.broadcast.customerId)
         ],
         notifications: [
           { id: `n-${Date.now()}`, text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, ts: Date.now() },
           ...state.notifications,
         ].slice(0, 20),
+      };
+    case "ADD_QUOTED_BROADCAST":
+      return {
+        ...state,
+        quotedBroadcasts: [...(state.quotedBroadcasts || []), action.id],
+        liveBroadcasts: state.liveBroadcasts.map((b) =>
+          b.broadcastId === action.id ? { ...b, status: "waiting_for_customer" } : b
+        )
       };
     case "ACCEPT_REQUEST":
       return {
@@ -518,6 +547,13 @@ function reducer(state: State, action: Action): State {
       };
     case "REMOVE_LIVE_BROADCAST":
       return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
+    case "REMOVE_RECEIVED_QUOTE":
+      return {
+        ...state,
+        receivedQuotes: state.receivedQuotes.filter(
+          (q) => !(q.broadcastId === action.broadcastId && q.providerId === action.providerId)
+        )
+      };
     case "ADD_RECEIVED_QUOTE":
       return {
         ...state,
@@ -698,9 +734,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
     });
 
-    socket.on("quote_received", (quote: ProviderQuote) => {
+    socket.on("new_quote_received", (quote: ProviderQuote) => {
+      console.log("[socket] ✅ new_quote_received received:", quote);
       dispatch({ type: "ADD_RECEIVED_QUOTE", quote });
-      dispatch({ type: "ADD_NOTIFICATION", text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}` });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        text: `💰 New Quote: ₹${quote.price} from ${quote.providerName}`,
+        notificationType: "new_quote_received",
+        metadata: quote
+      });
+    });
+
+    socket.on("quote_sent_confirmation", (data: { broadcastId: string; price: number; serviceId: string }) => {
+      console.log("[socket] ✅ quote_sent_confirmation received:", data);
+      toast.success("Quote sent successfully!");
+      dispatch({ type: "ADD_QUOTED_BROADCAST", id: data.broadcastId });
+      const serviceLabel = data.serviceId ? (data.serviceId.charAt(0).toUpperCase() + data.serviceId.slice(1)) : "Service";
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        text: `💰 You quoted ₹${data.price} for ${serviceLabel} Service`,
+        notificationType: "quote_sent_confirmation",
+        metadata: data
+      });
     });
 
     socket.on("job_accepted", (booking: any) => {
@@ -733,7 +788,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.off("incoming_request");
       socket.off("provider_location_update");
       socket.off("incoming_broadcast");
-      socket.off("quote_received");
+      socket.off("new_quote_received");
+      socket.off("quote_sent_confirmation");
       socket.off("job_accepted");
       socket.off("job_status_updated");
       socket.off("chat_message_received");
