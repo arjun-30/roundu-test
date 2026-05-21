@@ -110,7 +110,8 @@ interface State {
     frequency: string;
     budget: string;
   };
-  chatHistories: Record<string, { sender: "me" | "other"; text: string; time: string; audioBase64?: string | null }[]>;
+  chatHistories: Record<string, { id?: string, sender: "me" | "other"; text: string; time: string; audioBase64?: string | null; isSeen?: boolean }[]>;
+  onlineUsers: Record<string, boolean>;
 }
 
 type Action =
@@ -155,7 +156,10 @@ type Action =
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
   | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
-  | { type: "ADD_CHAT_MESSAGE"; payload: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string | null } }
+  | { type: "SET_CHAT_HISTORY"; payload: { bookingId: string; messages: any[] } }
+  | { type: "ADD_CHAT_MESSAGE"; payload: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean } }
+  | { type: "MARK_MESSAGES_SEEN"; payload: { bookingId: string; seenBy: string } }
+  | { type: "UPDATE_ONLINE_STATUS"; payload: { userId: string; isOnline: boolean } }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
@@ -224,6 +228,7 @@ const initialState: State = {
     budget: "",
   },
   chatHistories: {},
+  onlineUsers: {},
 };
 
 function reducer(state: State, action: Action): State {
@@ -431,7 +436,7 @@ function reducer(state: State, action: Action): State {
           r.id === action.id ? { ...r, status: "accepted" } : r
         ),
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, status: "assigned" } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, status: "assigned" } : b
         )
       };
     case "REJECT_REQUEST":
@@ -446,7 +451,7 @@ function reducer(state: State, action: Action): State {
           r.id === action.id ? { ...r, ...action.patch } : r
         ),
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, ...(action.patch as any) } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, ...(action.patch as any) } : b
         )
       };
     case "COMPLETE_REQUEST": {
@@ -457,7 +462,7 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.filter((r) => r.id !== action.id),
         completedJobs: [{ ...req, status: "completed" }, ...state.completedJobs],
         bookings: state.bookings.map((b) => 
-          b.id === action.id.replace('req-', '') ? { ...b, status: "completed" } : b
+          b.id === String(action.id).replace('req-', '') ? { ...b, status: "completed" } : b
         )
       };
     }
@@ -523,19 +528,56 @@ function reducer(state: State, action: Action): State {
       };
     case "CLEAR_RECEIVED_QUOTES":
       return { ...state, receivedQuotes: [] };
+    case "SET_CHAT_HISTORY": {
+      const { bookingId, messages } = action.payload;
+      return {
+        ...state,
+        chatHistories: {
+          ...state.chatHistories,
+          [bookingId]: messages
+        }
+      };
+    }
     case "ADD_CHAT_MESSAGE": {
-      const { bookingId, text, senderId, time, audioBase64 } = action.payload;
+      const { id, bookingId, text, senderId, time, audioBase64, is_seen } = action.payload;
       const chatRoom = state.chatHistories[bookingId] || [];
       const isMe = senderId === state.user.id;
       
-      const isDuplicate = chatRoom.some(m => m.text === text && m.time === time && m.sender === (isMe ? "me" : "other"));
+      const isDuplicate = chatRoom.some(m => m.id === id || (m.text === text && m.time === time && m.sender === (isMe ? "me" : "other")));
       if (isDuplicate) return state;
 
       return {
         ...state,
         chatHistories: {
           ...state.chatHistories,
-          [bookingId]: [...chatRoom, { sender: isMe ? "me" : "other", text, time, audioBase64: audioBase64 || null }]
+          [bookingId]: [...chatRoom, { id, sender: isMe ? "me" : "other", text, time, audioBase64: audioBase64 || null, isSeen: is_seen || false }]
+        }
+      };
+    }
+    case "MARK_MESSAGES_SEEN": {
+      const { bookingId, seenBy } = action.payload;
+      if (seenBy === state.user.id) return state; // Only update if the OTHER person saw our messages
+
+      const chatRoom = state.chatHistories[bookingId] || [];
+      const updatedRoom = chatRoom.map(msg => 
+        msg.sender === "me" ? { ...msg, isSeen: true } : msg
+      );
+
+      return {
+        ...state,
+        chatHistories: {
+          ...state.chatHistories,
+          [bookingId]: updatedRoom
+        }
+      };
+    }
+    case "UPDATE_ONLINE_STATUS": {
+      const { userId, isOnline } = action.payload;
+      return {
+        ...state,
+        onlineUsers: {
+          ...state.onlineUsers,
+          [userId]: isOnline
         }
       };
     }
@@ -669,7 +711,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
     });
 
-    socket.on("chat_message_received", (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
+    socket.on("chat_message_received", (data: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean }) => {
       dispatch({ type: "ADD_CHAT_MESSAGE", payload: data });
       // Show a notification if the user is not currently viewing this chat
       if (!window.location.pathname.includes(`/chat/${data.bookingId}`)) {
@@ -677,6 +719,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const preview = data.audioBase64 ? '🎤 Voice message' : data.text.slice(0, 50);
         dispatch({ type: "ADD_NOTIFICATION", text: `💬 ${senderLabel}: ${preview}` });
       }
+    });
+
+    socket.on("message_seen", (data: { bookingId: string; seenBy: string }) => {
+      dispatch({ type: "MARK_MESSAGES_SEEN", payload: data });
+    });
+
+    socket.on("user_status_changed", (data: { userId: string; isOnline: boolean }) => {
+      dispatch({ type: "UPDATE_ONLINE_STATUS", payload: data });
     });
 
     return () => {
@@ -687,6 +737,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       socket.off("job_accepted");
       socket.off("job_status_updated");
       socket.off("chat_message_received");
+      socket.off("message_seen");
+      socket.off("user_status_changed");
       socket.disconnect();
     };
   }, []);
@@ -704,7 +756,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Also join via req- prefix for provider-side requests
       state.providerRequests.forEach((r: any) => {
         if (r.id) {
-          const normalId = r.id.replace('req-', '');
+          const normalId = String(r.id).replace('req-', '');
           socket.emit("join_chat_room", { bookingId: normalId });
         }
       });

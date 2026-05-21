@@ -49,12 +49,20 @@ const BookingSuccess = () => {
       </div>
 
       <div className="space-y-2.5">
-        <button
-          onClick={() => navigate(`/tracking/${booking.id}`, { replace: true })}
-          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all"
-        >
-          Track Service
-        </button>
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => navigate(`/chat/${booking.id}`)}
+            className="flex-1 py-4 rounded-2xl bg-input border border-border text-foreground font-bold text-sm active:scale-[0.98] transition-all"
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => navigate(`/tracking/${booking.id}`, { replace: true })}
+            className="flex-[2] py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98] transition-all"
+          >
+            Track Service
+          </button>
+        </div>
         <button
           onClick={() => navigate("/home", { replace: true })}
           className="w-full py-4 rounded-2xl bg-input border border-border text-foreground font-bold text-sm active:scale-[0.98] transition-all"

@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
+import { ChatModel } from './models/chat.model';
 
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
@@ -36,11 +37,16 @@ async function main() {
 
   app.locals.io = io;
   const activeBroadcasts = new Map<string, any>();
+  const onlineUserConnections = new Map<string, Set<string>>();
 
   io.on('connection', (socket: any) => {
     if (env.isDevelopment) {
       console.log(`[socket] client connected: ${socket.id}`);
     }
+
+    const broadcastStatus = (userId: string, isOnline: boolean) => {
+      io.emit('user_status_changed', { userId, isOnline });
+    };
 
     socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
@@ -50,6 +56,15 @@ async function main() {
       if (data.userId) {
         socket.join(`user:${data.userId}`);
         console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
+        
+        // Track online status
+        let userSockets = onlineUserConnections.get(data.userId);
+        if (!userSockets) {
+          userSockets = new Set();
+          onlineUserConnections.set(data.userId, userSockets);
+          broadcastStatus(data.userId, true); // First connection
+        }
+        userSockets.add(socket.id);
       }
 
       if (data.role === 'provider') {
@@ -265,13 +280,82 @@ async function main() {
     socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
       const room = `chat:${data.bookingId}`;
       console.log(`[socket] Chat message in room ${room} from ${data.senderId}`);
-      // Relay the full payload (including audioBase64 if present) to all other users in the room
-      socket.to(room).emit('chat_message_received', data);
+
+      let modifiedText = data.text;
+      let violationDetected = false;
+
+      // 1. Regex Masking (Prices and Phone Numbers)
+      // Mask Phone Numbers (10 digits, optionally separated by spaces/dashes)
+      const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+      if (phoneRegex.test(modifiedText)) {
+        violationDetected = true;
+        modifiedText = modifiedText.replace(phoneRegex, "[REDACTED NUMBER]");
+      }
+
+      // Mask Prices (e.g. ₹500, Rs 500, 500 Rs, $500)
+      const priceRegex = /(?:₹|Rs\.?|\$)\s*\d+(?:,\d+)*(?:\.\d+)?|\d+(?:,\d+)*(?:\.\d+)?\s*(?:Rs\.?|rupees|bucks|inr)/gi;
+      if (priceRegex.test(modifiedText)) {
+        violationDetected = true;
+        modifiedText = modifiedText.replace(priceRegex, "[REDACTED PRICE]");
+      }
+
+      // 2. Keyword Filtering
+      const restrictedKeywords = ['cash', 'discount', 'gpay', 'phonepe', 'pay outside', 'cheap', 'direct', 'negotiate'];
+      restrictedKeywords.forEach(keyword => {
+        const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        if (keywordRegex.test(modifiedText)) {
+          violationDetected = true;
+          modifiedText = modifiedText.replace(keywordRegex, "***");
+        }
+      });
+
+      const messagePayload = { ...data, text: modifiedText };
+
+      // Persist to Database asynchronously
+      ChatModel.createMessage({
+        booking_id: String(data.bookingId),
+        sender_id: data.senderId,
+        sender_role: data.senderRole,
+        text: modifiedText,
+        audio_base64: data.audioBase64
+      }).then((dbMsg) => {
+        const payloadWithDbId = { ...messagePayload, id: dbMsg.id, is_seen: false };
+        // Relay the modified payload to all other users in the room
+        socket.to(room).emit('chat_message_received', payloadWithDbId);
+      }).catch(err => {
+        console.error('[socket] Error saving chat message:', err);
+        // Fallback to relay without DB ID if it fails
+        socket.to(room).emit('chat_message_received', messagePayload);
+      });
+
+      // 3. System Warning Injection
+      if (violationDetected) {
+        const warningPayload = {
+          bookingId: data.bookingId,
+          text: "System Warning: Negotiating prices or sharing contact/payment details outside the app violates platform policy and may result in account suspension.",
+          senderId: "system",
+          senderRole: "system",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        // Emit warning to both the sender and the receiver
+        io.to(room).emit('chat_message_received', warningPayload);
+      }
     });
 
     socket.on('typing_indicator', (data: { bookingId: string; senderId: string }) => {
       const room = `chat:${data.bookingId}`;
       socket.to(room).emit('typing_indicator', data);
+    });
+
+    socket.on('mark_messages_seen', async (data: { bookingId: string; recipientId: string }) => {
+      const room = `chat:${data.bookingId}`;
+      try {
+        await ChatModel.markMessagesAsSeen(String(data.bookingId), data.recipientId);
+        // Notify the room that messages were read
+        socket.to(room).emit('message_seen', { bookingId: data.bookingId, seenBy: data.recipientId });
+      } catch (err) {
+        console.error('[socket] Error marking messages as seen:', err);
+      }
     });
 
     socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {
@@ -283,7 +367,7 @@ async function main() {
       console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}, paid=${data.paid}`);
       
       // Persist to DB
-      const dbId = data.bookingId.replace('req-', '');
+      const dbId = String(data.bookingId).replace('req-', '');
       try {
         const { BookingModel } = require('./models/booking.model');
         await BookingModel.updateBooking(dbId, {
@@ -306,6 +390,18 @@ async function main() {
     socket.on('disconnect', () => {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);
+      }
+      
+      const userId = socket.data.userId;
+      if (userId) {
+        const userSockets = onlineUserConnections.get(userId);
+        if (userSockets) {
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            onlineUserConnections.delete(userId);
+            broadcastStatus(userId, false); // Last connection closed
+          }
+        }
       }
     });
   });

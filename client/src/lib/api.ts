@@ -60,4 +60,9 @@ export const loadRazorpay = () => {
   });
 };
 
+export const getChatHistory = async (bookingId: string) => {
+  const res = await api.get(`/chat/${bookingId}`);
+  return res.data;
+};
+
 export default api;

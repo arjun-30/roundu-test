@@ -8,11 +8,12 @@ import {
 import { useApp } from "@/context/AppContext";
 import { getProviderById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
+import { getChatHistory } from "@/lib/api";
 
 const Chat = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, role, bookings, providerRequests, chatHistories, dispatch } = useApp() as any;
+  const { user, role, bookings, providerRequests, chatHistories, onlineUsers, dispatch } = useApp() as any;
 
   const [message, setMessage] = useState("");
   const [notification, setNotification] = useState("");
@@ -36,18 +37,20 @@ const Chat = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // 1. Resolve booking / request / participant details
-  const booking = bookings.find((b: any) => b.id === id);
-  const request = providerRequests.find((r: any) => r.id === id || r.id === `req-${id}`);
+  const booking = bookings.find((b: any) => String(b.id) === id || String(b.id) === String(id).replace('req-', ''));
+  const request = providerRequests.find((r: any) => String(r.id) === id || String(r.id) === `req-${id}`);
 
-  const roomId = booking?.id || request?.id?.replace('req-', '') || id || "";
+  const roomId = booking?.id || (request?.id ? String(request.id).replace('req-', '') : null) || id || "";
   const messages = chatHistories[roomId] || [];
 
   let participantName = "User";
   let participantAvatar = "U";
   let participantPhone = "";
+  let participantId = "";
 
   if (role === "customer") {
     const providerId = booking?.providerId || booking?.provider_id;
+    participantId = providerId || "";
     const providerDetails = booking?.providerDetails || (providerId ? getProviderById(providerId) : null);
     participantName = providerDetails?.name || "Provider";
     participantAvatar = typeof providerDetails?.avatar === "string" && providerDetails.avatar.length <= 2
@@ -55,10 +58,13 @@ const Chat = () => {
       : (providerDetails?.name?.charAt(0) || "P");
     participantPhone = providerDetails?.phone || "";
   } else if (role === "provider") {
+    participantId = request?.customerId || booking?.customerId || booking?.customer_id || "";
     participantName = request?.customerName || booking?.customerName || "Customer";
     participantAvatar = participantName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "C";
     participantPhone = request?.customerPhone || booking?.customerPhone || "";
   }
+
+  const isPartnerOnline = onlineUsers[participantId] || false;
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -70,20 +76,42 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, partnerTyping]);
 
-  // 3. Join chat room & listen for typing
+  // 3. Join chat room, listen for typing, fetch history, and mark seen
   useEffect(() => {
     if (!roomId) return;
-    socket.emit("join_chat_room", { bookingId: roomId });
+    socket.emit("join_chat_room", { bookingId: String(roomId) });
+
+    // Fetch history
+    if (!chatHistories[roomId] || chatHistories[roomId].length === 0) {
+      getChatHistory(roomId).then(res => {
+        if (res.success) {
+          const formatted = res.data.map((m: any) => ({
+            id: m.id,
+            sender: m.senderId === user.id ? "me" : "other",
+            text: m.text,
+            time: m.time,
+            audioBase64: m.audioBase64,
+            isSeen: m.isSeen
+          }));
+          dispatch({ type: "SET_CHAT_HISTORY", payload: { bookingId: roomId, messages: formatted } });
+        }
+      }).catch(err => console.error("Failed to load chat history:", err));
+    }
+
+    // Mark seen
+    if (participantId) {
+      socket.emit("mark_messages_seen", { bookingId: String(roomId), recipientId: user.id });
+    }
 
     const handleTyping = (data: { bookingId: string; senderId: string }) => {
-      if (data.bookingId === roomId && data.senderId !== user?.id) {
+      if (String(data.bookingId) === String(roomId) && data.senderId !== user?.id) {
         setPartnerTyping(true);
         setTimeout(() => setPartnerTyping(false), 2500);
       }
     };
     socket.on("typing_indicator", handleTyping);
     return () => { socket.off("typing_indicator", handleTyping); };
-  }, [roomId, user?.id]);
+  }, [roomId, user?.id, participantId]);
 
   // 4. Typing indicator emission
   const handleInputChange = (val: string) => {
@@ -100,7 +128,7 @@ const Chat = () => {
   const handleSendMessage = useCallback(() => {
     if (!message.trim() || !roomId) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const payload = { bookingId: roomId, text: message.trim(), senderId: user.id, senderRole: role, time };
+    const payload = { bookingId: String(roomId), text: message.trim(), senderId: user.id, senderRole: role, time };
     socket.emit("send_chat_message", payload);
     dispatch({ type: "ADD_CHAT_MESSAGE", payload });
     setMessage("");
@@ -212,8 +240,10 @@ const Chat = () => {
         <div className="flex-1 min-w-0">
           <h1 className="text-[15px] font-bold text-foreground truncate">{participantName}</h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <p className="text-[10px] text-emerald-600 font-semibold">Active Booking</p>
+            <span className={`w-1.5 h-1.5 rounded-full ${isPartnerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+            <p className={`text-[10px] font-semibold ${isPartnerOnline ? 'text-emerald-600' : 'text-gray-500'}`}>
+              {isPartnerOnline ? 'Online' : 'Offline'}
+            </p>
           </div>
         </div>
 
@@ -232,6 +262,14 @@ const Chat = () => {
         <button className="w-9 h-9 rounded-xl bg-[#F5F8FB] border border-[#E1E8EF] flex items-center justify-center active:scale-95 transition-transform">
           <MoreVertical size={16} className="text-muted-foreground" />
         </button>
+      </div>
+
+      {/* Safety Banner */}
+      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10 shadow-sm">
+        <div className="mt-0.5 text-xs">⚠️</div>
+        <p className="text-[11px] text-orange-800 font-medium leading-tight">
+          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app. Violations may lead to account suspension.
+        </p>
       </div>
 
       {/* Notification banner */}
@@ -256,6 +294,19 @@ const Chat = () => {
         ) : (
           messages.map((msg: any, index: number) => {
             const isMe = msg.sender === "me";
+            const isSystem = msg.senderRole === "system";
+
+            if (isSystem) {
+              return (
+                <div key={index} className="flex justify-center my-2 animate-fade-in">
+                  <div className="bg-red-50 border border-red-100 px-3 py-2 rounded-xl max-w-[85%] text-center shadow-sm">
+                    <p className="text-[11px] text-red-600 font-bold leading-snug">{msg.text}</p>
+                    <p className="text-[9px] text-red-400 mt-0.5">{msg.time}</p>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} animate-msg-in`}>
                 {!isMe && (
@@ -307,7 +358,7 @@ const Chat = () => {
                   <div className={`flex items-center gap-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                     <p className="text-[9px] text-muted-foreground font-medium">{msg.time}</p>
                     {isMe && (
-                      <CheckCheck size={11} className="text-primary/60" />
+                      <CheckCheck size={12} className={msg.isSeen ? "text-blue-500" : "text-gray-400"} />
                     )}
                   </div>
                 </div>
@@ -398,25 +449,20 @@ const Chat = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <button
-                onMouseDown={startRecording}
-                onTouchStart={startRecording}
-                className="w-10 h-10 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] flex items-center justify-center active:scale-90 transition-all"
-              >
-                <Mic size={18} className="text-primary" />
-              </button>
               <input
                 ref={inputRef}
                 value={message}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                placeholder="Type a message..."
-                className="flex-1 px-4 py-2.5 rounded-full bg-[#F0F4F8] border border-[#E1E8EF] text-[14px] text-foreground focus:outline-none focus:border-primary/40 transition-colors placeholder:text-muted-foreground/70"
+                placeholder="Type your message..."
+                className="flex-1 h-10 bg-white border border-[#E1E8EF] rounded-full px-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-shadow"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
-                className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center active:scale-90 disabled:opacity-30 disabled:scale-100 transition-all shadow-md"
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  message.trim() ? "bg-primary text-white active:scale-95 shadow-md" : "bg-[#F0F4F8] text-[#A0B0C0]"
+                }`}
               >
                 <Send size={16} />
               </button>
