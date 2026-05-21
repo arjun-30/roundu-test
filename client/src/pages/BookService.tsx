@@ -138,6 +138,8 @@ const BookService = () => {
       return;
     }
     
+    sessionStorage.removeItem("searching_providers_state");
+    sessionStorage.removeItem("searching_providers_scroll");
     navigate(`/searching-providers/${serviceId}`);
   };
 

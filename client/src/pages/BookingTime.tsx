@@ -30,6 +30,8 @@ const BookingTime = () => {
     dispatch({ type: "SELECT_TIME", time });
     
     if (location.state?.serviceId) {
+      sessionStorage.removeItem("searching_providers_state");
+      sessionStorage.removeItem("searching_providers_scroll");
       navigate(`/searching-providers/${location.state.serviceId}`);
     } else {
       navigate("/booking/notes");

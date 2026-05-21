@@ -30,21 +30,47 @@ interface ProviderDot {
   duration: number;
 }
 
+interface CachedSearchState {
+  serviceId: string;
+  broadcastId: string;
+  statusIndex: number;
+  activeDotIndex: number;
+  isLongWait: boolean;
+}
+
+const getCachedSearchState = (serviceId: string | undefined): CachedSearchState | null => {
+  try {
+    const cached = sessionStorage.getItem("searching_providers_state");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.serviceId === serviceId) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse cached search state", e);
+  }
+  return null;
+};
+
 const SearchingProviders = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
 
+  const cachedState = getCachedSearchState(serviceId);
+
   const [dots, setDots] = useState<ProviderDot[]>([]);
   const [foundCount, setFoundCount] = useState(0);
-  const [statusIndex, setStatusIndex] = useState(0);
-  const [activeDotIndex, setActiveDotIndex] = useState(0);
-  const [isLongWait, setIsLongWait] = useState(false);
+  const [statusIndex, setStatusIndex] = useState(() => cachedState?.statusIndex ?? 0);
+  const [activeDotIndex, setActiveDotIndex] = useState(() => cachedState?.activeDotIndex ?? 0);
+  const [isLongWait, setIsLongWait] = useState(() => cachedState?.isLongWait ?? false);
   const [error, setError] = useState("");
   const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
 
   const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote } = useApp();
-  const hasTriggered = useRef(false);
-  const [broadcastId] = useState(() => `bc-${user?.id || 'anon'}-${Date.now()}`);
+  const isRestoredRef = useRef(!!cachedState);
+  const hasTriggered = useRef(!!cachedState);
+  const [broadcastId] = useState(() => cachedState?.broadcastId || `bc-${user?.id || 'anon'}-${Date.now()}`);
 
   // Convert GPS to SVG Coordinates
   const getProviderPos = (lat: number, lng: number) => {
@@ -73,12 +99,78 @@ const SearchingProviders = () => {
   }, [dispatch]);
   useCurrentLocation(handleLocationUpdate);
 
+  // ── Scroll Handling ──────────────────────────────────────────────────────
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      sessionStorage.setItem("searching_providers_scroll", scrollContainerRef.current.scrollTop.toString());
+    }
+  };
+
+  // Restore scroll position when quotes are loaded
+  useEffect(() => {
+    if (receivedQuotes.length > 0 && scrollContainerRef.current) {
+      const savedScroll = sessionStorage.getItem("searching_providers_scroll");
+      if (savedScroll) {
+        setTimeout(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
+          }
+        }, 50);
+      }
+    }
+  }, [receivedQuotes.length]);
+
+  // ── Dynamic UX Intervals ─────────────────────────────────────────────────
+  useEffect(() => {
+    const dotInterval = setInterval(() => {
+      setActiveDotIndex((prev) => (prev + 1) % 5);
+    }, 600);
+
+    const statusInterval = setInterval(() => {
+      setStatusIndex((prev) => (prev + 1) % SECONDARY_STATUS_MESSAGES.length);
+    }, 2500);
+
+    const waitTimeout = setTimeout(() => {
+      setIsLongWait(true);
+    }, 15000);
+
+    return () => {
+      clearInterval(dotInterval);
+      clearInterval(statusInterval);
+      clearTimeout(waitTimeout);
+    };
+  }, []);
+
+  // ── Derive Found Count ───────────────────────────────────────────────────
+  useEffect(() => {
+    const providerCount = Object.keys(nearbyProviders).length;
+    const quotesCount = receivedQuotes.length;
+    setFoundCount(Math.max(providerCount, quotesCount, 1));
+  }, [nearbyProviders, receivedQuotes]);
+
+  // ── Save Search State to Caches ──────────────────────────────────────────
+  useEffect(() => {
+    if (!serviceId) return;
+    const stateToCache: CachedSearchState = {
+      serviceId,
+      broadcastId,
+      statusIndex,
+      activeDotIndex,
+      isLongWait
+    };
+    sessionStorage.setItem("searching_providers_state", JSON.stringify(stateToCache));
+  }, [serviceId, broadcastId, statusIndex, activeDotIndex, isLongWait]);
+
   // ── Broadcast Job ────────────────────────────────────────────────────────
   // Emits broadcast_job immediately (with coords if GPS already resolved)
   // AND re-emits every 5s for late-connecting providers, always using the
   // latest coordsRef value so GPS doesn't need to race the first render.
   useEffect(() => {
-    dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+    if (!isRestoredRef.current) {
+      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+    }
 
     const buildPayload = () => ({
       broadcastId: broadcastId,
@@ -154,6 +246,8 @@ const SearchingProviders = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
+        sessionStorage.removeItem("searching_providers_state");
+        sessionStorage.removeItem("searching_providers_scroll");
         const enrichedBooking = {
           ...res.data,
           providerDetails: {
@@ -350,7 +444,11 @@ const SearchingProviders = () => {
 
           {/* Received Quotes Section */}
           {receivedQuotes.length > 0 ? (
-            <div className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar">
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar"
+            >
               {receivedQuotes
                 .filter((q) => !acceptingQuoteId || q.providerId === acceptingQuoteId)
                 .map((q) => (
@@ -445,7 +543,11 @@ const SearchingProviders = () => {
 
           <div className="flex flex-col gap-3 w-full">
             <button
-              onClick={() => navigate(`/book-service/${serviceId}`, { state: { cancelled: true }, replace: true })}
+              onClick={() => {
+                sessionStorage.removeItem("searching_providers_state");
+                sessionStorage.removeItem("searching_providers_scroll");
+                navigate(`/book-service/${serviceId}`, { state: { cancelled: true }, replace: true });
+              }}
               className="text-[13px] font-[600] text-[#7A8BA0] hover:text-red-500 transition-colors pb-2"
             >
               Cancel Request

@@ -39,6 +39,8 @@ const ActingDriverBooking = () => {
     dispatch({ type: "SELECT_SERVICE", id: serviceId });
     dispatch({ type: "SET_NOTES", notes });
 
+    sessionStorage.removeItem("searching_providers_state");
+    sessionStorage.removeItem("searching_providers_scroll");
     navigate(`/searching-providers/${serviceId}`);
   };
 
