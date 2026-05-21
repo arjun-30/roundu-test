@@ -152,13 +152,17 @@ const Home = () => {
 
         {/* Drawer */}
         <div
-          className={`absolute top-0 left-0 bottom-0 w-[280px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+          className={`absolute top-0 left-0 w-[280px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
+          style={{ height: "100dvh" }}
         >
-          {/* Menu Header */}
-          <div className="px-5 pt-8 pb-5 bg-primary relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
+          {/* ── Header: User Profile ── */}
+          <div className="flex-shrink-0 px-5 pt-10 pb-5 bg-primary relative overflow-hidden">
+            {/* Decorative bubble */}
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+            {/* Close button */}
             <button
               onClick={() => setMenuOpen(false)}
               className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -166,19 +170,21 @@ const Home = () => {
               <X size={18} className="text-white" />
             </button>
 
+            {/* User info */}
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-14 h-14 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
                 <span className="text-xl font-extrabold text-white">{user.name.charAt(0)}</span>
               </div>
-              <div>
-                <h3 className="text-white font-bold text-[15px]">{user.name}</h3>
-                <p className="text-white/60 text-[11px] mt-0.5">{user.phone}</p>
+              <div className="min-w-0">
+                <h3 className="text-white font-bold text-[15px] truncate">{user.name}</h3>
+                <p className="text-white/60 text-[11px] mt-0.5 truncate">{user.phone || user.email || "RoundU User"}</p>
               </div>
             </div>
           </div>
 
-          {/* Menu Items */}
-          <div className="flex-1 py-3 overflow-y-auto">
+          {/* ── Middle: Scrollable Menu Items ── */}
+          {/* min-h-0 is required: without it flex children cannot shrink below content size */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-2">
             {menuItems.map((item, idx) => (
               <button
                 key={idx}
@@ -186,31 +192,48 @@ const Home = () => {
                   setMenuOpen(false);
                   navigate(item.path);
                 }}
-                className="w-full flex items-center gap-3.5 px-5 py-3 hover:bg-background transition-colors text-left group"
+                className="w-full flex items-center gap-3.5 px-5 py-3 hover:bg-background active:bg-background/80 transition-colors text-left group"
               >
-                <div className="w-9 h-9 rounded-xl bg-background group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-background group-hover:bg-primary/10 flex items-center justify-center transition-colors flex-shrink-0">
                   <item.icon size={18} className="text-primary" strokeWidth={2} />
                 </div>
                 <span className="text-[14px] font-semibold text-foreground">{item.label}</span>
+                <ChevronRight size={14} className="text-muted-foreground/40 ml-auto" />
               </button>
             ))}
           </div>
 
-          {/* Logout */}
-          <div className="p-4 border-t border-border">
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                dispatch({ type: "LOGOUT" });
-                navigate("/");
-              }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 transition-colors"
-            >
-              <LogOut size={18} className="text-red-500" />
-              <span className="text-[14px] font-bold text-red-500">Logout</span>
-            </button>
+          {/* ── Bottom: Logout (always visible, never scrolls away) ── */}
+          <div
+            className="flex-shrink-0 border-t border-border bg-white"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 12px)" }}
+          >
+            {/* App version row */}
+            <div className="px-5 pt-3 pb-1 flex items-center justify-between">
+              <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">RoundU</span>
+              <span className="text-[10px] text-muted-foreground/40">v1.0</span>
+            </div>
+
+            {/* Logout button */}
+            <div className="px-4 pb-3">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  dispatch({ type: "LOGOUT" });
+                  navigate("/");
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-red-50 border border-red-100 hover:bg-red-100 active:scale-[0.98] transition-all"
+              >
+                <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <LogOut size={16} className="text-red-500" />
+                </div>
+                <span className="text-[14px] font-bold text-red-500 flex-1 text-left">Logout</span>
+                <ChevronRight size={14} className="text-red-300" />
+              </button>
+            </div>
           </div>
         </div>
+
       </div>
 
       {/* ─── Header ─── */}
