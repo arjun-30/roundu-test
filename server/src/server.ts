@@ -280,20 +280,24 @@ async function main() {
     });
 
     socket.on('update_job_status', async (data: any) => {
-      console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}`);
+      console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}, paid=${data.paid}`);
       
       // Persist to DB
       const dbId = data.bookingId.replace('req-', '');
       try {
         const { BookingModel } = require('./models/booking.model');
-        await BookingModel.updateStatus(dbId, data.status);
+        await BookingModel.updateBooking(dbId, {
+          status: data.status,
+          paid: data.paid
+        });
       } catch (err) {
-        console.error('[socket] Failed to update booking status in DB:', err);
+        console.error('[socket] Failed to update booking in DB:', err);
       }
 
       io.emit('job_status_updated', {
         bookingId: data.bookingId,
         status: data.status,
+        paid: data.paid,
         quote: data.quote || null,
         timestamp: Date.now()
       });

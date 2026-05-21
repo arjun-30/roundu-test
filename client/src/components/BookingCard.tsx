@@ -27,9 +27,13 @@ const statusLabels: Record<string, string> = {
 };
 
 const BookingCard = ({ booking, onClick }: BookingCardProps) => {
-  const provider = getProviderById(booking.providerId);
+  const provider = (booking as any).providerDetails || getProviderById(booking.providerId) || {
+    id: booking.providerId,
+    name: "Service Provider",
+    distanceKm: 2.5,
+  };
   const service = getServiceById(booking.serviceId);
-  if (!provider || !service) return null;
+  if (!service) return null;
   return (
     <button
       onClick={onClick}

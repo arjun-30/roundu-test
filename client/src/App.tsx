@@ -49,6 +49,7 @@ const Subscription = lazy(() => import("@/pages/Subscription"));
 const Cancellation = lazy(() => import("@/pages/Cancellation"));
 const ProviderDashboard = lazy(() => import("@/pages/provider/Dashboard"));
 const ProviderJob = lazy(() => import("@/pages/provider/Job"));
+const ServiceReport = lazy(() => import("@/pages/provider/ServiceReport"));
 const Jobs = lazy(() => import("@/pages/provider/Jobs"));
 const ProviderEarnings = lazy(() => import("@/pages/provider/Earnings"));
 const ProviderProfile = lazy(() => import("@/pages/provider/ProviderProfile"));
@@ -137,6 +138,7 @@ const AppRoutes = () => (
       <Route path="/provider/gps-consent" element={<RequireAuth><GpsConsent /></RequireAuth>} />
       <Route path="/provider/pending-approval" element={<RequireAuth><PendingApproval /></RequireAuth>} />
       <Route path="/provider/job/:id" element={<RequireAuth><ProviderJob /></RequireAuth>} />
+      <Route path="/provider/job/:id/report" element={<RequireAuth><ServiceReport /></RequireAuth>} />
       <Route path="/provider/navigation/:id" element={<RequireAuth><Navigation /></RequireAuth>} />
       <Route path="/provider/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
       <Route path="/provider/earnings" element={<RequireAuth><ProviderEarnings /></RequireAuth>} />

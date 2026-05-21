@@ -14,9 +14,9 @@ const Bookings = () => {
   const [tab, setTab] = useState(0);
 
   const filtered = bookings.filter((b) => {
-    if (tab === 0) return b.status === "assigned";
+    if (tab === 0) return ["pending", "accepted", "assigned"].includes(b.status);
     if (tab === 1) return ["on_the_way", "arrived", "in_progress"].includes(b.status);
-    return b.status === "completed";
+    return ["completed", "paid"].includes(b.status);
   });
 
   return (

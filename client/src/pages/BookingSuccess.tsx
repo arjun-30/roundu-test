@@ -12,7 +12,13 @@ const BookingSuccess = () => {
     navigate("/home", { replace: true });
     return null;
   }
-  const provider = getProviderById(booking.providerId);
+  const provider = (booking as any).providerDetails || getProviderById(booking.providerId) || {
+    id: booking.providerId,
+    name: "Service Provider",
+    experienceYrs: 3,
+    rating: 4.8,
+    distanceKm: 2.5,
+  };
   const service = getServiceById(booking.serviceId);
 
   return (

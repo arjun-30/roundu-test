@@ -26,6 +26,8 @@ const Jobs = () => {
 
   const parseJobDate = (dateStr: string) => {
     if (!dateStr || dateStr === "Today") return new Date();
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) return d;
     try {
       return parseISO(dateStr);
     } catch (e) {
@@ -52,7 +54,7 @@ const Jobs = () => {
     };
 
     return {
-      upcoming: providerRequests.filter(r => r.status === "accepted" && filterByDate(r.date)),
+      upcoming: providerRequests.filter(r => ["accepted", "assigned"].includes(r.status) && filterByDate(r.date)),
       active: providerRequests.filter(r => ["on_the_way", "arrived", "quote_set", "in_progress"].includes(r.status) && filterByDate(r.date)),
       completed: completedJobs.filter(r => filterByDate(r.date))
     };
@@ -171,8 +173,7 @@ const Jobs = () => {
           ) : (
              <div className="space-y-3">
                {completedJobsList.map((job) => {
-                 const req = providerRequests.find(r => r.id === job.id);
-                 const service = req ? getServiceById(req.serviceId) : null;
+                 const service = getServiceById(job.serviceId);
                  return (
                    <div key={job.id} className="w-full bg-card border border-border rounded-2xl p-4 text-left shadow-sm opacity-80">
                      <div className="flex justify-between items-start mb-1">

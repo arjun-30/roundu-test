@@ -43,7 +43,7 @@ const ServiceReport = () => {
     
     dispatch({ type: "COMPLETE_REQUEST", id: job.id });
     setNotification(`Job completed! ₹${job.quote || job.price} added to your earnings.`);
-    setTimeout(() => navigate("/provider/dashboard", { replace: true }), 1500);
+    setTimeout(() => navigate("/provider", { replace: true }), 1500);
   };
 
   return (

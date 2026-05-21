@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Wallet, Smartphone, Check } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, Wallet, Smartphone, Check, Coins } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { Booking } from "@/data/mockData";
+import { Booking, getProviderById, getServiceById } from "@/data/mockData";
 import { getAbsoluteIsoTimestamp } from "@/lib/utils";
+import { socket } from "@/lib/socket";
 
 import api, { createBooking, loadRazorpay } from "@/lib/api";
 
@@ -23,123 +24,295 @@ const BookingPayment = () => {
     addBooking
   } = useApp();
   
-  const [method, setMethod] = useState<"wallet" | "upi">("wallet");
+  const location = useLocation();
+  const bookingId = location.state?.bookingId;
+  const existingBooking = bookings.find((b) => b.id === bookingId);
+
+  const [method, setMethod] = useState<"wallet" | "upi" | "cash">("wallet");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Fix: Move navigate to useEffect
+  // Fix: Move navigate to useEffect, bypassing if paying for completed existing booking
   useEffect(() => {
-    if (!selectedProvider || !selectedServiceId) {
+    if (!bookingId && (!selectedProvider || !selectedServiceId)) {
       navigate("/home", { replace: true });
     }
-  }, [selectedProvider, selectedServiceId, navigate]);
+  }, [bookingId, selectedProvider, selectedServiceId, navigate]);
 
-  if (!selectedProvider || !selectedServiceId) return null;
+  if (!bookingId && (!selectedProvider || !selectedServiceId)) return null;
 
-  const base = selectedProvider?.pricePerHr || 299;
-  const tax = Math.round(base * 0.05);
-  const platform = 19;
+  const provider = existingBooking
+    ? ((existingBooking as any).providerDetails || getProviderById(existingBooking.providerId) || {
+        id: existingBooking.providerId,
+        name: "Service Provider",
+        pricePerHr: existingBooking.price,
+      })
+    : selectedProvider;
+
+  const serviceId = existingBooking ? existingBooking.serviceId : selectedServiceId;
+
+  // Pricing calculations
+  const base = existingBooking ? Number(existingBooking.price) : (provider?.pricePerHr || 299);
+  const tax = existingBooking ? 0 : Math.round(base * 0.05);
+  const platform = existingBooking ? 0 : 19;
   const total = base + tax + platform;
 
 
   const handleConfirm = async () => {
     setLoading(true);
-    const res = await loadRazorpay();
-
-    if (!res) {
-      setError("Payment gateway failed to load. Are you online?");
-      setLoading(false);
-      return;
-    }
     setError("");
 
-    try {
-      // 1. Create order on backend
-      const orderRes = await api.post("/payments/create-order", {
-        amount: total,
-        currency: "INR",
-        receipt: `receipt_${Date.now()}`,
-      });
-
-      if (!orderRes.data.success) {
-        throw new Error("Order creation failed");
-      }
-
-      const order = orderRes.data.order;
-
-      // 2. Open Razorpay Checkout
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SjkbAFGdLhaT6C",
-        amount: order.amount,
-        currency: order.currency,
-        name: "RoundU Services",
-        description: `Booking for ${selectedProvider.name}`,
-        order_id: order.id,
-        handler: async (response: any) => {
-          try {
-            setLoading(true);
-            // 3. Verify on backend
-            const verifyRes = await api.post("/payments/verify", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            if (!verifyRes.data.success) {
-              setError("Payment verification failed. Please contact support.");
-              return;
-            }
-
-            // 4. Create booking
-            const bookingData = {
-              customer_id: user.id,
-              provider_id: selectedProvider.id,
-              service_id: selectedServiceId,
-              scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
-              address: user.address || "Client Address",
-              price: total,
-              notes: bookingNotes,
-              voice_note: bookingVoiceNote, // Pass the boolean flag
-              voice_note_url: bookingVoiceNoteUrl || null,
-              payment_id: response.razorpay_payment_id,
-            };
-
-            const bookingRes = await createBooking(bookingData);
-            if (bookingRes.success) {
-              addBooking(bookingRes.data);
-              dispatch({ type: "RESET_BOOKING_DRAFT" });
-              navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
-            }
-          } catch (err) {
-            console.error("Verification/Booking error:", err);
-            setError("Failed to complete booking. Please check your internet.");
-          } finally {
-            setLoading(false);
-          }
-        },
-        prefill: {
-          name: user.name,
-          email: user.email,
-          contact: user.phone,
-        },
-        theme: { color: "#6366F1" },
-        modal: {
-          ondismiss: () => {
-            setLoading(false);
-            setError("Payment cancelled");
-          }
+    if (existingBooking) {
+      // 1. Paying for an existing booking
+      if (method === "cash") {
+        try {
+          dispatch({ type: "PAY_BOOKING", id: bookingId });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          navigate(`/rating/${bookingId}`, { replace: true });
+        } catch (err) {
+          setError("Failed to process cash payment option");
+        } finally {
+          setLoading(false);
         }
-      };
+      } else if (method === "wallet") {
+        try {
+          dispatch({ type: "UPDATE_WALLET", amount: -total });
+          dispatch({ type: "PAY_BOOKING", id: bookingId });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          navigate(`/rating/${bookingId}`, { replace: true });
+        } catch (err) {
+          setError("Failed to process wallet payment");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // UPI via Razorpay for existing booking
+        const res = await loadRazorpay();
+        if (!res) {
+          setError("Payment gateway failed to load. Are you online?");
+          setLoading(false);
+          return;
+        }
+        try {
+          const orderRes = await api.post("/payments/create-order", {
+            amount: total,
+            currency: "INR",
+            receipt: `receipt_${Date.now()}`,
+          });
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error("Payment error:", error);
-      setError("Failed to initialize payment");
-    } finally {
-      setLoading(false);
+          if (!orderRes.data.success) {
+            throw new Error("Order creation failed");
+          }
+
+          const order = orderRes.data.order;
+
+          const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SjkbAFGdLhaT6C",
+            amount: order.amount,
+            currency: order.currency,
+            name: "RoundU Services",
+            description: `Payment for Completed Job with ${provider?.name}`,
+            order_id: order.id,
+            handler: async (response: any) => {
+              try {
+                setLoading(true);
+                const verifyRes = await api.post("/payments/verify", {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                });
+
+                if (!verifyRes.data.success) {
+                  setError("Payment verification failed. Please contact support.");
+                  return;
+                }
+
+                dispatch({ type: "PAY_BOOKING", id: bookingId });
+                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
+                socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+                navigate(`/rating/${bookingId}`, { replace: true });
+              } catch (err) {
+                console.error("Verification error:", err);
+                setError("Failed to verify payment");
+              } finally {
+                setLoading(false);
+              }
+            },
+            prefill: {
+              name: user.name,
+              email: user.email,
+              contact: user.phone,
+            },
+            theme: { color: "#6366F1" },
+            modal: {
+              ondismiss: () => {
+                setLoading(false);
+                setError("Payment cancelled");
+              }
+            }
+          };
+
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+        } catch (error) {
+          console.error("Payment error:", error);
+          setError("Failed to initialize payment");
+          setLoading(false);
+        }
+      }
+    } else {
+      // 2. Creating a new booking (standard checkout)
+      if (method === "cash") {
+        try {
+          const bookingData = {
+            customer_id: user.id,
+            provider_id: provider?.id || selectedProvider?.id,
+            service_id: serviceId,
+            scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
+            address: user.address || "Client Address",
+            price: total,
+            notes: bookingNotes,
+            voice_note: bookingVoiceNote,
+            voice_note_url: bookingVoiceNoteUrl || null,
+            payment_id: "cash_payment",
+            paid: false,
+          };
+
+          const bookingRes = await createBooking(bookingData);
+          if (bookingRes.success) {
+            addBooking(bookingRes.data);
+            dispatch({ type: "RESET_BOOKING_DRAFT" });
+            navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+          }
+        } catch (err) {
+          setError("Failed to complete booking with Cash option");
+        } finally {
+          setLoading(false);
+        }
+      } else if (method === "wallet") {
+        try {
+          dispatch({ type: "UPDATE_WALLET", amount: -total });
+          const bookingData = {
+            customer_id: user.id,
+            provider_id: provider?.id || selectedProvider?.id,
+            service_id: serviceId,
+            scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
+            address: user.address || "Client Address",
+            price: total,
+            notes: bookingNotes,
+            voice_note: bookingVoiceNote,
+            voice_note_url: bookingVoiceNoteUrl || null,
+            payment_id: "wallet_payment",
+            paid: true,
+          };
+
+          const bookingRes = await createBooking(bookingData);
+          if (bookingRes.success) {
+            const enrichedData = { ...bookingRes.data, paid: true };
+            addBooking(enrichedData);
+            dispatch({ type: "RESET_BOOKING_DRAFT" });
+            navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+          }
+        } catch (err) {
+          setError("Failed to complete booking with Wallet option");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        const res = await loadRazorpay();
+        if (!res) {
+          setError("Payment gateway failed to load. Are you online?");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const orderRes = await api.post("/payments/create-order", {
+            amount: total,
+            currency: "INR",
+            receipt: `receipt_${Date.now()}`,
+          });
+
+          if (!orderRes.data.success) {
+            throw new Error("Order creation failed");
+          }
+
+          const order = orderRes.data.order;
+
+          const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SjkbAFGdLhaT6C",
+            amount: order.amount,
+            currency: order.currency,
+            name: "RoundU Services",
+            description: `Booking for ${provider?.name || selectedProvider?.name}`,
+            order_id: order.id,
+            handler: async (response: any) => {
+              try {
+                setLoading(true);
+                const verifyRes = await api.post("/payments/verify", {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                });
+
+                if (!verifyRes.data.success) {
+                  setError("Payment verification failed. Please contact support.");
+                  return;
+                }
+
+                const bookingData = {
+                  customer_id: user.id,
+                  provider_id: provider?.id || selectedProvider?.id,
+                  service_id: serviceId,
+                  scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
+                  address: user.address || "Client Address",
+                  price: total,
+                  notes: bookingNotes,
+                  voice_note: bookingVoiceNote,
+                  voice_note_url: bookingVoiceNoteUrl || null,
+                  payment_id: response.razorpay_payment_id,
+                  paid: true,
+                };
+
+                const bookingRes = await createBooking(bookingData);
+                if (bookingRes.success) {
+                  const enrichedData = { ...bookingRes.data, paid: true };
+                  addBooking(enrichedData);
+                  dispatch({ type: "RESET_BOOKING_DRAFT" });
+                  navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+                }
+              } catch (err) {
+                console.error("Verification/Booking error:", err);
+                setError("Failed to complete booking. Please check your internet.");
+              } finally {
+                setLoading(false);
+              }
+            },
+            prefill: {
+              name: user.name,
+              email: user.email,
+              contact: user.phone,
+            },
+            theme: { color: "#6366F1" },
+            modal: {
+              ondismiss: () => {
+                setLoading(false);
+                setError("Payment cancelled");
+              }
+            }
+          };
+
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+        } catch (error) {
+          console.error("Payment error:", error);
+          setError("Failed to initialize payment");
+          setLoading(false);
+        }
+      }
     }
-  };
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28">
@@ -181,6 +354,13 @@ const BookingPayment = () => {
               icon={Smartphone}
               title="UPI"
               subtitle="Pay via Google Pay / PhonePe"
+            />
+            <PaymentOption
+              active={method === "cash"}
+              onClick={() => setMethod("cash")}
+              icon={Coins}
+              title="Cash"
+              subtitle="Pay directly after service"
             />
           </div>
         </div>

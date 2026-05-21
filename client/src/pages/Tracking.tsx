@@ -60,7 +60,10 @@ const Tracking = () => {
       } else if (data.status === "in_progress") {
         setNotification("🔧 Service has started!");
       } else if (data.status === "completed") {
-        setNotification("✅ Service completed!");
+        setNotification("✅ Service completed! Redirecting to payment...");
+        setTimeout(() => {
+          navigate("/booking/payment", { state: { bookingId: id } });
+        }, 1500);
       }
       setTimeout(() => setNotification(""), 3000);
     };

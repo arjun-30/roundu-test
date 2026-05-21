@@ -110,7 +110,7 @@ interface State {
     frequency: string;
     budget: string;
   };
-  chatHistories: Record<string, { sender: "me" | "other"; text: string; time: string }[]>;
+  chatHistories: Record<string, { sender: "me" | "other"; text: string; time: string; audioBase64?: string | null }[]>;
 }
 
 type Action =
@@ -155,7 +155,7 @@ type Action =
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
   | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
-  | { type: "ADD_CHAT_MESSAGE"; payload: { bookingId: string; text: string; senderId: string; senderRole: string; time: string } }
+  | { type: "ADD_CHAT_MESSAGE"; payload: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string | null } }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
