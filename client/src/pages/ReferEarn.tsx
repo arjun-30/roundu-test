@@ -53,7 +53,24 @@ const ReferEarn = () => {
 
   // Triggers native iOS/Android share sheet — works on HTTPS (production)
   const handleShare = async () => {
-    // 1. Automatically copy invite code/link to clipboard as requested
+    // 1. Trigger native OS share sheet first to preserve transient user activation
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Join RoundU & Get ₹500 Off!",
+          text: shareMessage,
+          url: referralLink,
+        });
+        return; // Native share successful
+      } catch (error) {
+        // If user aborted, just return
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    // 2. Fallback: Automatically copy invite code/link to clipboard
     try { await navigator.clipboard.writeText(shareMessage); } catch {
       const el = document.createElement("textarea");
       el.value = shareMessage;
@@ -61,19 +78,8 @@ const ReferEarn = () => {
       document.execCommand("copy");
       document.body.removeChild(el);
     }
-
-    // 2. Trigger native OS share sheet
-    try {
-      await navigator.share({
-        title: "Join RoundU & Get ₹500 Off!",
-        text: shareMessage,
-        url: referralLink,
-      });
-    } catch {
-      // 3. Fallback for localhost / local network HTTP testing
-      setNotification("Invite Link Copied! (Note: Native Share Sheet opens on Vercel HTTPS)");
-      setTimeout(() => setNotification(""), 4000);
-    }
+    setNotification("Invite Link Copied!");
+    setTimeout(() => setNotification(""), 4000);
   };
 
   return (
@@ -172,9 +178,9 @@ const ReferEarn = () => {
         </div>
 
         {/* Leaderboard Button */}
-        <button 
+        <button
           onClick={() => navigate("/top-referrers")}
-          className="w-full flex items-center justify-between p-5 rounded-3xl bg-secondary text-secondary-foreground shadow-lg shadow-secondary/10 animate-fade-in active:scale-[0.97] hover:scale-[1.01] hover:bg-secondary/95 hover:shadow-xl hover:shadow-secondary/20 transition-all duration-300 cursor-pointer group" 
+          className="w-full flex items-center justify-between p-5 rounded-3xl bg-secondary text-secondary-foreground shadow-lg shadow-secondary/10 animate-fade-in active:scale-[0.97] hover:scale-[1.01] hover:bg-secondary/95 hover:shadow-xl hover:shadow-secondary/20 transition-all duration-300 cursor-pointer group"
           style={{ animationDelay: "0.4s" }}
         >
 

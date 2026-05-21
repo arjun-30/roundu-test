@@ -143,7 +143,10 @@ const ServiceSelection = () => {
            <div className="flex-1">
                <h3 className="text-[15px] font-extrabold text-foreground">Not sure what's wrong?</h3>
                <p className="text-[11px] text-muted-foreground mt-1 mb-4 leading-relaxed">Our experts can help you identify the issue</p>
-               <button className="bg-primary/5 text-primary text-[12px] font-extrabold tracking-wide uppercase px-4 py-2.5 rounded-xl active:scale-95 transition-all">
+               <button 
+                 onClick={() => navigate("/support")}
+                 className="bg-primary/5 text-primary text-[12px] font-extrabold tracking-wide uppercase px-4 py-2.5 rounded-xl active:scale-95 transition-all"
+               >
                   Get Help
                </button>
            </div>
