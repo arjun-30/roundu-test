@@ -11,8 +11,6 @@ import { useApp } from "@/context/AppContext";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import LocationModal from "@/components/LocationModal";
-import { providers as allProviders } from "@/data/mockData";
-import { getDistance, getShortAddress } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import AdBannerCarousel from "@/components/AdBannerCarousel";
 import api from "@/lib/api";
@@ -57,6 +55,29 @@ const getSuggestionIconConfig = (serviceId: string) => {
         badge: "✨ Recommended",
       };
   }
+};
+
+const recommendedDescriptions: Record<string, string> = {
+  "sug-elec-1": "Ceiling fan is making noise and needs inspection or servicing.",
+  "sug-elec-2": "Switchboard maintenance is required to check loose connections and safety risks.",
+  "sug-elec-3": "AC filter cleaning is required because the filters may be dirty and affecting cooling efficiency.",
+  "sug-elec-4": "Home wiring inspection is required to check electrical safety and prevent faults.",
+  "sug-elec-5": "Smart lighting installation is required for upgrading to energy-efficient LED lights.",
+  "sug-plumb-1": "Water leakage check is required to find and fix possible leaks at home.",
+  "sug-plumb-2": "Kitchen drain cleaning is required to prevent blockage and overflow.",
+  "sug-plumb-3": "Bathroom tap repair is required because the tap may be dripping or not working properly.",
+  "sug-plumb-4": "Monsoon drainage check is required to inspect and clear possible drain clogs.",
+  "sug-hk-1": "Bathroom deep cleaning is required for a full hygiene and stain-removal service.",
+  "sug-hk-2": "Full home sanitization is required to clean and sanitize the home thoroughly.",
+  "sug-hk-3": "Kitchen deep cleaning is required to remove grease buildup and improve hygiene.",
+  "sug-hk-4": "Sofa and carpet cleaning is required to remove dust, stains, and allergens.",
+  "sug-hk-5": "Post-monsoon home cleanup is required to address dampness, mould, and general cleaning.",
+  "sug-car-1": "Doorstep car wash is required for exterior cleaning at the service location.",
+  "sug-car-2": "Interior car detailing is required to deep clean upholstery, dashboard, and cabin areas.",
+  "sug-car-3": "Pre-monsoon car care is required to clean and protect the vehicle before heavy rains.",
+  "sug-drv-1": "Acting driver service is required for a verified driver today.",
+  "sug-exp-1": "General home maintenance is required for inspection and repair of household issues.",
+  "sug-exp-2": "Festival home preparation service is required to get the home ready for celebrations.",
 };
 
 const Home = () => {
@@ -161,6 +182,16 @@ const Home = () => {
     navigate(`/service-select/${id}`);
   };
 
+  const goToRecommendedBooking = (suggestion: SmartSuggestion) => {
+    navigate(`/book-service/${suggestion.serviceId}`, {
+      state: {
+        serviceId: suggestion.serviceId,
+        recommendedSuggestionId: suggestion.id,
+        lockedDescription: recommendedDescriptions[suggestion.id] || suggestion.title,
+      },
+    });
+  };
+
   const menuItems = [
     { icon: HomeIcon, label: "Home", path: "/home" },
     { icon: CalendarCheck, label: "My Bookings", path: "/bookings" },
@@ -186,7 +217,7 @@ const Home = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
-  } as any;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] pb-28 relative overflow-x-hidden">
@@ -311,16 +342,16 @@ const Home = () => {
               onClick={() => setIsLocationModalOpen(true)}
               className="group flex items-center gap-1.5 mt-1 cursor-pointer"
             >
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
               </div>
-              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px] sm:max-w-[240px] truncate">
+              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
                 {locating || gpsLoading ? (
                   <span className="flex items-center gap-1">
                     <Loader2 size={10} className="animate-spin text-primary" /> Detecting...
                   </span>
                 ) : (
-                  getShortAddress(user.address) || "Set Location"
+                  user.address || "Set Location"
                 )}
               </p>
             </button>
@@ -488,7 +519,7 @@ const Home = () => {
                 return (
                   <button
                     key={sugg.id}
-                    onClick={() => goToProviders(sugg.serviceId)}
+                    onClick={() => goToRecommendedBooking(sugg)}
                     className="w-[280px] flex-shrink-0 bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)] snap-start text-left group relative transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 active:scale-[0.98]"
                   >
                     {/* Top row with Category and Smart Badge */}

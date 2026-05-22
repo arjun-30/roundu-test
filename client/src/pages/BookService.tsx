@@ -18,9 +18,17 @@ const BookService = () => {
   const { dispatch, user, bookingNotes, bookingVoiceNote, bookingVoiceNoteUrl } = useApp();
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const lockedDescription = (routerLocation.state as any)?.lockedDescription;
+  const isDescriptionLocked = typeof lockedDescription === "string" && lockedDescription.trim().length > 0;
 
   // Restore previously entered data
-  const [desc, setDesc] = useState(bookingNotes || "");
+  const [desc, setDesc] = useState(isDescriptionLocked ? lockedDescription : bookingNotes || "");
+
+  useEffect(() => {
+    if (isDescriptionLocked) {
+      setDesc(lockedDescription);
+    }
+  }, [isDescriptionLocked, lockedDescription]);
 
   // Auto-fetch GPS if address is missing
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
@@ -152,7 +160,7 @@ const BookService = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  } as any;
+  };
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] font-sans pb-6">
@@ -232,7 +240,7 @@ const BookService = () => {
         <motion.div variants={itemVariants} className="bg-white rounded-[24px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-transparent hover:border-primary/5 transition-colors">
           <h2 className="text-[16px] font-extrabold text-foreground mb-1 block tracking-tight">Problem Description</h2>
           <p className="text-[12px] text-muted-foreground mb-4 font-medium leading-relaxed">
-            Type or record a voice note for better context.
+            {isDescriptionLocked ? "This recommendation includes a fixed problem description." : "Type or record a voice note for better context."}
           </p>
 
           {/* Text area — always visible */}
@@ -240,12 +248,15 @@ const BookService = () => {
             <textarea
               rows={4}
               value={desc}
-              onChange={e => setDesc(e.target.value)}
+              onChange={e => {
+                if (!isDescriptionLocked) setDesc(e.target.value);
+              }}
+              readOnly={isDescriptionLocked}
               placeholder="Describe your issue (e.g., switch not working, water leakage)"
-              className="w-full bg-[#F8FAFC] rounded-[18px] p-4 pr-12 text-[14px] font-semibold text-primary border-2 border-transparent focus:border-accent/50 placeholder:text-primary/30 focus:outline-none transition-all resize-none shadow-inner"
+              className={`w-full bg-[#F8FAFC] rounded-[18px] p-4 pr-12 text-[14px] font-semibold text-primary border-2 border-transparent focus:border-accent/50 placeholder:text-primary/30 focus:outline-none transition-all resize-none shadow-inner ${isDescriptionLocked ? "cursor-default select-text" : ""}`}
             />
             {/* Mic button — hidden while recording or audio already captured */}
-            {!recorder.isRecording && !recorder.audioBlob && !showRestoredVoice && (
+            {!isDescriptionLocked && !recorder.isRecording && !recorder.audioBlob && !showRestoredVoice && (
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
