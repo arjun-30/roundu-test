@@ -106,8 +106,8 @@ const Home = () => {
   const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
   const isConnected = (id: string) => {
-    return bookings?.some((b: { serviceId?: string; service_id?: string; status: string }) => 
-      (b.serviceId === id || b.service_id === id) && 
+    return bookings?.some((b: { serviceId?: string; service_id?: string; status: string }) =>
+      (b.serviceId === id || b.service_id === id) &&
       ["assigned", "on_the_way", "arrived", "in_progress"].includes(b.status)
     );
   };
@@ -160,23 +160,20 @@ const Home = () => {
 
       {/* ═══════ SLIDE-OUT MENU OVERLAY ═══════ */}
       <div
-        className={`fixed inset-0 z-50 transition-all duration-300 ${
-          menuOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-50 transition-all duration-300 ${menuOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
       >
         {/* Backdrop */}
         <div
-          className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
-            menuOpen ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${menuOpen ? "opacity-100" : "opacity-0"
+            }`}
           onClick={() => setMenuOpen(false)}
         />
 
         {/* Drawer */}
         <div
-          className={`absolute top-0 left-0 w-[280px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`absolute top-0 left-0 w-[280px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${menuOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
           style={{ height: "100dvh" }}
         >
           {/* ── Header: User Profile ── */}
@@ -259,7 +256,7 @@ const Home = () => {
       </div>
 
       {/* ─── Header ─── */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -277,7 +274,7 @@ const Home = () => {
             <h1 className="text-[22px] font-extrabold text-foreground leading-tight tracking-tight">
               Hi {user.name.split(" ")[0]}! <span className="inline-block animate-waving-hand origin-bottom-right">👋</span>
             </h1>
-            <button 
+            <button
               onClick={() => setIsLocationModalOpen(true)}
               className="group flex items-center gap-1.5 mt-1 cursor-pointer"
             >
@@ -331,7 +328,7 @@ const Home = () => {
       </motion.div>
 
       {/* ─── Search Bar ─── */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -353,7 +350,7 @@ const Home = () => {
       </motion.div>
 
       {/* ─── Scrollable Content ─── */}
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -433,7 +430,7 @@ const Home = () => {
 
         {/* ═══ RECOMMENDED FOR YOU ═══ */}
         {rankedSuggestions.length > 0 && (
-          <motion.div variants={itemVariants} className="pt-6 pb-2">
+          <div className="pt-6 pb-2">
             <div className="px-5 flex items-end justify-between mb-4">
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
@@ -449,12 +446,10 @@ const Home = () => {
 
             <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
               {rankedSuggestions.map((sugg, idx) => (
-                <motion.button
+                <button
                   key={sugg.id}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
                   onClick={() => goToProviders(sugg.serviceId)}
-                  className="w-[260px] flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-border snap-start text-left group relative"
+                  className="w-[260px] flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-border snap-start text-left group relative transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.97]"
                 >
                   {/* Gradient header bar */}
                   <div className={`h-2 w-full ${sugg.accentColor}`} />
@@ -485,10 +480,10 @@ const Home = () => {
                       View Providers
                     </div>
                   </div>
-                </motion.button>
+                </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ═══ NEARBY PROFESSIONALS ═══ */}
@@ -563,9 +558,9 @@ const Home = () => {
 
 
 
-      <LocationModal 
-        isOpen={isLocationModalOpen} 
-        onClose={() => setIsLocationModalOpen(false)} 
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
       />
       <BottomNav />
     </div>
