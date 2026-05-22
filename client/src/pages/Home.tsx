@@ -420,8 +420,12 @@ const Home = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {isConnected(service.id) && (
                   <div className="absolute top-3 right-3 z-10">
-                    <span className="text-[9px] font-black tracking-widest uppercase bg-accent/20 text-accent px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Active
+                    <span className="text-[9px] font-black tracking-[0.12em] uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm backdrop-blur-[2px]">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                      </span>
+                      Active
                     </span>
                   </div>
                 )}
