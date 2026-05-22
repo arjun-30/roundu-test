@@ -257,22 +257,35 @@ const Chat = () => {
           </p>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleTrackBooking}
-          className="w-10 h-10 rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-        >
-          <Navigation size={18} className="text-primary" strokeWidth={2.5} />
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleCall}
-          className="w-10 h-10 rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-        >
-          <Phone size={18} className="text-primary" strokeWidth={2.5} />
-        </motion.button>
+        <div className="flex gap-1">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={role === "provider" ? () => navigate(`/provider/job/${roomId}`) : handleTrackBooking}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+            title={role === "provider" ? "Go to Job" : "Track"}
+          >
+            {role === "provider" ? <CheckCheck size={18} className="text-primary" strokeWidth={2.5} /> : <Navigation size={18} className="text-primary" strokeWidth={2.5} />}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCall}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+            title="Call"
+          >
+            <Phone size={18} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => showNotification("More options coming soon.")}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+            title="Options"
+          >
+            <MoreVertical size={18} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Safety Banner */}

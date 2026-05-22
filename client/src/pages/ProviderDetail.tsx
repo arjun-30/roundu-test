@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
-import { createBooking } from "@/lib/api";
+import api, { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
 
 const ProviderDetail = () => {
@@ -20,7 +20,27 @@ const ProviderDetail = () => {
   const initialProvider = location.state?.provider || getProviderById(id);
   const quote = location.state?.quote; // If coming from SearchingProviders.tsx
 
-  // Override fields if coming from a specific quote
+  const [dynamicProfile, setDynamicProfile] = useState<any>(null);
+  const [dynamicStats, setDynamicStats] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const targetUserId = quote?.providerId || id;
+      if (!targetUserId) return;
+      try {
+        const res = await api.get(`/providers/dashboard?userId=${targetUserId}`);
+        if (res.data.success) {
+          setDynamicProfile(res.data.data.provider);
+          setDynamicStats(res.data.data.stats);
+        }
+      } catch (err) {
+        console.warn("Could not fetch dynamic profile:", err);
+      }
+    };
+    fetchProfile();
+  }, [quote, id]);
+
+  // Override fields if coming from a specific quote or API
   const provider = useMemo(() => {
     if (initialProvider) {
       if (quote) {
@@ -36,28 +56,28 @@ const ProviderDetail = () => {
     }
 
     // Dynamic fallback for real users who aren't in mockData.ts
-    if (quote) {
+    if (quote || dynamicProfile) {
       return {
-        id: quote.providerId,
-        name: quote.providerName,
-        avatar: quote.providerAvatar || "P",
-        pricePerHr: quote.price,
-        etaMin: quote.etaMin,
-        distanceKm: quote.distanceKm,
-        rating: quote.rating || 0,
-        reviews: 0,
-        experienceYrs: 2,
+        id: quote?.providerId || id,
+        name: quote?.providerName || dynamicProfile?.name || "Professional",
+        avatar: quote?.providerAvatar || "P",
+        pricePerHr: quote?.price || 500,
+        etaMin: quote?.etaMin || 15,
+        distanceKm: quote?.distanceKm || 0,
+        rating: dynamicStats?.rating || quote?.rating || 0,
+        reviews: dynamicStats?.total_jobs || quote?.reviews || 0,
+        experienceYrs: dynamicProfile?.experience_years || 2,
         verified: true,
-        jobs: 12,
-        bio: "Independent professional dedicated to quality service.",
+        jobs: dynamicStats?.completed_jobs || 0,
+        bio: dynamicProfile?.bio || "Independent professional dedicated to quality service.",
         tags: ["Fast", "Reliable"],
-        available: true,
+        available: dynamicProfile?.is_online ?? true,
         serviceId: ""
       };
     }
 
     return null;
-  }, [initialProvider, quote]);
+  }, [initialProvider, quote, dynamicProfile, dynamicStats, id]);
 
   const [notification, setNotification] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);

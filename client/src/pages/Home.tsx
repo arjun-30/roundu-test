@@ -511,7 +511,7 @@ const Home = () => {
         <motion.div variants={itemVariants} className="pt-6 pb-2">
           <div className="px-5 flex items-end justify-between mb-4">
             <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Popular Tasks</h2>
-            <button className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
+            <button onClick={() => navigate("/bookings")} className="text-[11px] font-bold text-primary uppercase tracking-wider hover:text-primary/80 transition-colors">
               See History
             </button>
           </div>
@@ -566,30 +566,39 @@ const Home = () => {
             </div>
           </div>
           <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
-            {nearbyList.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => navigate(`/provider/${p.id}`)}
-                className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
-              >
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary mx-auto mb-2 text-lg">
-                  {p.name.charAt(0)}
-                </div>
-                <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                  <span className="text-[10px] font-bold text-foreground">{p.rating}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    {(p as any).distance ? `${(p as any).distance.toFixed(1)}km` : "0.8km"}
-                  </span>
-                </div>
-                <div className="mt-2 text-[10px] font-extrabold text-primary uppercase bg-primary/5 py-1 rounded-lg">
-                  Available
-                </div>
-              </button>
-            ))}
+            {Object.values(nearbyProviders).length === 0 ? (
+              <div className="w-full text-center py-6 text-sm text-muted-foreground">
+                No professionals currently online nearby.
+              </div>
+            ) : (
+              Object.values(nearbyProviders).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(`/provider/${p.id}`)}
+                  className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
+                >
+                  <div className="relative w-12 h-12 mx-auto mb-2">
+                    <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary text-lg">
+                      {p.name.charAt(0)}
+                    </div>
+                    {onlineUsers[p.id] && (
+                      <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-[10px] font-bold">New</span>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </motion.div>
+
 
         {/* ═══ REFER & EARN ═══ */}
         <motion.div variants={itemVariants} className="px-5 pb-6 pt-4">

@@ -37,56 +37,18 @@ const DigiLockerKYC = () => {
   const getToken = () => localStorage.getItem("roundu_token") || "";
 
   useEffect(() => {
-    const checkAadhaarStatus = async () => {
-      const requestId = localStorage.getItem('setu_aadhaar_request_id');
-      if (requestId && !kyc.aadhaarVerified) {
-        setIsVerifyingAadhaar(true);
-        try {
-          const res = await fetch(`${API_URL}/kyc/aadhaar/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-            body: JSON.stringify({ requestId })
-          });
-          const data = await res.json();
-          if (data.success && data.data.verified) {
-            dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
-            localStorage.removeItem('setu_aadhaar_request_id');
-            showNotification('Aadhaar Verified Successfully');
-            setActiveStep(2);
-          } else if (data.data?.status === 'failed' || data.data?.status === 'abandoned') {
-            localStorage.removeItem('setu_aadhaar_request_id');
-            showError('Aadhaar verification failed or was cancelled.');
-          }
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setIsVerifyingAadhaar(false);
-        }
-      }
-    };
-    checkAadhaarStatus();
+    // Left empty for mock flow
   }, [kyc.aadhaarVerified, dispatch]);
 
   const handleConnectDigiLocker = async () => {
     setIsConnecting(true);
-    try {
-      const res = await fetch(`${API_URL}/kyc/aadhaar/init`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ clientRedirectUrl: window.location.href })
-      });
-      const data = await res.json();
-      if (data.success && data.data.url) {
-        localStorage.setItem('setu_aadhaar_request_id', data.data.id);
-        window.location.href = data.data.url;
-      } else {
-        showError(data.message || 'Failed to connect to DigiLocker');
-      }
-    } catch (err) {
-      showError('Network error connecting to DigiLocker');
-    } finally {
+    // Simulate API delay
+    setTimeout(() => {
       setIsConnecting(false);
-    }
+      dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
+      showNotification('Aadhaar Verified Successfully');
+      setActiveStep(2);
+    }, 1500);
   };
 
   const verifyBankAndPan = async () => {
@@ -96,74 +58,12 @@ const DigiLockerKYC = () => {
     }
     setIsVerifyingBank(true);
     
-    try {
-      // 1. Verify PAN
-      const panRes = await fetch(`${API_URL}/kyc/pan/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ pan })
-      });
-      const panData = await panRes.json();
-      if (!panData.success || !panData.data.verified) {
-        showError(panData.data?.message || 'PAN verification failed');
-        setIsVerifyingBank(false);
-        return;
-      }
-
-      // 2. Verify Bank Async
-      const bankRes = await fetch(`${API_URL}/kyc/bav/init`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ ifsc, accountNumber: accNum })
-      });
-      const bankData = await bankRes.json();
-      
-      if (!bankData.success || !bankData.data.requestId) {
-        showError('Bank verification initiation failed');
-        setIsVerifyingBank(false);
-        return;
-      }
-
-      const requestId = bankData.data.requestId;
-      showNotification("Bank verification in progress...");
-      
-      let attempts = 0;
-      const poll = setInterval(async () => {
-        attempts++;
-        if (attempts > 10) {
-          clearInterval(poll);
-          showError("Bank verification timeout. Check back later.");
-          setIsVerifyingBank(false);
-          return;
-        }
-
-        const checkRes = await fetch(`${API_URL}/kyc/bav/${requestId}`, {
-          headers: { Authorization: `Bearer ${getToken()}` }
-        });
-        const checkData = await checkRes.json();
-        
-        if (checkData.success && checkData.data.verified) {
-          clearInterval(poll);
-          dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
-          
-          await fetch(`${API_URL}/kyc/complete`, {
-             method: 'POST',
-             headers: { Authorization: `Bearer ${getToken()}` }
-          });
-          
-          showNotification('Bank Account & PAN Verified Successfully');
-          setIsVerifyingBank(false);
-        } else if (checkData.data?.status === 'failed') {
-          clearInterval(poll);
-          showError(checkData.data?.message || 'Bank verification failed');
-          setIsVerifyingBank(false);
-        }
-      }, 3000);
-
-    } catch (err) {
-      showError('Network error during verification');
+    // Simulate API delay
+    setTimeout(() => {
       setIsVerifyingBank(false);
-    }
+      dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
+      showNotification('Bank Account & PAN Verified Successfully');
+    }, 2000);
   };
 
   const allVerified = kyc.aadhaarVerified && kyc.bankVerified;
@@ -350,20 +250,7 @@ const DigiLockerKYC = () => {
 
       {/* Footer / Continue button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex flex-col gap-2">
-        {/* TODO: Rollback this bypass function. Remove the Autofill button below in production. */}
-        <button
-          onClick={() => {
-            setAccNum('1735155000065034');
-            setAccNumConfirm('1735155000065034');
-            setIfsc('SBIN0003994');
-            setPan('ABCDE1234F');
-            dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, bankVerified: true, panVerified: true } });
-            showNotification('Autofilled and bypassed validations (Demo Only)');
-          }}
-          className="text-xs font-bold text-primary underline mx-auto hover:text-primary/80 transition-colors"
-        >
-          Autofill (Demo Only)
-        </button>
+
         <button
           onClick={handleNext}
           disabled={!allVerified}

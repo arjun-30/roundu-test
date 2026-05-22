@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Video, Camera, ImagePlus, X, Play, RotateCcw,
   CheckCircle2, ChevronRight, Clock, FileText, Upload,
@@ -267,9 +267,16 @@ const VideoPortfolio = () => {
   // const canProceed = videoState === 'uploaded';
   const canProceed = true; // Temporary bypass
 
+  const location = useLocation();
+  const from = location.state?.from;
+
   const handleNext = useCallback(() => {
-    navigate('/provider/gps-consent');
-  }, [navigate]);
+    if (from === "portfolio") {
+      navigate('/provider/portfolio');
+    } else {
+      navigate('/provider/gps-consent');
+    }
+  }, [navigate, from]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -644,7 +651,7 @@ const VideoPortfolio = () => {
             }`}
           >
             <span className={`text-base font-bold ${canProceed ? 'text-white' : 'text-muted-foreground'}`}>
-              Continue to GPS Consent
+              {from === "portfolio" ? "Save Introduction" : "Continue to GPS Consent"}
             </span>
             <ChevronRight size={18} className={canProceed ? 'text-white' : 'text-muted-foreground'} />
           </button>

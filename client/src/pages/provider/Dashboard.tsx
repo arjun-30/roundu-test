@@ -307,6 +307,14 @@ import { motion, AnimatePresence } from "framer-motion";
         <div>
           <p className="text-xs text-muted-foreground font-bold tracking-wide uppercase">Provider Dashboard</p>
           <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight">Hi, {user.name.split(" ")[0]}</h1>
+          <div className="flex items-center gap-1.5 mt-1">
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <MapPin size={10} className="text-primary" />
+            </div>
+            <p className="text-[12px] font-bold text-muted-foreground line-clamp-1 max-w-[150px]">
+              {user.address || "Current Location"}
+            </p>
+          </div>
         </div>
         <div className="flex gap-3 items-center">
           {/* Online/Offline Toggle */}

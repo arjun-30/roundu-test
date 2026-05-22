@@ -101,8 +101,6 @@ const Job = () => {
   };
 
   const completeJob = () => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "completed" } });
-    socket.emit("update_job_status", { bookingId: job.id, status: "completed" });
     navigate(`/provider/job/${job.id}/report`);
   };
 

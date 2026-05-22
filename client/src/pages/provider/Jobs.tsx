@@ -38,12 +38,7 @@ const Jobs = () => {
   const filteredJobs = useMemo(() => {
     const filterByDate = (dateStr: string) => {
       if (!dateRange || (!dateRange.from && !dateRange.to)) {
-        // Default: This Month
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
-        const jobDate = parseJobDate(dateStr);
-        return isWithinInterval(jobDate, { start, end });
+        return true;
       }
 
       const jobDate = parseJobDate(dateStr);

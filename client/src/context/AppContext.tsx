@@ -774,6 +774,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.isAuthenticated, state.user.id, state.role]);
 
   useEffect(() => {
+    if (state.isAuthenticated && state.user.id && state.role) {
+      socket.emit("register", {
+        userId: state.user.id,
+        role: state.role,
+        serviceIds: state.providerRegistrationDraft?.serviceIds || []
+      });
+    }
+  }, [state.isAuthenticated, state.user.id, state.role, state.providerRegistrationDraft?.serviceIds]);
+
+  useEffect(() => {
     socket.connect();
 
     socket.on("incoming_request", (request: ProviderRequest) => {

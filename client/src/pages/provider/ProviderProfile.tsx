@@ -7,12 +7,12 @@ import axios from "axios";
 
 const ProviderProfile = () => {
   const navigate = useNavigate();
-  const { user, dispatch, completedJobs, providerStats, isOnline } = useApp();
+  const { user, dispatch, completedJobs, providerStats, isOnline, providerRegistrationDraft } = useApp();
 
   const [isEditingRadius, setIsEditingRadius] = useState(false);
-  const [serviceRadius, setServiceRadius] = useState(15); // Default fallback
+  const [serviceRadius, setServiceRadius] = useState(providerRegistrationDraft?.serviceRadius || 15);
   const [isEditingHours, setIsEditingHours] = useState(false);
-  const [workingHours, setWorkingHours] = useState("9:00 AM - 6:00 PM");
+  const [workingHours, setWorkingHours] = useState(providerRegistrationDraft?.workingHours || "9:00 AM - 6:00 PM");
   const [notification, setNotification] = useState("");
   const [error, setError] = useState("");
 
@@ -45,6 +45,7 @@ const ProviderProfile = () => {
   const handleUpdateRadius = async (radius: number) => {
     // Update local state immediately for responsiveness
     setServiceRadius(radius);
+    dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { serviceRadius: radius } });
     setIsEditingRadius(false);
     showNotification("Service radius updated");
     try {
@@ -59,6 +60,7 @@ const ProviderProfile = () => {
 
   const handleUpdateHours = (hours: string) => {
     setWorkingHours(hours);
+    dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { workingHours: hours } });
     setIsEditingHours(false);
     showNotification("Working hours updated");
   };
