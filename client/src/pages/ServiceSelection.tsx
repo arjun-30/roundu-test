@@ -84,7 +84,7 @@ const ServiceSelection = () => {
   const itemVariants = {
     hidden: { opacity: 0, scale: 0.95, y: 10 },
     visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
+  } as any;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] pb-6 font-sans text-foreground relative overflow-hidden">

@@ -79,7 +79,7 @@ interface State {
   providerRequests: ProviderRequest[];
   completedJobs: ProviderRequest[];
   notifications: { id: string; text: string; ts: number; type?: string; metadata?: any; targetRole?: "customer" | "provider" }[];
-  nearbyProviders: Record<string, { id: string; lat: number; lng: number; lastSeen: number; name: string }>;
+  nearbyProviders: Record<string, { id: string; lat: number; lng: number; lastSeen: number; name: string; avatar_url?: string }>;
   currentLocation: { lat: number; lng: number } | null;
   // Provider Onboarding Draft
   providerRegistrationDraft: {

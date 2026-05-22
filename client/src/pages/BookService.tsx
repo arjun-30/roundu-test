@@ -152,7 +152,7 @@ const BookService = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
+  } as any;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] font-sans pb-6">

@@ -71,7 +71,7 @@ const Job = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
+  } as any;
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -136,7 +136,7 @@ const Job = () => {
   const isStageActive = (stageKey: StageKey) => job.status === stageKey;
 
   // ── Emit helpers ─────────────────────────────────────────────────────────
-  const emitStatus = (status: string) => {
+  const emitStatus = (status: any) => {
     dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status } });
     socket.emit("update_job_status", { bookingId: job.id, status });
   };
