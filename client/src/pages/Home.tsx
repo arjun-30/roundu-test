@@ -131,16 +131,6 @@ const Home = () => {
     menuItems.push({ icon: Wrench, label: "Switch to Provider", path: "/provider" });
   }
 
-  const nearbyList = useMemo(() => {
-    if (!currentLocation) return allProviders.slice(0, 5);
-    return allProviders
-      .map(p => ({
-        ...p,
-        distance: getDistance(currentLocation!, { lat: p.lat, lng: p.lng })
-      }))
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 5);
-  }, [currentLocation]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
