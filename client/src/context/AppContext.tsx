@@ -753,7 +753,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     status: b.status,
                     notes: b.notes,
                     voiceNote: b.voice_note || false,
-                    voiceNoteUrl: b.voice_note_url || null
+                    voiceNoteUrl: b.voice_note_url || null,
+                    scheduled_at: b.scheduled_at
                   };
                 });
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });

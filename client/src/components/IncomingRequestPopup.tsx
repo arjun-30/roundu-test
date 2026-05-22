@@ -8,9 +8,10 @@ interface IncomingRequestPopupProps {
   onAccept: () => void;
   onReject: () => void;
   isBroadcast?: boolean;
+  isBusy?: boolean;
 }
 
-const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: IncomingRequestPopupProps) => {
+const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy }: IncomingRequestPopupProps) => {
   // Compute initial time left from createdAt if available, else default to 120s
   const getInitialTimeLeft = () => {
     const POPUP_TTL = 120;
@@ -156,7 +157,10 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast }: Inco
           </button>
           <button
             onClick={onAccept}
-            className="py-4 rounded-2xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-primary/30 relative overflow-hidden group"
+            disabled={isBusy}
+            className={`py-4 rounded-2xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-primary/30 relative overflow-hidden group ${
+              isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-primary text-primary-foreground'
+            }`}
           >
             <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform" />
             <Check size={18} /> {isBroadcast ? "Provide Quote" : "Accept"}

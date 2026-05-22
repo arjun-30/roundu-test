@@ -47,20 +47,27 @@ const Dashboard = () => {
   const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
 
   const isBusy = providerRequests.some((r: any) => {
+    // Check if job is stale (older than 24 hours)
+    let start = r.scheduled_at ? new Date(r.scheduled_at) : null;
+    if (!start || isNaN(start.getTime())) {
+      if (r.date && r.time) {
+        if (r.time.toLowerCase() === 'now') {
+          start = new Date();
+        } else {
+          start = new Date(`${r.date} ${r.time}`);
+        }
+      }
+    }
+    
+    if (start && !isNaN(start.getTime())) {
+      const ageHours = (new Date().getTime() - start.getTime()) / (1000 * 60 * 60);
+      if (ageHours > 24) return false; // Ignore stale jobs
+    }
+
     if (["in_progress", "on_the_way", "arrived"].includes(r.status)) {
       return true;
     }
     if (["assigned", "accepted"].includes(r.status)) {
-      let start = r.scheduled_at ? new Date(r.scheduled_at) : null;
-      if (!start || isNaN(start.getTime())) {
-        if (r.date && r.time) {
-          if (r.time.toLowerCase() === 'now') {
-            start = new Date();
-          } else {
-            start = new Date(`${r.date} ${r.time}`);
-          }
-        }
-      }
       if (start && !isNaN(start.getTime())) {
         const durationHours = r.duration || 2;
         const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
@@ -518,8 +525,11 @@ import { motion, AnimatePresence } from "framer-motion";
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
+                                disabled={isBusy}
                                 onClick={() => setQuotingBroadcast(b)}
-                                className="flex-1 py-3 bg-accent text-white rounded-[16px] text-[13px] font-bold shadow-md shadow-accent/20"
+                                className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold shadow-md ${
+                                  isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-accent text-white shadow-accent/20'
+                                }`}
                               >
                                 Provide Quote
                               </motion.button>
@@ -955,6 +965,7 @@ import { motion, AnimatePresence } from "framer-motion";
         <IncomingRequestPopup
           request={simulatedRequest || activeDirectRequest}
           isBroadcast={false}
+          isBusy={isBusy}
           onAccept={() => {
             const req = simulatedRequest || activeDirectRequest;
             socket.emit("update_job_status", { jobId: req.id, status: "accepted" });

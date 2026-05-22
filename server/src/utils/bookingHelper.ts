@@ -7,7 +7,16 @@ export async function getProviderActiveBookings(providerId: string): Promise<any
        AND status IN ('assigned', 'accepted', 'on_the_way', 'arrived', 'in_progress')`,
     [providerId]
   );
-  return res.rows;
+  
+  const now = new Date();
+  return res.rows.filter(booking => {
+    const timeRef = booking.scheduled_at ? new Date(booking.scheduled_at) : null;
+    if (!timeRef || isNaN(timeRef.getTime())) return true;
+    
+    const ageHours = (now.getTime() - timeRef.getTime()) / (1000 * 60 * 60);
+    // Ignore jobs scheduled more than 24 hours in the past
+    return ageHours <= 24;
+  });
 }
 
 export async function isProviderBusy(providerId: string): Promise<boolean> {
