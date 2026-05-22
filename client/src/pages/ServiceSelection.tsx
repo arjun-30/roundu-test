@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Wrench, Droplets, Zap, Sparkles, Car, Paintbrush, Box, CheckCircle2, HelpCircle, ShieldCheck, Clock, ThumbsUp, Loader2 } from "lucide-react";
 import { getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Icon mapper
 const getProblemIcon = (str: string) => {
@@ -58,7 +59,7 @@ const ServiceSelection = () => {
           issue: problem 
         } 
       });
-    }, 300);
+    }, 400);
   };
 
   // Mock expansion to closely emulate user's examples
@@ -72,94 +73,164 @@ const ServiceSelection = () => {
 
   const problemsList = getExtendedProblems();
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: 10 },
+    visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background pb-6 font-sans text-foreground">
+    <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] pb-6 font-sans text-foreground relative overflow-hidden">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 bg-background sticky top-0 z-20">
-        <button 
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="px-5 pt-6 pb-4 flex items-center gap-3 bg-white shadow-sm sticky top-0 z-20"
+      >
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
           onClick={() => navigate("/home")} 
-          className="w-10 h-10 rounded-full bg-white flex flex-shrink-0 items-center justify-center shadow-sm active:scale-95 transition-transform"
+          className="w-11 h-11 rounded-[16px] bg-[#F8FAFC] flex flex-shrink-0 items-center justify-center border-2 border-transparent hover:border-primary/10 transition-all shadow-sm"
         >
-          <ArrowLeft size={20} className="text-primary" />
-        </button>
+          <ArrowLeft size={22} className="text-primary" strokeWidth={2.5} />
+        </motion.button>
         <div>
-          <h1 className="text-[20px] font-extrabold text-foreground leading-tight">{service.label}</h1>
+          <h1 className="text-[22px] font-extrabold text-foreground leading-tight tracking-tight">{service.label}</h1>
           <p className="text-[13px] text-muted-foreground font-medium">Fine-tune your request</p>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-8 relative z-10">
         
         {/* Section Title */}
-        <div>
-           <h2 className="text-[18px] font-extrabold text-foreground">What's the problem?</h2>
-            <p className="text-[12px] text-muted-foreground mt-1 leading-snug">Choose an issue to help us match the right expert</p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+           <h2 className="text-[24px] font-extrabold text-foreground tracking-tight">What's the problem?</h2>
+            <p className="text-[14px] text-muted-foreground mt-1 leading-snug">Choose an issue to help us match the right expert.</p>
+        </motion.div>
 
         {/* Dynamic Grid */}
         {problemsList.length > 0 && (
-          <div className="grid grid-cols-2 gap-[14px]">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 gap-4 relative"
+          >
+            {/* Loading Overlay */}
+            <AnimatePresence>
+              {isLoading && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-[-10px] bg-white/50 backdrop-blur-sm z-10 rounded-3xl flex items-center justify-center"
+                >
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {problemsList.map((problem) => {
               const isActive = selectedProblem === problem;
               const IconComponent = getProblemIcon(problem);
               
               return (
-                <button
+                <motion.button
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.96 }}
                   key={problem}
                   onClick={() => toggleSelection(problem)}
-                  className={`flex flex-col items-start p-4 rounded-[18px] border-[1.5px] transition-all duration-150 relative shadow-sm text-left active:scale-[0.97] ${
+                  className={`flex flex-col items-start p-5 rounded-[24px] border-2 transition-all duration-300 relative shadow-sm text-left overflow-hidden ${
                     isActive 
-                      ? "border-[#152E4B] bg-[#E2E8F0]" 
-                      : "border-transparent bg-white hover:border-[#152E4B]/10"
+                      ? "border-accent bg-accent/5 shadow-[0_8px_30px_rgba(245,158,11,0.15)]" 
+                      : "border-transparent bg-white hover:border-primary/10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
                   }`}
                 >
+                  {isActive && (
+                    <motion.div 
+                      layoutId="activeGlow"
+                      className="absolute inset-0 bg-gradient-to-br from-white via-white to-accent/10 opacity-100"
+                    />
+                  )}
                   {/* SVG Icon Top */}
-                  <IconComponent size={24} className={`mb-3 ${isActive ? 'text-primary' : 'text-primary/70'}`} strokeWidth={1.8} />
+                  <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center mb-4 transition-colors relative z-10 ${isActive ? 'bg-accent/20 text-accent' : 'bg-[#F8FAFC] text-primary group-hover:bg-primary/5'}`}>
+                    <IconComponent size={24} strokeWidth={2} />
+                  </div>
                   
                   {/* Label */}
-                  <span className={`text-[13.5px] font-bold leading-tight ${
-                    isActive ? "text-primary" : "text-foreground"
+                  <span className={`text-[14px] font-bold leading-snug relative z-10 transition-colors ${
+                    isActive ? "text-foreground" : "text-foreground"
                   }`}>
                     {problem}
                   </span>
 
                   {/* Active Indicator Checkmark */}
-                  {isActive && (
-                     <div className="absolute top-[14px] right-[14px] animate-fade-in">
-                        <CheckCircle2 size={18} className="text-accent fill-[#F59E0B]/20" strokeWidth={2.5} />
-                     </div>
-                  )}
-                </button>
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.div 
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        className="absolute top-4 right-4 z-10"
+                      >
+                        <CheckCircle2 size={22} className="text-accent fill-white" strokeWidth={2.5} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
               );
             })}
-          </div>
+          </motion.div>
         )}
 
         {/* Helper Section */}
-        <div className="bg-white rounded-[20px] p-5 shadow-sm border border-transparent flex items-start gap-3 mt-8">
-           <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center flex-shrink-0">
-               <HelpCircle size={22} className="text-secondary" strokeWidth={2.5} />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="bg-white rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-transparent flex flex-col sm:flex-row items-start sm:items-center gap-5 mt-4"
+        >
+           <div className="w-14 h-14 rounded-[20px] bg-primary/5 flex items-center justify-center flex-shrink-0">
+               <HelpCircle size={26} className="text-primary" strokeWidth={2} />
            </div>
            <div className="flex-1">
-               <h3 className="text-[15px] font-extrabold text-foreground">Not sure what's wrong?</h3>
-               <p className="text-[11px] text-muted-foreground mt-1 mb-4 leading-relaxed">Our experts can help you identify the issue</p>
-               <button 
-                 onClick={() => navigate("/support")}
-                 className="bg-primary/5 text-primary text-[12px] font-extrabold tracking-wide uppercase px-4 py-2.5 rounded-xl active:scale-95 transition-all"
+               <h3 className="text-[17px] font-extrabold text-foreground">Not sure what's wrong?</h3>
+               <p className="text-[13px] text-muted-foreground mt-1 mb-4 leading-relaxed">Let our experts inspect and identify the exact issue for you.</p>
+               <motion.button 
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 className="bg-primary text-white text-[13px] font-bold tracking-wide px-5 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-colors w-full sm:w-auto"
                >
-                  Get Help
-               </button>
+                  Request Inspection
+               </motion.button>
            </div>
-        </div>
+        </motion.div>
 
         {/* Trust Bar */}
-        <div className="flex gap-4 items-end justify-between opacity-80 px-2 pt-2">
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><ShieldCheck size={26} className="text-secondary mb-1" strokeWidth={1.5}/> Verified Experts</span>
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><Clock size={26} className="text-primary mb-1" strokeWidth={1.5}/> On-time Service</span>
-            <span className="flex flex-col items-center gap-1 text-[10.5px] font-bold text-muted-foreground text-center uppercase tracking-wide"><ThumbsUp size={26} className="text-accent mb-1" strokeWidth={1.5}/> 100% Satisfaction</span>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex gap-4 items-end justify-between opacity-80 px-2 pt-4 pb-2"
+        >
+            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ShieldCheck size={28} className="text-secondary/70 mb-1" strokeWidth={1.5}/> Verified<br/>Experts</span>
+            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><Clock size={28} className="text-primary/70 mb-1" strokeWidth={1.5}/> On-time<br/>Service</span>
+            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ThumbsUp size={28} className="text-accent/70 mb-1" strokeWidth={1.5}/> 100%<br/>Satisfaction</span>
+        </motion.div>
       </div>
-
     </div>
   );
 };

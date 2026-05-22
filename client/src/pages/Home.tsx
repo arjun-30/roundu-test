@@ -13,6 +13,7 @@ import { reverseGeocode } from "@/lib/mapProvider";
 import LocationModal from "@/components/LocationModal";
 import { providers as allProviders } from "@/data/mockData";
 import { getDistance } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 
 const Home = () => {
@@ -133,8 +134,21 @@ const Home = () => {
       .slice(0, 5);
   }, [currentLocation]);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
+  };
+
   return (
-    <div className="min-h-full flex flex-col bg-background pb-28 relative">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] pb-28 relative overflow-x-hidden">
 
       {/* ═══════ SLIDE-OUT MENU OVERLAY ═══════ */}
       <div
@@ -237,76 +251,106 @@ const Home = () => {
       </div>
 
       {/* ─── Header ─── */}
-      <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-white">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="px-5 pt-4 pb-3 flex items-center justify-between bg-white shadow-sm relative z-10"
+      >
         <div className="flex items-center gap-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={() => setMenuOpen(true)}
-            className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-[16px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all"
           >
-            <Menu size={20} className="text-primary" />
-          </button>
+            <Menu size={22} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
           <div>
-            <h1 className="text-xl font-extrabold text-foreground">
-              Hi {user.name.split(" ")[0]}! 👋
+            <h1 className="text-[22px] font-extrabold text-foreground leading-tight tracking-tight">
+              Hi {user.name.split(" ")[0]}! <span className="inline-block animate-waving-hand origin-bottom-right">👋</span>
             </h1>
-            <p 
+            <button 
               onClick={() => setIsLocationModalOpen(true)}
-              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary transition-colors"
+              className="group flex items-center gap-1.5 mt-1 cursor-pointer"
             >
-              <MapPin size={11} className="text-primary" />
-              {locating || gpsLoading ? (
-                <span className="flex items-center gap-1">
-                  <Loader2 size={10} className="animate-spin" /> Detecting...
-                </span>
-              ) : (
-                user.address || "Set Location"
-              )}
-            </p>
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
+              </div>
+              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
+                {locating || gpsLoading ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin text-primary" /> Detecting...
+                  </span>
+                ) : (
+                  user.address || "Set Location"
+                )}
+              </p>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {user.role === "provider" && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/provider")}
-              className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center relative active:scale-95 transition-transform"
+              className="w-11 h-11 rounded-[16px] bg-accent/10 border-2 border-accent/20 flex items-center justify-center transition-all shadow-sm shadow-accent/5"
               title="Switch Side"
             >
-              <Wrench size={18} className="text-secondary" />
-            </button>
+              <Wrench size={18} className="text-accent" strokeWidth={2.5} />
+            </motion.button>
           )}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => navigate("/wallet")}
-            className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-[16px] bg-white border border-[#E8EBF0] flex items-center justify-center transition-all shadow-sm hover:shadow-md hover:border-primary/20"
           >
-            <Wallet size={20} className="text-primary" />
-          </button>
-          <button
+            <Wallet size={20} className="text-primary" strokeWidth={2} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => navigate("/notifications")}
-            className="w-10 h-10 rounded-full bg-[#F0F2F5] flex items-center justify-center relative active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-[16px] bg-white border border-[#E8EBF0] flex items-center justify-center relative transition-all shadow-sm hover:shadow-md hover:border-primary/20"
           >
-            <Bell size={20} className="text-primary" />
+            <Bell size={20} className="text-primary" strokeWidth={2} />
             {notifications.length > 0 && (
-              <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-accent border-2 border-white" />
+              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-accent border-2 border-white shadow-sm" />
             )}
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* ─── Search Bar ─── */}
-      <div className="px-5 pb-5 bg-white animate-fade-in" style={{ animationDelay: "0.05s" }}>
-        <button
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="px-5 pb-5 pt-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] relative z-0"
+      >
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => navigate("/search")}
-          className="w-full text-left relative"
+          className="w-full text-left relative group"
         >
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-          <div className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-background border border-[#E8EBF0] text-sm text-muted-foreground font-medium">
+          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/40 group-hover:text-accent transition-colors">
+            <Search size={20} strokeWidth={2.5} />
+          </div>
+          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC] border-2 border-transparent group-hover:border-primary/10 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-bold shadow-inner group-hover:shadow-[0_8px_20px_rgba(0,0,0,0.04)]">
             What service do you need today?
           </div>
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* ─── Scrollable Content ─── */}
-      <div className="flex-1 overflow-y-auto">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex-1 overflow-y-auto"
+      >
 
 
 
@@ -398,70 +442,75 @@ const Home = () => {
         )}
 
         {/* ═══ BROWSE SERVICES ═══ */}
-        <div className="px-5 pt-3 pb-2 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="flex items-center justify-between mb-1">
+        <motion.div variants={itemVariants} className="px-5 pt-6 pb-2">
+          <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="text-[17px] font-extrabold text-foreground">Browse Services</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Select a category to explore vetted specialists</p>
+              <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Browse Services</h2>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Explore our vetted specialists</p>
             </div>
             <button
               onClick={() => navigate("/services")}
-              className="text-xs font-bold text-primary flex items-center gap-0.5 hover:opacity-80 transition-opacity"
+              className="text-[13px] font-bold text-accent flex items-center gap-0.5 hover:text-primary transition-colors bg-accent/10 px-3 py-1.5 rounded-full"
             >
               View All <ChevronRight size={14} />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-2 gap-4">
             {browseServices.map((service, index) => (
-              <button
+              <motion.button
                 key={service.id}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => goToProviders(service.id)}
-                className="bg-white rounded-2xl p-4 text-left hover:shadow-md transition-all active:scale-[0.97] relative overflow-hidden border border-border shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
+                className="group bg-white rounded-[24px] p-5 text-left transition-all border border-transparent hover:border-primary/10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.08)] relative overflow-hidden"
               >
+                <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {isConnected(service.id) && (
-                  <div className="absolute top-3 right-3">
-                    <span className="text-[8px] font-extrabold tracking-wider uppercase bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                      ⚡ Connected
+                  <div className="absolute top-3 right-3 z-10">
+                    <span className="text-[9px] font-black tracking-widest uppercase bg-accent/20 text-accent px-2.5 py-1 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Active
                     </span>
                   </div>
                 )}
 
-                <div className="w-12 h-12 rounded-xl bg-background flex items-center justify-center mb-3">
-                  <service.icon size={24} className="text-primary" strokeWidth={1.8} />
+                <div className="w-14 h-14 rounded-[18px] bg-[#F8FAFC] flex items-center justify-center mb-4 group-hover:bg-primary/5 transition-colors relative z-10">
+                  <service.icon size={26} className="text-primary group-hover:scale-110 transition-transform duration-300" strokeWidth={1.8} />
                 </div>
-                <h3 className="text-[13px] font-bold text-foreground leading-tight">{service.label}</h3>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{service.desc}</p>
-              </button>
+                <h3 className="text-[15px] font-extrabold text-foreground leading-tight group-hover:text-primary transition-colors relative z-10">{service.label}</h3>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-snug relative z-10 line-clamp-2">{service.desc}</p>
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* ═══ QUICK FIXES ═══ */}
-        <div className="pt-6 pb-2 animate-fade-in" style={{ animationDelay: "0.15s" }}>
+        <motion.div variants={itemVariants} className="pt-2 pb-2">
           <div className="px-5 mb-3">
-            <h2 className="text-[17px] font-extrabold text-foreground">Quick Fixes</h2>
+            <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Quick Fixes</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">Common issues solved instantly</p>
           </div>
 
           <div className="flex gap-2.5 overflow-x-auto px-5 pb-2 scrollbar-hide">
             {quickFixes.map((fix) => (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 key={fix.id}
                 onClick={() => goToProviders(fix.id === "pipe" || fix.id === "drain" ? "plumber" : fix.id === "fan" || fix.id === "switch" ? "electrician" : fix.id === "cleaning" ? "housekeeping" : fix.id === "driver" ? "drivers" : fix.id === "carwash" ? "carwash" : "security")}
-                className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-[#1C3D63] active:scale-95 transition-all flex-shrink-0 shadow-sm"
+                className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-primary/90 transition-colors flex-shrink-0 shadow-[0_4px_12px_rgba(21,46,75,0.15)] border border-primary/20"
               >
-                <fix.icon size={14} strokeWidth={2.5} />
-                <span className="text-[13px] font-bold">{fix.label}</span>
-              </button>
+                <fix.icon size={16} strokeWidth={2.5} />
+                <span className="text-[14px] font-bold">{fix.label}</span>
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* ═══ POPULAR TASKS ═══ */}
-        <div className="pt-5 pb-2 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          <div className="px-5 flex items-center justify-between mb-3">
-            <h2 className="text-[17px] font-extrabold text-foreground">Popular Tasks</h2>
+        <motion.div variants={itemVariants} className="pt-6 pb-2">
+          <div className="px-5 flex items-end justify-between mb-4">
+            <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Popular Tasks</h2>
             <button className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
               See History
             </button>
@@ -494,24 +543,26 @@ const Home = () => {
                     <Clock size={10} /> {task.description}
                   </p>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => goToProviders(task.serviceId)}
-                    className="w-full mt-3.5 bg-primary hover:bg-[#1C3D63] text-white font-bold text-[13px] py-2.5 rounded-xl transition-colors active:scale-[0.97]"
+                    className="w-full mt-4 bg-primary hover:bg-primary/90 text-white font-bold text-[14px] py-3 rounded-xl transition-colors shadow-md shadow-primary/20"
                   >
                     Book Now
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* ═══ NEARBY PROFESSIONALS ═══ */}
-        <div className="pt-5 pb-2 animate-fade-in" style={{ animationDelay: "0.22s" }}>
-          <div className="px-5 flex items-center justify-between mb-3">
+        <motion.div variants={itemVariants} className="pt-6 pb-2">
+          <div className="px-5 flex items-end justify-between mb-4">
             <div>
-              <h2 className="text-[17px] font-extrabold text-foreground">Nearby Professionals</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
+              <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Nearby Professionals</h2>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
             </div>
           </div>
           <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
@@ -538,27 +589,30 @@ const Home = () => {
               </button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* ═══ REFER & EARN ═══ */}
-        <div className="px-5 pb-6 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-          <button
+        <motion.div variants={itemVariants} className="px-5 pb-6 pt-4">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/refer-earn")}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-accent border border-accent/20 hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 shadow-[0_8px_30px_rgba(245,158,11,0.06)] relative overflow-hidden group"
           >
-            <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <Gift size={24} className="text-secondary" />
+            <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-accent/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-accent/20 transition-colors duration-500" />
+            <div className="w-14 h-14 rounded-[18px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-300">
+              <Gift size={26} className="text-accent" strokeWidth={2} />
             </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-[14px] font-extrabold text-foreground">Refer and Earn</h3>
-              <p className="text-[11px] text-secondary mt-0.5">
-                Invite friends and get $10 on their first booking
+            <div className="flex-1 text-left z-10">
+              <h3 className="text-[16px] font-extrabold text-foreground leading-tight">Refer and Earn</h3>
+              <p className="text-[12px] font-bold text-accent/80 mt-1">
+                Invite friends and get ₹500 on their first booking
               </p>
             </div>
-            <ChevronRight size={20} className="text-secondary flex-shrink-0" />
-          </button>
-        </div>
-      </div>
+            <ChevronRight size={20} className="text-accent flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
+          </motion.button>
+        </motion.div>
+      </motion.div>
 
 
 

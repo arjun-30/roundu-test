@@ -247,6 +247,18 @@ const Dashboard = () => {
     setQuotePrice("");
   };
 
+import { motion, AnimatePresence } from "framer-motion";
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
       {/* PIP Modal */}
@@ -286,430 +298,518 @@ const Dashboard = () => {
       )}
 
       {/* Header */}
-      <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="px-5 pt-3 pb-4 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm"
+      >
         <div>
-          <p className="text-xs text-muted-foreground font-medium">Provider Dashboard</p>
-          <h1 className="text-xl font-extrabold text-foreground mt-0.5">Hi, {user.name.split(" ")[0]}</h1>
+          <p className="text-xs text-muted-foreground font-bold tracking-wide uppercase">Provider Dashboard</p>
+          <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight">Hi, {user.name.split(" ")[0]}</h1>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-3 items-center">
           {/* Online/Offline Toggle */}
-          <div className="flex flex-col items-center gap-1 mr-2 mt-1">
+          <div className="flex flex-col items-center gap-1 mt-1">
             <button
               disabled={isBusy}
               onClick={toggleOnline}
-              className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${isOnline ? 'bg-success' : 'bg-muted-foreground/30'} ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-[52px] h-7 rounded-full p-1 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-[20px]' : 'translate-x-0'}`} />
             </button>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
               {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
-          <button
-            onClick={() => navigate("/provider/profile")}
-            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
-            title="Provider Profile"
-          >
-            <User size={18} className="text-foreground" />
-          </button>
-          <button
-            onClick={() => navigate("/notifications")}
-            className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center relative hover:bg-primary/10 transition-colors"
-            title="Notifications"
-          >
-            <Bell size={18} className="text-foreground" />
-            {(pending.length > 0 || notifications.length > 0) && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {/* Active Booking Lock Banner */}
-        {isBusy && (
-          <div className="mx-5 mb-3 mt-4 bg-amber-50 border-amber-200 border rounded-xl p-3.5 flex items-start gap-3 relative animate-fade-in">
-            <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-bold text-amber-800">Active Job Lock</p>
-              <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
-                You are currently on an active job. Finish this job or wait until scheduled time ends to accept new bookings.
-              </p>
-            </div>
+          <div className="flex gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/provider/profile")}
+              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm"
+              title="Provider Profile"
+            >
+              <User size={20} className="text-primary" strokeWidth={2.5} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/notifications")}
+              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center relative transition-all shadow-sm"
+              title="Notifications"
+            >
+              <Bell size={20} className="text-primary" strokeWidth={2.5} />
+              {(pending.length > 0 || notifications.length > 0) && (
+                <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
+                </span>
+              )}
+            </motion.button>
           </div>
-        )}
+        </div>
+      </motion.div>
+
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex-1 overflow-y-auto pb-6"
+      >
+        {/* Active Booking Lock Banner */}
+        <AnimatePresence>
+          {isBusy && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mx-5 mb-2 mt-4 overflow-hidden"
+            >
+              <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-[20px] p-4 flex items-start gap-4 shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} className="text-[#D97706]" strokeWidth={2} />
+                </div>
+                <div>
+                  <p className="text-[14px] font-extrabold text-[#92400E]">Active Job Lock</p>
+                  <p className="text-[12px] text-[#B45309] mt-1 leading-relaxed font-medium">
+                    You are currently on an active job. Finish this job to accept new bookings.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Dynamic Warning Banner */}
-        {(() => {
-          let warning = null;
-          if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
-            warning = {
-              type: "critical",
-              title: "Account at Risk",
-              message: "Your performance is critically low. Please improve immediately to avoid permanent deactivation.",
-              bg: "bg-red-50",
-              border: "border-red-100",
-              text: "text-red-800",
-              subtext: "text-red-600",
-              iconColor: "text-red-500"
-            };
-          } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
-            warning = {
-              type: "warning",
-              title: "Response Rate Low",
-              message: `Your response rate is ${providerStats.responseRate}%. Accept more jobs to stay in good standing.`,
-              bg: "bg-orange-50",
-              border: "border-orange-100",
-              text: "text-orange-800",
-              subtext: "text-orange-600",
-              iconColor: "text-orange-500"
-            };
-          } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
-            warning = {
-              type: "caution",
-              title: "Rating Dropping",
-              message: `Your rating is ${providerStats.rating}. Try to provide better service to get 5-star reviews.`,
-              bg: "bg-yellow-50",
-              border: "border-yellow-100",
-              text: "text-yellow-800",
-              subtext: "text-yellow-600",
-              iconColor: "text-yellow-500"
-            };
-          }
+        <AnimatePresence>
+          {(() => {
+            let warning = null;
+            if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
+              warning = {
+                type: "critical",
+                title: "Account at Risk",
+                message: "Your performance is critically low. Please improve immediately to avoid permanent deactivation.",
+                bg: "bg-[#FEF2F2]",
+                border: "border-[#FECACA]",
+                text: "text-[#991B1B]",
+                subtext: "text-[#B91C1C]",
+                iconColor: "text-[#EF4444]",
+                iconBg: "bg-[#FEE2E2]"
+              };
+            } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
+              warning = {
+                type: "warning",
+                title: "Response Rate Low",
+                message: `Your response rate is ${providerStats.responseRate}%. Accept more jobs to stay in good standing.`,
+                bg: "bg-[#FFF7ED]",
+                border: "border-[#FFEDD5]",
+                text: "text-[#9A3412]",
+                subtext: "text-[#C2410C]",
+                iconColor: "text-[#F97316]",
+                iconBg: "bg-[#FFEDD5]"
+              };
+            } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
+              warning = {
+                type: "caution",
+                title: "Rating Dropping",
+                message: `Your rating is ${providerStats.rating}. Try to provide better service to get 5-star reviews.`,
+                bg: "bg-[#FEFCE8]",
+                border: "border-[#FEF08A]",
+                text: "text-[#854D0E]",
+                subtext: "text-[#A16207]",
+                iconColor: "text-[#EAB308]",
+                iconBg: "bg-[#FEF9C3]"
+              };
+            }
 
-          if (!warning || !showWarning) return null;
+            if (!warning || !showWarning) return null;
 
-          return (
-            <div className={`mx-5 mb-5 mt-4 ${warning.bg} ${warning.border} border rounded-xl p-3.5 flex items-start gap-3 relative animate-fade-in`}>
-              <AlertTriangle size={18} className={`${warning.iconColor} flex-shrink-0 mt-0.5`} />
-              <div className="pr-6">
-                <p className={`text-sm font-bold ${warning.text}`}>{warning.title}</p>
-                <p className={`text-xs ${warning.subtext} mt-0.5 leading-relaxed`}>{warning.message}</p>
-              </div>
-              <button onClick={() => setShowWarning(false)} className={`absolute top-3.5 right-3.5 p-1 ${warning.iconColor} opacity-50 hover:opacity-100 transition-opacity`}>
-                <X size={14} />
-              </button>
-            </div>
-          );
-        })()}
+            return (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mx-5 mb-4 mt-2 overflow-hidden"
+              >
+                <div className={`${warning.bg} ${warning.border} border rounded-[20px] p-4 flex items-start gap-4 relative shadow-sm`}>
+                  <div className={`w-10 h-10 rounded-full ${warning.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <AlertTriangle size={20} className={warning.iconColor} strokeWidth={2} />
+                  </div>
+                  <div className="pr-8">
+                    <p className={`text-[14px] font-extrabold ${warning.text}`}>{warning.title}</p>
+                    <p className={`text-[12px] font-medium ${warning.subtext} mt-1 leading-relaxed`}>{warning.message}</p>
+                  </div>
+                  <button onClick={() => setShowWarning(false)} className={`absolute top-4 right-4 p-1.5 rounded-full hover:${warning.iconBg} ${warning.iconColor} transition-colors`}>
+                    <X size={16} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
 
         {/* Live Job Broadcasts (Moved to Top) */}
         {isOnline && !isBusy && liveBroadcasts.length > 0 && (
-          <div className="px-5 mb-6 mt-4">
-            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+          <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
+            <h2 className="text-[16px] font-extrabold text-foreground mb-3 flex items-center gap-2 tracking-tight">
+              <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
               Live Job Requests
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {liveBroadcasts.map((b) => {
                 const service = getServiceById(b.serviceId);
                 const isQuoted = b.status === "waiting_for_customer" || (quotedBroadcasts && quotedBroadcasts.includes(b.broadcastId));
                 return (
-                  <div key={b.broadcastId} className="bg-[#FFF8E6] border border-[#FFD966] rounded-2xl p-4 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-[#FFD966] to-transparent opacity-20" />
-                    <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 shadow-sm">
-                        {service && <service.icon size={18} className="text-white" />}
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    key={b.broadcastId} 
+                    className="bg-[#FFFBEB] border-2 border-[#FDE68A] rounded-[24px] p-5 shadow-[0_8px_30px_rgba(245,158,11,0.06)] relative overflow-hidden"
+                  >
+                    <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-accent/10 rounded-full blur-[40px] pointer-events-none" />
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-[20px] bg-accent flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20 z-10">
+                        {service && <service.icon size={24} className="text-white" strokeWidth={2} />}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground">{b.customerName}</p>
-                        <p className="text-[10px] text-[#D97706] font-medium uppercase tracking-wider">{service?.label || b.serviceId}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-[#78350F]">
-                          <span className="flex items-center gap-1 font-medium"><MapPin size={11} /> {b.address}</span>
-                          <span className="flex items-center gap-1 font-medium"><Clock size={11} /> {b.time}</span>
+                      <div className="flex-1 min-w-0 z-10">
+                        <p className="text-[16px] font-extrabold text-foreground">{b.customerName}</p>
+                        <p className="text-[11px] text-accent font-black uppercase tracking-widest mt-0.5">{service?.label || b.serviceId}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-[12px] font-semibold text-[#92400E]">
+                          <span className="flex items-center gap-1.5 bg-[#FEF3C7] px-2 py-1 rounded-md"><MapPin size={12} /> {b.address}</span>
+                          <span className="flex items-center gap-1.5 bg-[#FEF3C7] px-2 py-1 rounded-md"><Clock size={12} /> {b.time}</span>
                         </div>
-                        {b.notes && <p className="text-[11px] text-[#92400E] mt-2 italic">"{b.notes}"</p>}
+                        {b.notes && <p className="text-[12px] text-[#92400E] mt-3 font-medium italic border-l-2 border-[#FDE68A] pl-3">"{b.notes}"</p>}
                         {b.voiceNoteUrl && (
-                          <div className="mt-2 bg-white/50 rounded-lg p-2 border border-[#FFD966]/50">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
-                              <Mic size={10} /> Voice Note Attached
+                          <div className="mt-3 bg-white rounded-[14px] p-3 border border-[#FDE68A] shadow-sm">
+                            <div className="flex items-center gap-1.5 text-[10px] font-black text-accent uppercase tracking-widest mb-2">
+                              <Mic size={12} /> Voice Note Attached
                             </div>
                             <audio
                               src={b.voiceNoteUrl}
                               controls
-                              className="w-full h-7"
+                              className="w-full h-8"
                               onError={(e) => {
                                 console.error("Audio playback error:", e);
-                                (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[9px] text-red-500 font-bold mt-1">Error loading audio</p>');
+                                (e.target as any).insertAdjacentHTML('afterend', '<p class="text-[10px] text-red-500 font-bold mt-1">Error loading audio</p>');
                               }}
                             />
                           </div>
                         )}
 
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-3 mt-4">
                           {isQuoted ? (
                             <button
                               disabled
-                              className="flex-1 py-2.5 bg-muted text-muted-foreground border border-border rounded-lg text-xs font-bold shadow-sm cursor-not-allowed flex items-center justify-center gap-1.5"
+                              className="flex-1 py-3 bg-white text-muted-foreground border-2 border-[#FDE68A] rounded-[16px] text-[13px] font-bold cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                              ⏳ Waiting for customer response
+                              ⏳ Waiting for customer...
                             </button>
                           ) : (
                             <>
-                              <button
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => setQuotingBroadcast(b)}
-                                className="flex-1 py-2 bg-accent text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"
+                                className="flex-1 py-3 bg-accent text-white rounded-[16px] text-[13px] font-bold shadow-md shadow-accent/20"
                               >
                                 Provide Quote
-                              </button>
-                              <button
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
-                                className="px-3 py-2 border border-[#FCD34D] text-[#B45309] rounded-lg text-xs font-bold bg-[#FEF3C7] active:scale-95 transition-transform"
+                                className="px-4 py-3 border-2 border-transparent hover:border-[#FDE68A] text-[#B45309] rounded-[16px] text-[13px] font-bold bg-[#FEF3C7]"
                               >
                                 Skip
-                              </button>
+                              </motion.button>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Stats Row */}
-        <div className="px-5 mb-6 mt-6">
-          <div className="flex overflow-x-auto pb-2 gap-3 no-scrollbar -mx-5 px-5">
-            <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[130px] shadow-card flex-shrink-0">
-              <div className="flex items-center gap-1.5 mb-2 text-emerald-600">
-                <Wallet size={14} />
-                <span className="text-[10px] uppercase tracking-wider font-bold">Earnings Today</span>
+        <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
+          <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar -mx-5 px-5">
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+                <Wallet size={14} strokeWidth={2.5} />
+                <span className="text-[10px] uppercase tracking-widest font-black">Earnings</span>
               </div>
-              <p className="text-xl font-extrabold text-foreground">₹{earnings} <span className="text-[10px] font-medium text-muted-foreground"> earned</span></p>
-            </div>
-            <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[120px] shadow-card flex-shrink-0">
-              <div className="flex items-center gap-1.5 mb-2 text-primary">
-                <Briefcase size={14} />
-                <span className="text-[10px] uppercase tracking-wider font-bold">Completed</span>
+              <p className="text-[24px] font-black text-foreground tracking-tight">₹{earnings}</p>
+              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Earned Today</p>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+              <div className="flex items-center gap-2 mb-3 text-primary bg-primary/10 w-fit px-2.5 py-1 rounded-lg">
+                <Briefcase size={14} strokeWidth={2.5} />
+                <span className="text-[10px] uppercase tracking-widest font-black">Completed</span>
               </div>
-              <p className="text-xl font-extrabold text-foreground">{completedJobs.length} <span className="text-[10px] font-medium text-muted-foreground"> jobs</span></p>
-            </div>
-            <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[110px] shadow-card flex-shrink-0">
-              <div className="flex items-center gap-1.5 mb-2 text-warning">
-                <Star size={14} fill="currentColor" />
-                <span className="text-[10px] uppercase tracking-wider font-bold">Rating</span>
+              <p className="text-[24px] font-black text-foreground tracking-tight">{completedJobs.length}</p>
+              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Total Jobs</p>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-accent/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+              <div className="flex items-center gap-2 mb-3 text-accent bg-accent/10 w-fit px-2.5 py-1 rounded-lg">
+                <Star size={14} fill="currentColor" strokeWidth={2.5} />
+                <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
               </div>
-              <p className="text-xl font-extrabold text-foreground">{providerStats.rating} <span className="text-[10px] font-medium text-muted-foreground">/ 5.0</span></p>
-            </div>
-            <div className="bg-card border border-border rounded-2xl p-3.5 min-w-[120px] shadow-card flex-shrink-0">
-              <div className="flex items-center gap-1.5 mb-2 text-success">
-                <TrendingUp size={14} />
-                <span className="text-[10px] uppercase tracking-wider font-bold">Response</span>
+              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.rating}</p>
+              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+                <TrendingUp size={14} strokeWidth={2.5} />
+                <span className="text-[10px] uppercase tracking-widest font-black">Response</span>
               </div>
-              <p className="text-xl font-extrabold text-foreground">{providerStats.responseRate}<span className="text-[10px] font-medium text-muted-foreground">%</span></p>
-            </div>
+              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.responseRate}%</p>
+              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Acceptance Rate</p>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* AI Tip Card */}
-        <div className="px-5 mb-6">
-          <div className="bg-white border border-border/50 rounded-[14px] p-4 flex gap-3 items-start shadow-sm">
-            <div className="bg-primary/5 p-2.5 rounded-xl flex-shrink-0">
-              <Lightbulb size={20} className="text-primary" />
+        <motion.div variants={itemVariants} className="px-5 mb-6">
+          <div className="bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 rounded-[20px] p-5 flex gap-4 items-start shadow-sm relative overflow-hidden">
+            <div className="w-12 h-12 rounded-[16px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 relative z-10">
+              <Lightbulb size={24} className="text-primary" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-foreground mb-1">Smart Suggestion</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Stay online to receive real-time job requests and increase your earnings.
+            <div className="relative z-10">
+              <p className="text-[14px] font-extrabold text-foreground mb-1 tracking-tight">Smart Suggestion</p>
+              <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
+                Stay online to receive real-time job requests and increase your daily earnings.
               </p>
             </div>
+            <div className="absolute top-[-20%] right-[-10%] w-[100px] h-[100px] bg-primary/10 rounded-full blur-[30px] pointer-events-none" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Actions */}
-        <div className="px-5 mb-6">
-          <h2 className="text-sm font-bold text-foreground mb-3">Quick Actions</h2>
+        <motion.div variants={itemVariants} className="px-5 mb-8">
+          <h2 className="text-[16px] font-extrabold text-foreground mb-4 tracking-tight">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/provider/jobs')}
-              className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
+              className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-primary/10 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
-                <ClipboardCheck size={22} />
+              <div className="w-12 h-12 rounded-[16px] bg-[#F8FAFC] flex items-center justify-center text-primary">
+                <ClipboardCheck size={24} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">My Jobs</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
+                <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Jobs</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
               </div>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/provider/earnings')}
-              className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
+              className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-emerald-500/10 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
-                <Wallet size={22} />
+              <div className="w-12 h-12 rounded-[16px] bg-[#F8FAFC] flex items-center justify-center text-emerald-500">
+                <Wallet size={24} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">My Earnings</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">₹{earnings} earned</p>
+                <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Earnings</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">₹{earnings} earned</p>
               </div>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/provider/portfolio')}
-              className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
+              className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-purple-500/10 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
-                <Images size={22} />
+              <div className="w-12 h-12 rounded-[16px] bg-[#F8FAFC] flex items-center justify-center text-purple-500">
+                <Images size={24} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">My Portfolio</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Showcase work</p>
+                <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Portfolio</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Showcase work</p>
               </div>
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/provider/documents')}
-              className="bg-white rounded-[14px] p-4 flex flex-col items-start gap-3 shadow-sm border border-border/50 active:scale-[0.97] active:bg-primary/5 transition-all duration-200 group text-left"
+              className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-blue-500/10 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary transition-colors">
-                <FileText size={22} />
+              <div className="w-12 h-12 rounded-[16px] bg-[#F8FAFC] flex items-center justify-center text-blue-500">
+                <FileText size={24} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">My Documents</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">KYC & Verification</p>
+                <p className="text-[14px] font-extrabold text-foreground tracking-tight">Documents</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">KYC & Verify</p>
               </div>
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Incoming Requests */}
-        <div className="px-5 mb-6">
-          <h2 className="text-sm font-bold text-foreground mb-3">Incoming Requests</h2>
+        <motion.div variants={itemVariants} className="px-5 mb-8">
+          <h2 className="text-[16px] font-extrabold text-foreground mb-4 tracking-tight">Incoming Direct Requests</h2>
           {!isOnline ? (
-            <div className="bg-muted border border-border border-dashed rounded-2xl p-6 text-center shadow-sm">
-              <Power size={24} className="text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-bold text-foreground">You are currently offline</p>
-              <p className="text-xs text-muted-foreground mt-1">Go online to receive new job requests in your area.</p>
+            <div className="bg-[#F8FAFC] border-2 border-dashed border-[#E2E8F0] rounded-[24px] p-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
+                <Power size={24} className="text-muted-foreground" />
+              </div>
+              <p className="text-[15px] font-extrabold text-foreground">You are currently offline</p>
+              <p className="text-[13px] text-muted-foreground mt-2 font-medium">Go online to receive direct requests.</p>
             </div>
           ) : isBusy ? (
-            <div className="bg-amber-50/50 border border-amber-200 border-dashed rounded-2xl p-6 text-center shadow-sm">
-              <AlertTriangle size={24} className="text-amber-500 mx-auto mb-2" />
-              <p className="text-sm font-bold text-amber-800">You are currently busy</p>
-              <p className="text-xs text-amber-600 mt-1">Finish your current active job to receive new incoming direct requests.</p>
+            <div className="bg-amber-50 border-2 border-dashed border-amber-200 rounded-[24px] p-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={24} className="text-amber-500" />
+              </div>
+              <p className="text-[15px] font-extrabold text-amber-800">You are currently busy</p>
+              <p className="text-[13px] text-amber-700 mt-2 font-medium">Finish your active job to receive new requests.</p>
             </div>
           ) : pending.length === 0 ? (
-            <EmptyState icon={Inbox} title="No new requests" description="New jobs will appear here." />
+            <EmptyState icon={Inbox} title="No new requests" description="Direct requests will appear here." />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {pending.map((r) => {
                 const service = getServiceById(r.serviceId);
                 return (
-                  <div key={r.id} className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                    <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-                        {service && <service.icon size={18} className="text-primary-foreground" />}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={r.id} 
+                    className="bg-white border-2 border-transparent hover:border-primary/10 rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-[16px] bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+                        {service && <service.icon size={20} className="text-white" strokeWidth={2} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground">{r.customerName}</p>
-                        <p className="text-[10px] text-muted-foreground">{service?.label} · ₹{r.price}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1"><MapPin size={10} /> {r.address}</span>
-                          <span className="flex items-center gap-1"><Calendar size={10} /> {r.date}</span>
-                          <span className="flex items-center gap-1"><Clock size={10} /> {r.time}</span>
+                        <p className="text-[15px] font-extrabold text-foreground tracking-tight">{r.customerName}</p>
+                        <p className="text-[11px] font-black text-primary uppercase tracking-widest mt-0.5">{service?.label} · ₹{r.price}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-[12px] font-semibold text-muted-foreground">
+                          <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md"><MapPin size={12} /> {r.address}</span>
+                          <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md"><Calendar size={12} /> {r.date}</span>
+                          <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md"><Clock size={12} /> {r.time}</span>
                         </div>
-                        {r.notes && <p className="text-[11px] text-foreground mt-2 italic">"{r.notes}"</p>}
+                        {r.notes && <p className="text-[12px] text-foreground mt-3 italic font-medium border-l-2 border-primary/20 pl-3">"{r.notes}"</p>}
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-3">
-                      <button
+                    <div className="flex gap-2 mt-5">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           socket.emit("update_job_status", { jobId: r.id, status: "accepted" });
                           dispatch({ type: "ACCEPT_REQUEST", id: r.id });
                           navigate(`/provider/job/${r.id}`);
                         }}
-                        className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                        className="flex-1 py-3 rounded-[16px] bg-primary text-white text-[13px] font-bold flex items-center justify-center gap-2 shadow-md shadow-primary/20"
                       >
-                        <Check size={14} /> Accept
-                      </button>
-                      <button
+                        <Check size={16} strokeWidth={2.5} /> Accept
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setSelectedJob(r)}
-                        className="flex-1 py-2.5 rounded-xl bg-input border border-border text-foreground text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                        className="flex-1 py-3 rounded-[16px] bg-[#F8FAFC] text-foreground text-[13px] font-bold flex items-center justify-center gap-2"
                       >
-                        <Eye size={14} /> Details
-                      </button>
-                      <button
+                        <Eye size={16} strokeWidth={2.5} /> Details
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           dispatch({ type: "REJECT_REQUEST", id: r.id });
                         }}
-                        className="flex-1 py-2.5 rounded-xl bg-input border border-border text-foreground text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                        className="flex-1 py-3 rounded-[16px] bg-red-50 text-red-600 text-[13px] font-bold flex items-center justify-center gap-2"
                       >
-                        <X size={14} /> Reject
-                      </button>
+                        <X size={16} strokeWidth={2.5} /> Reject
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Upcoming Bookings */}
         {accepted.length > 0 && (
-          <div className="px-5 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-foreground">Upcoming Bookings</h2>
-              <button className="text-[11px] font-bold text-primary flex items-center">
-                See all <ChevronRight size={12} />
+          <motion.div variants={itemVariants} className="px-5 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[16px] font-extrabold text-foreground tracking-tight">Upcoming Bookings</h2>
+              <button className="text-[12px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                See all <ChevronRight size={14} strokeWidth={2.5} />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {accepted.map((r) => (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   key={r.id}
                   onClick={() => navigate(`/provider/job/${r.id}`)}
-                  className="w-full bg-primary rounded-2xl p-4 text-left active:scale-[0.98] shadow-md flex items-center justify-between"
+                  className="w-full bg-primary rounded-[24px] p-5 text-left shadow-[0_8px_30px_rgba(21,46,75,0.2)] flex items-center justify-between relative overflow-hidden group"
                 >
-                  <div>
-                    <p className="text-xs text-blue-200/80 mb-0.5">{r.date} at {r.time}</p>
-                    <p className="text-base font-bold text-white">{getServiceById(r.serviceId)?.label}</p>
-                    <p className="text-xs text-white/80 mt-1 flex items-center gap-1">
-                      <User size={12} /> {r.customerName}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[20px] pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
+                  <div className="relative z-10">
+                    <p className="text-[12px] font-bold text-primary-foreground/70 mb-1">{r.date} at {r.time}</p>
+                    <p className="text-[18px] font-extrabold text-white tracking-tight">{getServiceById(r.serviceId)?.label}</p>
+                    <p className="text-[13px] font-medium text-white/90 mt-2 flex items-center gap-2">
+                      <User size={14} /> {r.customerName}
                     </p>
                   </div>
-                  <ChevronRight size={20} className="text-white/50" />
-                </button>
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center relative z-10 backdrop-blur-sm group-hover:bg-white/20 transition-colors">
+                    <ChevronRight size={20} className="text-white" strokeWidth={2.5} />
+                  </div>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Recent Activity */}
-        <div className="px-5 pb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-foreground">Recent Activity</h2>
+        <motion.div variants={itemVariants} className="px-5 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[16px] font-extrabold text-foreground tracking-tight">Recent Activity</h2>
           </div>
-          <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
+          <div className="bg-white border-2 border-transparent rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
             {completedJobs.slice(0, 3).map((job, idx) => {
               const req = providerRequests.find(r => r.id === job.id);
               const service = req ? getServiceById(req.serviceId) : null;
 
               return (
-                <div key={job.id} className={`p-4 flex items-center justify-between ${idx !== 0 ? 'border-t border-border' : ''}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                      <Check size={16} className="text-success" />
+                <div key={job.id} className={`p-5 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors cursor-pointer ${idx !== 0 ? 'border-t-2 border-[#F8FAFC]' : ''}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-[16px] bg-emerald-50 flex items-center justify-center">
+                      <Check size={20} className="text-emerald-500" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-foreground">{service?.label || "Service Completed"}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{job.date || 'Today'}</p>
+                      <p className="text-[15px] font-extrabold text-foreground tracking-tight">{service?.label || "Service Completed"}</p>
+                      <p className="text-[12px] font-bold text-muted-foreground mt-0.5">{job.date || 'Today'}</p>
                     </div>
                   </div>
-                  <p className="text-sm font-extrabold text-foreground">+₹{job.price}</p>
+                  <p className="text-[16px] font-black text-emerald-600">+₹{job.price}</p>
                 </div>
               );
             })}
             {completedJobs.length === 0 && (
-              <div className="p-5 text-center">
-                <p className="text-sm text-muted-foreground">No recent activity yet.</p>
+              <div className="p-8 text-center">
+                <p className="text-[14px] font-bold text-muted-foreground">No recent activity yet.</p>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
-      </div>
+      </motion.div>
 
       <ProviderBottomNav />
 
