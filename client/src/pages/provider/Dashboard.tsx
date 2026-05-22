@@ -16,6 +16,7 @@ import LocationModal from "@/components/LocationModal";
 import { socket } from "@/lib/socket";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCallback } from "react";
 
 const Dashboard = () => {
@@ -282,7 +283,6 @@ const Dashboard = () => {
     setQuotePrice("");
   };
 
-import { motion, AnimatePresence } from "framer-motion";
 
   const containerVariants = {
     hidden: { opacity: 0 },
