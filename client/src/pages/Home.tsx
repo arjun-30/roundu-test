@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
   Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
-  Loader2,
+  Loader2, Zap, Droplet, Paintbrush, Hammer, ShieldAlert,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, smartSuggestions, SmartSuggestion } from "@/data/mockData";
@@ -15,6 +15,47 @@ import { motion, AnimatePresence } from "framer-motion";
 import AdBannerCarousel from "@/components/AdBannerCarousel";
 import api from "@/lib/api";
 
+
+const getSuggestionIconConfig = (serviceId: string) => {
+  switch (serviceId) {
+    case "electrician":
+      return {
+        icon: Zap,
+        bgColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+        badge: "⚡ Smart Match",
+      };
+    case "plumber":
+      return {
+        icon: Droplet,
+        bgColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        badge: "💧 System Health",
+      };
+    case "painter":
+      return {
+        icon: Paintbrush,
+        bgColor: "bg-pink-500/10 text-pink-500 border-pink-500/20",
+        badge: "🎨 Home Upgrade",
+      };
+    case "carpenter":
+      return {
+        icon: Hammer,
+        bgColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+        badge: "🔨 Precision Fit",
+      };
+    case "pestcontrol":
+      return {
+        icon: ShieldAlert,
+        bgColor: "bg-red-500/10 text-red-500 border-red-500/20",
+        badge: "🛡️ Safe Guard",
+      };
+    default:
+      return {
+        icon: Wrench,
+        bgColor: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+        badge: "✨ Recommended",
+      };
+  }
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -424,7 +465,7 @@ const Home = () => {
             <div className="px-5 flex items-end justify-between mb-4">
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Sparkles size={14} className="text-accent" />
+                  <Sparkles size={15} className="text-primary" />
                   <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Recommended for You</h2>
                 </div>
                 <p className="text-[13px] text-muted-foreground">Personalized picks based on your activity</p>
@@ -434,44 +475,54 @@ const Home = () => {
               </button>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
-              {rankedSuggestions.map((sugg, idx) => (
-                <button
-                  key={sugg.id}
-                  onClick={() => goToProviders(sugg.serviceId)}
-                  className="w-[260px] flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-border snap-start text-left group relative transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.97]"
-                >
-                  {/* Gradient header bar */}
-                  <div className={`h-2 w-full ${sugg.accentColor}`} />
+            <div className="flex gap-4 overflow-x-auto px-5 pb-5 scrollbar-hide snap-x snap-mandatory">
+              {rankedSuggestions.map((sugg) => {
+                const conf = getSuggestionIconConfig(sugg.serviceId);
+                const IconComponent = conf.icon;
+                return (
+                  <button
+                    key={sugg.id}
+                    onClick={() => goToProviders(sugg.serviceId)}
+                    className="w-[280px] flex-shrink-0 bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)] snap-start text-left group relative transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 active:scale-[0.98]"
+                  >
+                    {/* Top row with Category and Smart Badge */}
+                    <div className="flex items-center justify-between mb-3.5">
+                      <span className="text-[10px] font-black tracking-widest uppercase text-muted-foreground/60">
+                        {sugg.category}
+                      </span>
+                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border ${conf.bgColor} transition-all duration-300`}>
+                        {sugg.season === currentSeason ? "🍁 Seasonal Pick" : conf.badge}
+                      </span>
+                    </div>
 
-                  <div className="p-5">
-                    <div className="flex items-start gap-3">
-                      {/* Big emoji */}
-                      <div className={`w-14 h-14 rounded-[18px] ${sugg.accentColor} flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                        {sugg.emoji}
+                    {/* Middle row: Icon and Title */}
+                    <div className="flex items-start gap-4">
+                      {/* Premium glass icon wrap */}
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 ${conf.bgColor} group-hover:scale-105`}>
+                        <IconComponent size={20} strokeWidth={2.2} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[9px] font-extrabold tracking-[0.15em] uppercase text-muted-foreground">
-                            {sugg.category}
-                          </span>
-                          {sugg.season === currentSeason && (
-                            <span className="text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                              Seasonal
-                            </span>
-                          )}
-                        </div>
-                        <h3 className={`text-[15px] font-bold leading-tight ${sugg.textColor}`}>{sugg.title}</h3>
-                        <p className="text-[11px] text-muted-foreground mt-1 leading-snug line-clamp-2">{sugg.subtitle}</p>
+                        <h3 className="text-[15px] font-extrabold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                          {sugg.title}
+                        </h3>
+                        <p className="text-[12px] text-muted-foreground mt-1 leading-normal line-clamp-2">
+                          {sugg.subtitle}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 w-full bg-primary/5 hover:bg-primary text-primary hover:text-white font-bold text-[13px] py-2.5 rounded-xl transition-all text-center group-hover:shadow-md group-hover:shadow-primary/20">
-                      View Providers
+                    {/* Action button inside card */}
+                    <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-50">
+                      <span className="text-[12px] font-bold text-primary group-hover:underline">
+                        Explore Providers
+                      </span>
+                      <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                        <ChevronRight size={14} />
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
