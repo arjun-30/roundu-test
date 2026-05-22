@@ -1,10 +1,61 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation, Play, CheckCircle2, Car, Timer, Loader2, MessageCircle, Mic } from "lucide-react";
+import {
+  ArrowLeft, MapPin, Calendar, Clock, Phone, Navigation,
+  Play, CheckCircle2, Car, Timer, Loader2, MessageCircle,
+  Mic, Navigation2, Flag, Wrench
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
+
+// 4 core stages shown to both provider and customer
+const JOB_STAGES = [
+  {
+    key: "on_the_way",
+    label: "Started",
+    subtitle: "Heading to customer",
+    icon: Navigation2,
+    color: "bg-indigo-500",
+    ring: "ring-indigo-300",
+    light: "bg-indigo-50",
+    text: "text-indigo-700",
+  },
+  {
+    key: "arrived",
+    label: "Arrived",
+    subtitle: "At customer location",
+    icon: MapPin,
+    color: "bg-orange-500",
+    ring: "ring-orange-300",
+    light: "bg-orange-50",
+    text: "text-orange-700",
+  },
+  {
+    key: "in_progress",
+    label: "Ongoing",
+    subtitle: "Service in progress",
+    icon: Wrench,
+    color: "bg-blue-600",
+    ring: "ring-blue-300",
+    light: "bg-blue-50",
+    text: "text-blue-700",
+  },
+  {
+    key: "completed",
+    label: "Completed",
+    subtitle: "Job finished",
+    icon: Flag,
+    color: "bg-green-500",
+    ring: "ring-green-300",
+    light: "bg-green-50",
+    text: "text-green-700",
+  },
+] as const;
+
+type StageKey = typeof JOB_STAGES[number]["key"];
+const STATUS_ORDER: string[] = ["accepted", "assigned", "on_the_way", "arrived", "in_progress", "completed"];
 
 const Job = () => {
   const navigate = useNavigate();
@@ -33,40 +84,35 @@ const Job = () => {
       navigate("/provider");
     }
   };
+
   const job = providerRequests.find((r) => r.id === id);
 
-  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false); // kept for future use
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [notification, setNotification] = useState("");
+  const [notifType, setNotifType] = useState<"info" | "success">("info");
 
-  const showNotification = (msg: string) => {
+  const showNotification = (msg: string, type: "info" | "success" = "info") => {
     setNotification(msg);
+    setNotifType(type);
     setTimeout(() => setNotification(""), 3000);
   };
 
   useEffect(() => {
     let timer: NodeJS.Timeout | number;
     if (job?.status === "in_progress") {
-      timer = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
+      timer = setInterval(() => { setElapsedSeconds((prev) => prev + 1); }, 1000);
     }
     return () => clearInterval(timer);
   }, [job?.status]);
 
-  // Don't redirect immediately — state from ADD_REQUEST may not have propagated yet.
-  // Wait up to 3 seconds before giving up and going back to dashboard.
   const [notFoundTimer, setNotFoundTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!job) {
-      const t = setTimeout(() => {
-        navigate("/provider", { replace: true });
-      }, 3000);
+      const t = setTimeout(() => { navigate("/provider", { replace: true }); }, 3000);
       setNotFoundTimer(t);
       return () => clearTimeout(t);
     } else {
-      // Job found — cancel any pending redirect
       if (notFoundTimer) clearTimeout(notFoundTimer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,29 +126,25 @@ const Job = () => {
       </div>
     );
   }
+
   const service = getServiceById(job.serviceId);
 
-  const markOnTheWay = () => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "on_the_way" } });
-    socket.emit("update_job_status", { bookingId: job.id, status: "on_the_way" });
-    showNotification("Customer notified that you are on the way!");
+  // ── Stage helpers ────────────────────────────────────────────────────────
+  const currentStatusIndex = STATUS_ORDER.indexOf(job.status);
+  const getStageIndex = (stageKey: StageKey) => STATUS_ORDER.indexOf(stageKey);
+  const isStageCompleted = (stageKey: StageKey) => currentStatusIndex > getStageIndex(stageKey);
+  const isStageActive = (stageKey: StageKey) => job.status === stageKey;
+
+  // ── Emit helpers ─────────────────────────────────────────────────────────
+  const emitStatus = (status: string) => {
+    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status } });
+    socket.emit("update_job_status", { bookingId: job.id, status });
   };
 
-  const markArrived = () => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
-    socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
-    showNotification("Customer notified that you have arrived!");
-  };
-
-  const startService = () => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "in_progress" } });
-    socket.emit("update_job_status", { bookingId: job.id, status: "in_progress" });
-    showNotification("Service started! Customer has been notified.");
-  };
-
-  const completeJob = () => {
-    navigate(`/provider/job/${job.id}/report`);
-  };
+  const markOnTheWay = () => { emitStatus("on_the_way"); showNotification("🚗 Customer notified — you're on the way!", "info"); };
+  const markArrived  = () => { emitStatus("arrived");    showNotification("📍 Customer notified — you've arrived!", "info"); };
+  const startService = () => { emitStatus("in_progress"); showNotification("🔧 Service started! Customer notified.", "success"); };
+  const completeJob  = () => { emitStatus("completed"); navigate(`/provider/job/${job.id}/report`); };
 
   const handleCall = () => {
     const phone = job?.customerPhone || "+919876543210";
@@ -120,22 +162,19 @@ const Job = () => {
       showNotification("No address available for navigation");
       return;
     }
-    // '_system' opens Google Maps app on Android (Capacitor)
     window.open(url, '_system');
   };
 
+  // ── CTA per status ───────────────────────────────────────────────────────
   const renderActionBar = () => {
     switch (job.status) {
       case "accepted":
       case "assigned":
         return (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={markOnTheWay}
-            className="w-full py-4 rounded-[24px] bg-primary text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(249,115,22,0.25)] transition-all"
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={markOnTheWay}
+            className="w-full py-4 rounded-[24px] bg-indigo-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(99,102,241,0.25)] transition-all"
           >
-            <Navigation size={20} strokeWidth={2.5} /> I'm On the Way
+            <Navigation2 size={20} strokeWidth={2.5} /> I'm On the Way
           </motion.button>
         );
       case "on_the_way":
@@ -148,23 +187,13 @@ const Job = () => {
               <p className="text-[12px] font-medium text-[#4338CA] mt-2">Status updates automatically when you arrive within 100m</p>
             </div>
             <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={openNavigation}
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openNavigation}
                 className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
               >
                 <Navigation size={18} strokeWidth={2.5} /> Navigate
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status: "arrived" } });
-                  socket.emit("update_job_status", { bookingId: job.id, status: "arrived" });
-                  showNotification("Marked as arrived!");
-                }}
-                className="flex-[1.5] py-4 rounded-[20px] bg-accent text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(245,158,11,0.25)]"
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={markArrived}
+                className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(249,115,22,0.25)]"
               >
                 <MapPin size={18} strokeWidth={2.5} /> Mark Arrived
               </motion.button>
@@ -173,13 +202,10 @@ const Job = () => {
         );
       case "arrived":
         return (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={startService}
-            className="w-full py-4 rounded-[24px] bg-primary text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(249,115,22,0.25)] transition-all"
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={startService}
+            className="w-full py-4 rounded-[24px] bg-blue-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(37,99,235,0.25)] transition-all"
           >
-            <Play size={20} strokeWidth={2.5} /> Start Service
+            <Wrench size={20} strokeWidth={2.5} /> Start Service
           </motion.button>
         );
       case "in_progress": {
@@ -192,18 +218,12 @@ const Job = () => {
               <span className="text-[24px] font-black text-[#0284C7] font-mono tracking-tight">{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
             </div>
             <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={openNavigation}
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openNavigation}
                 className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
               >
                 <Navigation size={18} strokeWidth={2.5} /> Navigate
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={completeJob}
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={completeJob}
                 className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(16,185,129,0.25)] transition-all"
               >
                 <CheckCircle2 size={18} strokeWidth={2.5} /> Complete Job
@@ -219,45 +239,74 @@ const Job = () => {
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-[140px]">
-      <motion.div 
+      {/* Header */}
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="px-5 pt-6 pb-4 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm"
       >
         <div className="flex items-center gap-4">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleBack} 
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleBack}
             className="w-12 h-12 rounded-[16px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
           >
             <ArrowLeft size={24} className="text-foreground" strokeWidth={2.5} />
           </motion.button>
           <h1 className="text-[20px] font-extrabold text-foreground tracking-tight">Active Job</h1>
         </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-green-600 font-semibold">Live</span>
+        </div>
       </motion.div>
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="px-5 flex-1 space-y-6 mt-4"
-      >
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="px-5 flex-1 space-y-5 mt-4">
+
+        {/* Notification */}
         <AnimatePresence>
           {notification && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-[#EFF6FF] text-[#1D4ED8] p-4 rounded-[20px] text-[13px] font-bold shadow-sm border border-[#BFDBFE]">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className={`p-4 rounded-[20px] text-[13px] font-bold shadow-sm border ${
+                notifType === "success"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+              }`}>
                 {notification}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* ── 4-Stage Progress Stepper ─────────────────────────────────── */}
+        <motion.div variants={itemVariants} className="bg-white border-2 border-transparent rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+          <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground mb-4">Job Progress</p>
+          <div className="flex items-start gap-0">
+            {JOB_STAGES.map((stage, idx) => {
+              const done = isStageCompleted(stage.key);
+              const active = isStageActive(stage.key);
+              const Icon = stage.icon;
+              return (
+                <div key={stage.key} className="flex-1 flex flex-col items-center relative">
+                  {idx < JOB_STAGES.length - 1 && (
+                    <div className="absolute top-4 left-1/2 w-full h-0.5 z-0">
+                      <div className={`h-full transition-all duration-700 ${done ? stage.color : "bg-border"}`} />
+                    </div>
+                  )}
+                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${
+                    done ? `${stage.color} shadow-md` : active ? `${stage.color} shadow-lg ring-4 ${stage.ring} scale-110` : "bg-input border-2 border-border"
+                  }`}>
+                    <Icon size={14} className={done || active ? "text-white" : "text-muted-foreground"} />
+                    {active && <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-current" />}
+                  </div>
+                  <p className={`text-[9px] font-bold mt-1.5 text-center leading-tight transition-colors ${done || active ? "text-foreground" : "text-muted-foreground"}`}>
+                    {stage.label}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Customer card */}
         <motion.div variants={itemVariants} className="bg-white border-2 border-transparent rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-[20px] bg-primary flex items-center justify-center text-white font-black text-[20px] shadow-lg shadow-primary/20">
@@ -268,20 +317,14 @@ const Job = () => {
               <p className="text-[13px] font-bold text-primary mt-1">{service?.label}</p>
             </div>
           </div>
-          
+
           <div className="flex gap-3 mt-6">
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleCall} 
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleCall}
               className="flex-1 h-12 rounded-[16px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center gap-2 text-[14px] font-extrabold text-foreground transition-colors"
             >
               <Phone size={18} className="text-primary" strokeWidth={2.5} /> Call
             </motion.button>
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(`/chat/${job.id}`)} 
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => navigate(`/chat/${job.id}`)}
               className="flex-1 h-12 rounded-[16px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center gap-2 text-[14px] font-extrabold text-foreground transition-colors"
             >
               <MessageCircle size={18} className="text-primary" strokeWidth={2.5} /> Chat
@@ -289,7 +332,7 @@ const Job = () => {
           </div>
 
           <div className="h-px bg-border/50 my-6" />
-          
+
           <div className="space-y-4">
             <Row icon={MapPin} text={job.address} />
             <Row icon={Calendar} text={job.date} />
@@ -315,20 +358,14 @@ const Job = () => {
                 <Mic size={14} className="text-primary" strokeWidth={2.5} /> Voice Note
               </p>
               <div className="bg-[#F8FAFC] rounded-[16px] p-4 border border-border/50 shadow-sm">
-                <audio 
-                  src={job.voiceNoteUrl} 
-                  controls 
-                  className="w-full h-10 accent-primary"
-                />
+                <audio src={job.voiceNoteUrl} controls className="w-full h-10 accent-primary" />
               </div>
             </>
           )}
         </motion.div>
 
-        <motion.button
-          variants={itemVariants}
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+        {/* Navigation */}
+        <motion.button variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
           onClick={openNavigation}
           className="w-full bg-white border-2 border-transparent hover:border-primary/10 rounded-[24px] p-5 flex items-center gap-4 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all"
         >
@@ -337,20 +374,21 @@ const Job = () => {
           </div>
           <div className="flex-1 text-left">
             <p className="text-[16px] font-extrabold text-foreground tracking-tight">Open Navigation</p>
-            <p className="text-[12px] font-medium text-muted-foreground mt-1">{job.lat ? "GPS coordinates ready" : job.address}</p>
+            <p className="text-[12px] font-medium text-muted-foreground mt-1">{(job as any).lat ? "GPS coordinates ready" : job.address}</p>
           </div>
         </motion.button>
 
+        {/* Earnings */}
         <motion.div variants={itemVariants} className="bg-emerald-50 border-2 border-emerald-100 rounded-[24px] p-6 text-center shadow-sm">
           <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 mb-2">Estimated Earnings</p>
-          <p className="text-[32px] font-black text-emerald-700 tracking-tight">₹{job.quote || job.price}</p>
+          <p className="text-[32px] font-black text-emerald-700 tracking-tight">₹{job.quote || (job as any).price}</p>
         </motion.div>
       </motion.div>
 
+      {/* Fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-6 bg-white/80 backdrop-blur-md border-t border-border z-10">
         {renderActionBar()}
       </div>
-
     </div>
   );
 };

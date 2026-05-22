@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Send, Phone, MoreVertical, MessageSquare,
-  Mic, Square, Trash2, Play, Pause, CheckCheck, Check, MicOff,
-  Navigation
+  Mic, Square, Trash2, Play, Pause, CheckCheck, MicOff,
+  Navigation, Minus, ChevronUp
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getProviderById } from "@/data/mockData";
@@ -16,6 +16,8 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user, role, bookings, providerRequests, chatHistories, onlineUsers, dispatch } = useApp() as any;
 
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [message, setMessage] = useState("");
   const [notification, setNotification] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -36,6 +38,7 @@ const Chat = () => {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const prevMsgCountRef = useRef(0);
 
   // 1. Resolve booking / request / participant details
   const booking = bookings.find((b: any) => String(b.id) === id || String(b.id) === String(id).replace('req-', ''));
@@ -72,17 +75,33 @@ const Chat = () => {
     setTimeout(() => setNotification(""), 3000);
   };
 
+  // Track new messages while minimized
+  useEffect(() => {
+    if (isMinimized && messages.length > prevMsgCountRef.current) {
+      setUnreadCount(c => c + (messages.length - prevMsgCountRef.current));
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length, isMinimized]);
+
+  // Clear unread when maximized
+  const handleMaximize = () => {
+    setIsMinimized(false);
+    setUnreadCount(0);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
   // 2. Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, partnerTyping]);
+    if (!isMinimized) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, partnerTyping, isMinimized]);
 
   // 3. Join chat room, listen for typing, fetch history, and mark seen
   useEffect(() => {
     if (!roomId) return;
     socket.emit("join_chat_room", { bookingId: String(roomId) });
 
-    // Fetch history
     if (!chatHistories[roomId] || chatHistories[roomId].length === 0) {
       getChatHistory(roomId).then(res => {
         if (res.success) {
@@ -99,7 +118,6 @@ const Chat = () => {
       }).catch(err => console.error("Failed to load chat history:", err));
     }
 
-    // Mark seen
     if (participantId) {
       socket.emit("mark_messages_seen", { bookingId: String(roomId), recipientId: user.id });
     }
@@ -164,11 +182,8 @@ const Chat = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
         setAudioBlobUrl(url);
-        // Convert to base64 for socket transport
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setAudioBase64(reader.result as string);
-        };
+        reader.onloadend = () => { setAudioBase64(reader.result as string); };
         reader.readAsDataURL(blob);
         stream.getTracks().forEach((t) => t.stop());
       };
@@ -222,10 +237,65 @@ const Chat = () => {
 
   const formatSeconds = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  // ── Minimized floating pill ──────────────────────────────────────────────
+  if (isMinimized) {
+    return (
+      <div className="h-screen flex flex-col bg-[#F0F4F8] font-['DM_Sans',sans-serif] relative">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-30 select-none pointer-events-none px-8 text-center">
+          <MessageSquare size={52} className="text-primary" />
+          <p className="text-sm font-bold text-muted-foreground">Chat minimized</p>
+        </div>
+
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-5 left-4 w-10 h-10 rounded-[14px] bg-white border border-[#E1E8EF] flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+        >
+          <ArrowLeft size={18} className="text-primary" />
+        </button>
+
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="absolute bottom-8 left-4 right-4"
+        >
+          <button
+            onClick={handleMaximize}
+            className="w-full flex items-center gap-3 bg-white border border-[#E1E8EF] rounded-[20px] px-4 py-3.5 shadow-xl active:scale-[0.98] transition-transform"
+          >
+            <div className="relative flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-primary/20">
+                {participantAvatar}
+              </div>
+              <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isPartnerOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+            </div>
+
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-[14px] font-extrabold text-foreground truncate">{participantName}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {partnerTyping ? "typing…" : isPartnerOnline ? "Online · tap to chat" : "Offline · tap to chat"}
+              </p>
+            </div>
+
+            {unreadCount > 0 && (
+              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow">
+                <span className="text-[10px] text-white font-black">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              </div>
+            )}
+
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <ChevronUp size={16} className="text-primary" />
+            </div>
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Full chat UI ─────────────────────────────────────────────────────────
   return (
     <div className="h-screen flex flex-col bg-[#F0F4F8] font-['DM_Sans',sans-serif]">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="px-4 pt-5 pb-3 flex items-center gap-3 bg-white border-b border-[#E1E8EF] shadow-sm z-10"
@@ -257,22 +327,31 @@ const Chat = () => {
           </p>
         </div>
 
+        {/* Minimize button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsMinimized(true)}
+          className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+          title="Minimize chat"
+        >
+          <Minus size={16} className="text-muted-foreground" strokeWidth={2.5} />
+        </motion.button>
+
         <div className="flex gap-1">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={role === "provider" ? () => navigate(`/provider/job/${roomId}`) : handleTrackBooking}
             className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-            title={role === "provider" ? "Go to Job" : "Track"}
           >
-            {role === "provider" ? <CheckCheck size={18} className="text-primary" strokeWidth={2.5} /> : <Navigation size={18} className="text-primary" strokeWidth={2.5} />}
+            <Navigation size={18} className="text-primary" strokeWidth={2.5} />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleCall}
             className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-            title="Call"
           >
             <Phone size={18} className="text-primary" strokeWidth={2.5} />
           </motion.button>
@@ -281,7 +360,6 @@ const Chat = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => showNotification("More options coming soon.")}
             className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-            title="Options"
           >
             <MoreVertical size={18} className="text-primary" strokeWidth={2.5} />
           </motion.button>
@@ -289,16 +367,16 @@ const Chat = () => {
       </motion.div>
 
       {/* Safety Banner */}
-      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10 shadow-sm">
+      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10">
         <div className="mt-0.5 text-xs">⚠️</div>
         <p className="text-[11px] text-orange-800 font-medium leading-tight">
-          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app. Violations may lead to account suspension.
+          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app.
         </p>
       </div>
 
       {/* Notification banner */}
       {notification && (
-        <div className="bg-primary/90 text-white px-4 py-2 text-xs font-semibold text-center animate-fade-in z-20">
+        <div className="bg-primary/90 text-white px-4 py-2 text-xs font-semibold text-center z-20">
           {notification}
         </div>
       )}
@@ -307,12 +385,12 @@ const Chat = () => {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar">
         <AnimatePresence>
           {messages.length === 0 ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="h-full flex flex-col items-center justify-center text-center opacity-60 px-5 gap-4 pt-20"
             >
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-1 shadow-inner">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-1">
                 <MessageSquare size={32} className="text-primary" strokeWidth={2} />
               </div>
               <h3 className="text-[18px] font-extrabold text-foreground tracking-tight">Start the Conversation</h3>
@@ -327,10 +405,10 @@ const Chat = () => {
 
               if (isSystem) {
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={index} 
+                    key={index}
                     className="flex justify-center my-4"
                   >
                     <div className="bg-[#FEF2F2] border-2 border-[#FECACA] px-4 py-2.5 rounded-[16px] max-w-[85%] text-center shadow-sm">
@@ -342,11 +420,11 @@ const Chat = () => {
               }
 
               return (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  key={index} 
+                  key={index}
                   className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                 >
                   {!isMe && (
@@ -356,8 +434,7 @@ const Chat = () => {
                   )}
                   <div className={`max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
                     {msg.audioBase64 ? (
-                      // Voice message bubble
-                      <div className={`rounded-[24px] p-3 shadow-[0_4px_15px_rgba(0,0,0,0.05)] flex items-center gap-3 min-w-[180px] ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px]"}`}>
+                      <div className={`rounded-[24px] p-3 shadow-sm flex items-center gap-3 min-w-[180px] ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px]"}`}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -374,7 +451,7 @@ const Chat = () => {
                               }
                             }
                           }}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner ${isMe ? "bg-white/20" : "bg-[#F8FAFC]"}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMe ? "bg-white/20" : "bg-[#F8FAFC]"}`}
                         >
                           {playingMsgIndex === index
                             ? <Pause size={16} className={isMe ? "text-white" : "text-primary"} strokeWidth={2.5} />
@@ -382,7 +459,7 @@ const Chat = () => {
                           }
                         </motion.button>
                         <div className="flex-1">
-                          <div className={`flex items-center gap-1 mb-1.5 ${isMe ? "opacity-90" : "opacity-60"}`}>
+                          <div className={`flex items-center gap-1 mb-1 ${isMe ? "opacity-90" : "opacity-60"}`}>
                             {[...Array(10)].map((_, i) => (
                               <div key={i} className={`rounded-full ${isMe ? "bg-white" : "bg-primary"}`}
                                 style={{ width: 3, height: `${6 + Math.random() * 14}px` }} />
@@ -392,8 +469,7 @@ const Chat = () => {
                         </div>
                       </div>
                     ) : (
-                      // Text message bubble
-                      <div className={`rounded-[24px] px-5 py-3 shadow-[0_4px_15px_rgba(0,0,0,0.05)] ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px] text-foreground"}`}>
+                      <div className={`rounded-[24px] px-5 py-3 shadow-sm ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px] text-foreground"}`}>
                         <p className="text-[15px] leading-relaxed font-medium">{msg.text}</p>
                       </div>
                     )}
@@ -412,13 +488,13 @@ const Chat = () => {
 
         {/* Typing Indicator */}
         {partnerTyping && (
-          <div className="flex justify-start animate-msg-in">
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px] mr-2 flex-shrink-0">
+          <div className="flex justify-start">
+            <div className="w-8 h-8 rounded-[12px] bg-primary/10 flex items-center justify-center text-primary font-black text-[12px] mr-3 flex-shrink-0">
               {participantAvatar.charAt(0)}
             </div>
-            <div className="bg-white border border-[#E1E8EF] rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-1">
+            <div className="bg-white border-2 border-transparent rounded-[24px] rounded-bl-[8px] px-4 py-3 shadow-sm flex items-center gap-1">
               {[0, 0.2, 0.4].map((delay, i) => (
-                <div key={i} className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: `${delay}s` }} />
+                <div key={i} className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: `${delay}s` }} />
               ))}
             </div>
           </div>
@@ -433,37 +509,29 @@ const Chat = () => {
       {/* Voice Preview Bar */}
       <AnimatePresence>
         {audioBlobUrl && !isRecording && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             className="px-4 py-4 bg-white border-t border-[#E1E8EF] flex items-center gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-20"
           >
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={discardRecording} 
-              className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center shadow-sm"
-            >
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={discardRecording} className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center shadow-sm">
               <Trash2 size={20} className="text-[#EF4444]" strokeWidth={2.5} />
             </motion.button>
             <div className="flex-1 bg-[#F8FAFC] rounded-full h-12 flex items-center px-5 gap-4 border-2 border-transparent">
-              <button
-                onClick={() => {
-                  if (isPlayingPreview) {
-                    previewAudioRef.current?.pause();
-                    setIsPlayingPreview(false);
-                  } else {
-                    if (previewAudioRef.current) {
-                      previewAudioRef.current.src = audioBlobUrl;
-                      previewAudioRef.current.play();
-                      setIsPlayingPreview(true);
-                      previewAudioRef.current.onended = () => setIsPlayingPreview(false);
-                    }
+              <button onClick={() => {
+                if (isPlayingPreview) {
+                  previewAudioRef.current?.pause();
+                  setIsPlayingPreview(false);
+                } else {
+                  if (previewAudioRef.current) {
+                    previewAudioRef.current.src = audioBlobUrl;
+                    previewAudioRef.current.play();
+                    setIsPlayingPreview(true);
+                    previewAudioRef.current.onended = () => setIsPlayingPreview(false);
                   }
-                }}
-                className="text-primary"
-              >
+                }
+              }} className="text-primary">
                 {isPlayingPreview ? <Pause size={20} strokeWidth={2.5} /> : <Play size={20} className="ml-0.5" strokeWidth={2.5} />}
               </button>
               <div className="flex-1 flex items-center gap-1">
@@ -473,12 +541,7 @@ const Chat = () => {
               </div>
               <span className="text-[12px] font-black text-primary font-mono">{formatSeconds(recordingSeconds)}</span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleSendVoice}
-              className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_8px_20px_rgba(249,115,22,0.3)] transition-shadow"
-            >
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleSendVoice} className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_8px_20px_rgba(249,115,22,0.3)]">
               <Send size={20} className="text-white -ml-0.5" strokeWidth={2.5} />
             </motion.button>
           </motion.div>
@@ -489,40 +552,21 @@ const Chat = () => {
       {!audioBlobUrl && (
         <div className="px-4 py-4 bg-white border-t border-[#E1E8EF] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-20">
           {isRecording ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center gap-3 h-[52px]"
-            >
-              <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={discardRecording} 
-                className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center"
-              >
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-3 h-[52px]">
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={discardRecording} className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center">
                 <Trash2 size={20} className="text-[#EF4444]" strokeWidth={2.5} />
               </motion.button>
               <div className="flex-1 bg-[#FEF2F2] border-2 border-[#FECACA] rounded-full h-12 flex items-center justify-center gap-3 shadow-inner">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444] animate-pulse" />
                 <span className="text-[14px] font-extrabold text-[#991B1B] font-mono">{formatSeconds(recordingSeconds)}</span>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={stopRecording}
-                className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30"
-              >
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={stopRecording} className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
                 <Square size={16} className="text-white fill-white" />
               </motion.button>
             </motion.div>
           ) : (
             <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={startRecording}
-                className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center text-primary transition-colors"
-              >
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={startRecording} className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center text-primary transition-colors">
                 <Mic size={22} strokeWidth={2.5} />
               </motion.button>
               <input
@@ -550,15 +594,6 @@ const Chat = () => {
       )}
 
       <style>{`
-        @keyframes msg-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-msg-in { animation: msg-in 0.2s ease-out forwards; }
-        @keyframes fade-in {
-          from { opacity: 0; } to { opacity: 1; }
-        }
-        .animate-fade-in { animation: fade-in 0.25s ease forwards; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
