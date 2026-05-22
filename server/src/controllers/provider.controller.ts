@@ -120,3 +120,19 @@ export const updateWorkingHours = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+export const checkProviderExists = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      res.status(400).json({ success: false, message: 'User ID required' });
+      return;
+    }
+
+    const provider = await ProviderModel.findByUserId(userId as string);
+    res.json({ exists: !!provider });
+  } catch (error) {
+    console.error('Check provider exists error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

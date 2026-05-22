@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/env';
 
@@ -29,6 +30,11 @@ api.interceptors.response.use(
 
 export const fetchProviderDashboard = async (userId: string) => {
   const res = await api.get(`/providers/dashboard?userId=${userId}`);
+  return res.data;
+};
+
+export const checkProviderExists = async (userId: string): Promise<{ exists: boolean }> => {
+  const res = await api.get(`/providers/exists?userId=${userId}`);
   return res.data;
 };
 

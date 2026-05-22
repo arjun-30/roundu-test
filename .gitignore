@@ -12,6 +12,9 @@ cashfree documentations/
 
 # Project specific
 implementation_plan.md
+error_analysis.md
+caveman.md
+implementation_plan_gaps.md
 
 # Common temporary / OS files
 .DS_Store

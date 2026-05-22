@@ -2,8 +2,8 @@ import { useState } from "react";
 import { User, Wrench, ArrowRight, Briefcase } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { fetchProviderDashboard } from "@/lib/api";
-import { motion } from "framer-motion";
+import { checkProviderExists } from "@/lib/api";
+import { motion, Variants } from "framer-motion";
 
 const RoleSelect = () => {
   const navigate = useNavigate();
@@ -21,14 +21,14 @@ const RoleSelect = () => {
       }
       setLoading(true);
       try {
-        const res = await fetchProviderDashboard(user.id);
-        if (res.success) {
+        const res = await checkProviderExists(user.id);
+        if (res.exists) {
           dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
           navigate("/provider", { replace: true });
           return;
         }
       } catch (err) {
-        // Fall through to onboarding
+        console.error("Failed to check provider:", err);
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,7 @@ const RoleSelect = () => {
     }
   };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -44,7 +44,7 @@ const RoleSelect = () => {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
   } as any;

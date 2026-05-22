@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -65,6 +66,10 @@ const OtpVerify = () => {
         
         // Store session info
         if (token) {
+          localStorage.removeItem("roundu_token");
+          localStorage.removeItem("roundu_user");
+          localStorage.removeItem("roundu_role");
+          
           localStorage.setItem("roundu_token", token);
           localStorage.setItem("roundu_user", JSON.stringify(apiUser));
           localStorage.setItem("roundu_role", apiUser.role || "customer");
@@ -94,6 +99,7 @@ const OtpVerify = () => {
       if (import.meta.env.DEV) {
         console.warn('[OtpVerify] Using Mock Login fallback');
         const mockUser = {
+          // eslint-disable-next-line react-hooks/purity
           id: "mock-user-" + Date.now(),
           name: "", // Empty name triggers onboarding flow
           phone: phone || "9999999999",
@@ -102,6 +108,10 @@ const OtpVerify = () => {
           role: "customer"
         };
 
+        localStorage.removeItem("roundu_token");
+        localStorage.removeItem("roundu_user");
+        localStorage.removeItem("roundu_role");
+        
         localStorage.setItem("roundu_token", "mock-token");
         localStorage.setItem("roundu_user", JSON.stringify(mockUser));
         localStorage.setItem("roundu_role", "customer");

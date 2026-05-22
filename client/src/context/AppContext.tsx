@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef } from "react";
 import {
   Booking, Provider, ProviderRequest,
@@ -490,7 +491,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         notifications: state.notifications.filter((n) => n.id !== action.id)
       };
-    case "HANDLE_INCOMING_BROADCAST":
+    case "HANDLE_INCOMING_BROADCAST": {
       if (state.role === "customer" || state.user.id === action.broadcast.customerId) return state;
       // Deduplicate: if this exact broadcastId is already in the list, ignore
       if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
@@ -518,6 +519,7 @@ function reducer(state: State, action: Action): State {
           ...state.notifications,
         ].slice(0, 20),
       };
+    }
     case "ADD_QUOTED_BROADCAST":
       return {
         ...state,
@@ -732,7 +734,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const syncDb = async () => {
       if (state.isAuthenticated && state.user.id) {
         try {
-          if (state.role === 'provider') {
+          let serverRole = state.role;
+          const currentToken = localStorage.getItem("roundu_token");
+          if (currentToken && currentToken !== "mock-token") {
+            try {
+              const parts = currentToken.split('.');
+              if (parts.length === 3) {
+                const payloadStr = atob(parts[1]);
+                const payload = JSON.parse(payloadStr);
+                if (payload.role) {
+                  serverRole = payload.role;
+                }
+              }
+            } catch (e) {
+              console.error("JWT parse error:", e);
+            }
+          }
+
+          if (serverRole === 'provider') {
             const dashboard = await fetchProviderDashboard(state.user.id);
             if (dashboard.success) {
               dispatch({ type: "UPDATE_STATS", patch: dashboard.data.stats });
@@ -760,7 +779,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
               }
             }
-          } else if (state.role === 'customer') {
+          } else if (serverRole === 'customer') {
             const bookings = await fetchCustomerBookings(state.user.id);
             if (bookings.success) {
               dispatch({ type: "SET_BOOKINGS", bookings: bookings.data });
