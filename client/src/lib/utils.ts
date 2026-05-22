@@ -90,3 +90,44 @@ export function getAbsoluteIsoTimestamp(dateStr: string, timeStr: string): strin
   }
 }
 
+/**
+ * Formats a full address string to a clean "Area, City" format,
+ * removing pincodes, countries, states, and door numbers.
+ */
+export const getShortAddress = (address: string): string => {
+  if (!address) return "";
+
+  // Handle coordinate fallback
+  if (/^\d+\.\d+,\s*\d+\.\d+$/.test(address)) {
+    return address;
+  }
+
+  // Split by comma or middle dot
+  const separators = /,|·/;
+  const parts = address.split(separators).map(p => p.trim());
+
+  // Filter out:
+  // - empty strings
+  // - Indian pincodes (6 digits)
+  // - generic country/state names
+  // - very short numeric parts (like door numbers: "12", "3b")
+  const statesCountries = [
+    "india", "karnataka", "tamil nadu", "tamilnadu", "maharashtra", 
+    "delhi", "telangana", "andhra pradesh", "kerala"
+  ];
+
+  const cleanParts = parts.filter(p => {
+    if (!p) return false;
+    if (/^\d{6}$/.test(p)) return false; // Pincode
+    if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Door number e.g. "12", "12a", "3"
+    if (statesCountries.includes(p.toLowerCase())) return false; // State/Country
+    return true;
+  });
+
+  if (cleanParts.length === 0) return address;
+  if (cleanParts.length === 1) return cleanParts[0];
+
+  // Take the last two clean parts (corresponds to area and city)
+  const shortParts = cleanParts.slice(-2);
+  return shortParts.join(", ");
+};

@@ -12,7 +12,7 @@ import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import LocationModal from "@/components/LocationModal";
 import { providers as allProviders } from "@/data/mockData";
-import { getDistance } from "@/lib/utils";
+import { getDistance, getShortAddress } from "@/lib/utils";
 
 
 const Home = () => {
@@ -251,16 +251,12 @@ const Home = () => {
             </h1>
             <p 
               onClick={() => setIsLocationModalOpen(true)}
-              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5 cursor-pointer hover:text-primary transition-colors"
+              className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-1 cursor-pointer hover:text-primary transition-colors max-w-[180px] sm:max-w-[240px]"
             >
-              <MapPin size={11} className="text-primary" />
-              {locating || gpsLoading ? (
-                <span className="flex items-center gap-1">
-                  <Loader2 size={10} className="animate-spin" /> Detecting...
-                </span>
-              ) : (
-                user.address || "Set Location"
-              )}
+              <MapPin size={11} className="text-primary flex-shrink-0" />
+              <span className="truncate">
+                {locating || gpsLoading ? "Detecting..." : (getShortAddress(user.address) || "Set Location")}
+              </span>
             </p>
           </div>
         </div>

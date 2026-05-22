@@ -13,6 +13,8 @@ import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import { socket } from "@/lib/socket";
+import { getShortAddress } from "@/lib/utils";
+import LocationModal from "@/components/LocationModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ const Dashboard = () => {
   useEffect(() => {
     dispatch({ type: "SET_ROLE", role: "provider" });
   }, [dispatch]);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
@@ -287,9 +290,18 @@ const Dashboard = () => {
 
       {/* Header */}
       <div className="px-5 pt-3 pb-2 flex items-center justify-between animate-fade-in bg-card sticky top-0 z-10 shadow-sm">
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground font-medium">Provider Dashboard</p>
-          <h1 className="text-xl font-extrabold text-foreground mt-0.5">Hi, {user.name.split(" ")[0]}</h1>
+          <h1 className="text-xl font-extrabold text-foreground mt-0.5 truncate">Hi, {user.name.split(" ")[0]}</h1>
+          <p 
+            onClick={() => setIsLocationModalOpen(true)}
+            className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-1 cursor-pointer hover:text-primary transition-colors max-w-[180px] sm:max-w-[240px]"
+          >
+            <MapPin size={11} className="text-primary flex-shrink-0" />
+            <span className="truncate">
+              {getShortAddress(user.address) || "Set Location"}
+            </span>
+          </p>
         </div>
         <div className="flex gap-2 items-center">
           {/* Online/Offline Toggle */}
@@ -914,6 +926,10 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      <LocationModal 
+        isOpen={isLocationModalOpen} 
+        onClose={() => setIsLocationModalOpen(false)} 
+      />
     </div>
   );
 };

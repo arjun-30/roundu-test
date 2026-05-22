@@ -287,7 +287,7 @@ function reducer(state: State, action: Action): State {
             text: notificationText, 
             ts: Date.now(),
             type: notificationType,
-            targetRole: "provider"
+            targetRole: "provider" as const
           },
           ...state.notifications,
         ].slice(0, 20)
@@ -345,7 +345,7 @@ function reducer(state: State, action: Action): State {
             text,
             ts: Date.now(),
             type: "booking",
-            targetRole: "customer"
+            targetRole: "customer" as const
           },
           ...state.notifications
         ].slice(0, 20) : state.notifications;
@@ -368,7 +368,7 @@ function reducer(state: State, action: Action): State {
             text,
             ts: Date.now(),
             type: "payment",
-            targetRole: "provider"
+            targetRole: "provider" as const
           },
           ...state.notifications
         ].slice(0, 20) : state.notifications;
@@ -444,7 +444,7 @@ function reducer(state: State, action: Action): State {
             text: `✅ Booking confirmed with ${providerName}!`,
             ts: Date.now(),
             type: "booking",
-            targetRole: "customer"
+            targetRole: "customer" as const
           },
           ...state.notifications
         ].slice(0, 20)
@@ -513,7 +513,7 @@ function reducer(state: State, action: Action): State {
             text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, 
             ts: Date.now(),
             type: "incoming_broadcast",
-            targetRole: "provider"
+            targetRole: "provider" as const
           },
           ...state.notifications,
         ].slice(0, 20),

@@ -84,6 +84,21 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
     );
   };
 
+  // Reset states and conditionally auto-detect location when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (!user.address) {
+        detectCurrentLocation();
+      } else {
+        setIsDetecting(false);
+        setError("");
+        setSearchQuery("");
+        setSuggestions([]);
+        setIsEditingManually(false);
+      }
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
