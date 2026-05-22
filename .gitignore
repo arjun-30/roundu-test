@@ -9,6 +9,8 @@ build/
 .vscode/
 *.log
 cashfree documentations/
+graphify-out/
+.agents/
 
 # Project specific
 implementation_plan.md
