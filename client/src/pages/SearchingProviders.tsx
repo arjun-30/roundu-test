@@ -67,7 +67,7 @@ const SearchingProviders = () => {
   const [error, setError] = useState("");
   const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
 
-  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote } = useApp();
+  const { user, nearbyProviders, currentLocation, dispatch, receivedQuotes, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote, selectedDate, selectedTime } = useApp();
   const isRestoredRef = useRef(!!cachedState);
   const hasTriggered = useRef(!!cachedState);
   const [broadcastId] = useState(() => cachedState?.broadcastId || `bc-${user?.id || 'anon'}-${Date.now()}`);
@@ -199,8 +199,8 @@ const SearchingProviders = () => {
       address: user.address || "Current Location",
       lat: coordsRef.current?.lat ?? null,
       lng: coordsRef.current?.lng ?? null,
-      date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: selectedDate || new Date().toISOString().slice(0, 10),
+      time: selectedTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       notes: bookingNotes || "Quick fix request from customer",
       voiceNoteUrl: bookingVoiceNoteUrl,
       voiceNote: bookingVoiceNote
