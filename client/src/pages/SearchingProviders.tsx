@@ -337,11 +337,26 @@ const SearchingProviders = () => {
             viewBox="0 0 380 340"
             className="w-full h-full max-w-md"
           >
-            {/* Background */}
-            <rect width="380" height="340" fill="#E8EEF5" />
+            {/* Background (Landuse) */}
+            <rect width="380" height="340" fill="#F1F5F9" />
 
-            {/* Grid Lines */}
-            <g stroke="#D5DFE8" strokeWidth="0.5">
+            {/* Parks / Green spaces */}
+            <rect x="20" y="30" width="70" height="45" rx="12" fill="#E2F2E4" opacity="0.8" />
+            <rect x="280" y="210" width="85" height="55" rx="14" fill="#E2F2E4" opacity="0.8" />
+            <circle cx="60" cy="270" r="25" fill="#E2F2E4" opacity="0.6" />
+
+            {/* River / Waterbody */}
+            <path
+              d="M-20,90 Q80,120 180,95 T400,105"
+              stroke="#CCE1F5"
+              strokeWidth="24"
+              fill="none"
+              opacity="0.65"
+              strokeLinecap="round"
+            />
+
+            {/* Grid Lines (Subtle Overlay) */}
+            <g stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="3,3">
               {[...Array(13)].map((_, i) => (
                 <line key={`v-${i}`} x1={i * 30 + 10} y1="0" x2={i * 30 + 10} y2="340" />
               ))}
@@ -350,65 +365,70 @@ const SearchingProviders = () => {
               ))}
             </g>
 
-            {/* Buildings (Rounded Rects) */}
-            <rect x="40" y="50" width="30" height="20" rx="4" fill="#D8E3EC" />
-            <rect x="280" y="80" width="45" height="30" rx="6" fill="#CDD9E4" />
-            <rect x="60" y="240" width="40" height="40" rx="8" fill="#D8E3EC" />
-            <rect x="300" y="220" width="25" height="40" rx="5" fill="#CDD9E4" />
-            <rect x="150" y="280" width="60" height="25" rx="6" fill="#D8E3EC" />
-            <rect x="100" y="100" width="30" height="30" rx="6" fill="#CDD9E4" opacity="0.6" />
+            {/* Secondary Streets */}
+            <path d="M40,-10 C80,150 300,190 330,350" stroke="#E2E8F0" strokeWidth="4" fill="none" />
+            <path d="M40,-10 C80,150 300,190 330,350" stroke="white" strokeWidth="2.5" fill="none" />
 
-            {/* Road Paths */}
-            <path d="M0,170 Q190,170 380,170" stroke="#C8D6E2" strokeWidth="4" fill="none" />
-            <path d="M190,0 Q190,170 190,340" stroke="#C8D6E2" strokeWidth="4" fill="none" />
-            <path d="M50,0 C80,150 300,190 330,340" stroke="#C8D6E2" strokeWidth="3" fill="none" opacity="0.5" />
+            <path d="M310,-10 Q280,120 40,240" stroke="#E2E8F0" strokeWidth="3" fill="none" />
+            <path d="M310,-10 Q280,120 40,240" stroke="white" strokeWidth="1.5" fill="none" />
 
-            {/* Ripple Rings */}
-            <circle cx="190" cy="170" r="0" fill="none" stroke="url(#blue-grad)" strokeWidth="1.5">
-              <animate attributeName="r" from="0" to="200" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines="0.2 0 0.8 1" />
-              <animate attributeName="opacity" from="0.6" to="0" dur="3s" begin="0s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="190" cy="170" r="0" fill="none" stroke="url(#blue-grad)" strokeWidth="1">
-              <animate attributeName="r" from="0" to="200" dur="3s" begin="1s" repeatCount="indefinite" calcMode="spline" keySplines="0.2 0 0.8 1" />
-              <animate attributeName="opacity" from="0.4" to="0" dur="3s" begin="1s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="190" cy="170" r="0" fill="none" stroke="#F59E0B" strokeWidth="0.8">
-              <animate attributeName="r" from="0" to="220" dur="3s" begin="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.2 0 0.8 1" />
-              <animate attributeName="opacity" from="0.3" to="0" dur="3s" begin="2s" repeatCount="indefinite" />
-            </circle>
+            {/* Primary Highway 1 (Horizontal) */}
+            <path d="M-10,170 Q190,170 390,170" stroke="#D8E2ED" strokeWidth="8" fill="none" />
+            <path d="M-10,170 Q190,170 390,170" stroke="white" strokeWidth="6" fill="none" />
 
-            {/* Gradients */}
+            {/* Primary Highway 2 (Vertical) */}
+            <path d="M190,-10 Q190,170 190,350" stroke="#D8E2ED" strokeWidth="8" fill="none" />
+            <path d="M190,-10 Q190,170 190,350" stroke="white" strokeWidth="6" fill="none" />
+
+            {/* Concentric Distance Rings */}
+            <circle cx="190" cy="170" r="55" fill="none" stroke="#3B82F6" strokeWidth="0.8" strokeOpacity="0.15" strokeDasharray="3,3" />
+            <circle cx="190" cy="170" r="110" fill="none" stroke="#3B82F6" strokeWidth="0.8" strokeOpacity="0.15" strokeDasharray="3,3" />
+            <circle cx="190" cy="170" r="160" fill="none" stroke="#3B82F6" strokeWidth="0.8" strokeOpacity="0.15" strokeDasharray="3,3" />
+
+            {/* Radar Distance Labels */}
+            <text x="190" y="110" textAnchor="middle" fill="#94A3B8" fontSize="7" fontWeight="bold" opacity="0.8">250m</text>
+            <text x="190" y="55" textAnchor="middle" fill="#94A3B8" fontSize="7" fontWeight="bold" opacity="0.8">500m</text>
+
+            {/* Gradients & Filters */}
             <defs>
-              <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#152E4B" />
-                <stop offset="100%" stopColor="#1C3D63" />
+              <linearGradient id="sweep-line-glow" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.1" />
+                <stop offset="100%" stopColor="#2563EB" stopOpacity="0.8" />
               </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
-                <feMerge>
-                  <feMergeNode in="coloredBlur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
+              <linearGradient id="sweep-sector-glow" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.3" />
+              </linearGradient>
             </defs>
 
-            {/* Center Pin Glow */}
-            <circle cx="190" cy="170" r="22" fill="rgba(21,46,75,0.05)" className="animate-pulse" />
-
-            {/* Center Pin */}
-            <circle cx="190" cy="170" r="18" fill="rgba(21,46,75,0.08)" />
-            <g className="animate-pin-pulse" filter="url(#glow)">
-              <circle cx="190" cy="170" r="12" fill="white" stroke="#152E4B" strokeWidth="1.5" />
-              <path d="M190,175 L186,169 A4,4 0 1,1 194,169 Z" fill="#152E4B" transform="translate(0, -2)" />
-              <circle cx="190" cy="168.5" r="1.5" fill="white" />
+            {/* Rotating Radar Sweeper */}
+            <g className="origin-[190px_170px] animate-radar-sweep">
+              <line x1="190" y1="170" x2="190" y2="20" stroke="url(#sweep-line-glow)" strokeWidth="2.5" />
+              <path d="M190,170 L190,20 A150,150 0 0,1 296,64 Z" fill="url(#sweep-sector-glow)" opacity="0.2" />
             </g>
+
+            {/* Center Beacon Glow & Pulse */}
+            <circle cx="190" cy="170" r="28" fill="#3B82F6" fillOpacity="0.04" className="animate-pulse" />
+            <circle cx="190" cy="170" r="16" fill="#3B82F6" fillOpacity="0.08" />
+
+            <circle cx="190" cy="170" r="8" fill="none" stroke="#2563EB" strokeWidth="1.5" strokeOpacity="0.5">
+              <animate attributeName="r" from="8" to="40" dur="2.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" from="0.8" to="0" dur="2.5s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="190" cy="170" r="8" fill="none" stroke="#2563EB" strokeWidth="1.5" strokeOpacity="0.5">
+              <animate attributeName="r" from="8" to="40" dur="2.5s" begin="1.25s" repeatCount="indefinite" />
+              <animate attributeName="opacity" from="0.8" to="0" dur="2.5s" begin="1.25s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Core Center Beacon Point */}
+            <circle cx="190" cy="170" r="5" fill="#2563EB" stroke="white" strokeWidth="2" className="shadow-md" />
           </svg>
         </div>
 
         {/* Found Counter Badge (Top Right) */}
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md border border-[#152E4B1A] py-1.5 px-3.5 rounded-[12px] shadow-sm z-10 animate-fade-in flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[11px] font-[600] text-primary tracking-tight">{foundCount} pros found</span>
+        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md border border-slate-100 py-1.5 px-3.5 rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] z-10 animate-fade-in flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-black text-primary uppercase tracking-wider">{foundCount} pros found</span>
         </div>
 
         {/* Floating Provider Dots Layer (REAL TIME) */}
@@ -426,12 +446,27 @@ const SearchingProviders = () => {
                   transform: `translate(-50%, -50%)`
                 }}
               >
-                <div className="flex flex-col items-center">
-                  <div className="w-[34px] h-[34px] rounded-full bg-white backdrop-blur-sm border-2 border-primary flex items-center justify-center shadow-lg animate-bounce">
-                    <span className="text-[10px] font-extrabold text-primary">{p.name.charAt(0)}</span>
+                <div className="flex flex-col items-center relative">
+                  {/* Ping Ring Effect */}
+                  <span className="absolute -inset-1.5 rounded-full bg-primary/20 animate-ping opacity-60 pointer-events-none" />
+
+                  {/* Avatar Container */}
+                  <div className="relative w-10 h-10 rounded-full bg-white p-[2px] shadow-[0_8px_20px_rgba(0,0,0,0.12)] border border-slate-100 z-10 transition-all duration-300 hover:scale-110">
+                    {p.avatar_url ? (
+                      <img src={p.avatar_url} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-tr from-primary to-primary/80 flex items-center justify-center font-bold text-white text-xs">
+                        {p.name?.charAt(0) || "P"}
+                      </div>
+                    )}
+                    {/* Green online badge */}
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
                   </div>
-                  <div className="bg-primary text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md mt-1 shadow-sm">
-                    {p.name}
+
+                  {/* Mini Name Label */}
+                  <div className="bg-white/95 backdrop-blur-sm border border-slate-100 text-foreground text-[8px] font-black px-2 py-0.5 rounded-full mt-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)] z-10 flex items-center gap-1">
+                    <span className="max-w-[50px] truncate">{p.name?.split(" ")[0]}</span>
+                    <span className="text-[7px] text-yellow-500 flex items-center font-extrabold">★</span>
                   </div>
                 </div>
               </div>
@@ -583,6 +618,14 @@ const SearchingProviders = () => {
       </div>
 
       <style>{`
+        @keyframes radar-sweep {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .animate-radar-sweep {
+          animation: radar-sweep 10s linear infinite;
+        }
+
         @keyframes pin-pulse {
           0% { transform: scale(1); }
           50% { transform: scale(1.12); }
