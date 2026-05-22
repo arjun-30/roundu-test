@@ -1069,7 +1069,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        </div>
       )}
 
       {/* Location Modal */}
