@@ -2,18 +2,18 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
-  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Clock, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
+  Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Star, Plus, AlertTriangle, Sparkles, Crown, Wrench,
   Loader2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { services, quickFixes, popularTasks, smartSuggestions, SmartSuggestion } from "@/data/mockData";
+import { services, quickFixes, smartSuggestions, SmartSuggestion } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import LocationModal from "@/components/LocationModal";
-import { providers as allProviders } from "@/data/mockData";
-import { getDistance } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import AdBannerCarousel from "@/components/AdBannerCarousel";
+import api from "@/lib/api";
 
 
 const Home = () => {
@@ -22,12 +22,27 @@ const Home = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [activeSuggIdx, setActiveSuggIdx] = useState(0);
+  const [realNearbyProviders, setRealNearbyProviders] = useState<any[]>([]);
 
   // Sync role to customer on mount
   useEffect(() => {
     dispatch({ type: "SET_ROLE", role: "customer" });
   }, [dispatch]);
+
+  // Fetch real nearby providers
+  useEffect(() => {
+    const fetchRealProviders = async () => {
+      try {
+        const res = await api.get("/providers/search");
+        if (res.data.success && res.data.data) {
+          setRealNearbyProviders(res.data.data.slice(0, 8)); // Top 8 nearby
+        }
+      } catch (err) {
+        console.error("Failed to fetch nearby providers", err);
+      }
+    };
+    fetchRealProviders();
+  }, []);
 
   // ─── Smart Suggestion Selection ───────────────────────────────────────────
   // Determine current season from month (India-centric)
@@ -66,14 +81,7 @@ const Home = () => {
     return deduped;
   }, [bookings, currentSeason]);
 
-  // Auto-rotate suggestion cards every 5 seconds
-  useEffect(() => {
-    if (rankedSuggestions.length <= 1) return;
-    const timer = setInterval(() => {
-      setActiveSuggIdx((i) => (i + 1) % rankedSuggestions.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [rankedSuggestions.length]);
+
 
   // Auto-fetch GPS on mount → reverse geocode → update user.address
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
@@ -354,92 +362,8 @@ const Home = () => {
 
 
 
-        {/* ═══ SMART RECOMMENDATIONS CAROUSEL ═══ */}
-        {rankedSuggestions.length > 0 && (
-          <div className="px-5 pb-2 animate-fade-in" style={{ animationDelay: "0.09s" }}>
-            {/* Section header */}
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-secondary" />
-                <span className="text-[11px] font-extrabold text-secondary uppercase tracking-widest">
-                  Recommended for You
-                </span>
-              </div>
-              {/* Dot indicators */}
-              <div className="flex gap-1">
-                {rankedSuggestions.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveSuggIdx(i)}
-                    className={`rounded-full transition-all duration-300 ${
-                      i === activeSuggIdx
-                        ? "w-4 h-1.5 bg-primary"
-                        : "w-1.5 h-1.5 bg-muted-foreground/30"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Card stack — horizontal scroll, snap per card */}
-            <div
-              className="overflow-x-auto scrollbar-hide flex gap-3 snap-x snap-mandatory pb-1"
-              onScroll={(e) => {
-                const el = e.currentTarget;
-                const idx = Math.round(el.scrollLeft / el.clientWidth);
-                setActiveSuggIdx(idx);
-              }}
-              ref={(el) => {
-                if (el) {
-                  const cardW = el.clientWidth;
-                  el.scrollTo({ left: activeSuggIdx * (cardW + 12), behavior: "smooth" });
-                }
-              }}
-            >
-              {rankedSuggestions.map((sugg, idx) => (
-                <button
-                  key={sugg.id}
-                  onClick={() => {
-                    setActiveSuggIdx(idx);
-                    goToProviders(sugg.serviceId);
-                  }}
-                  className="flex-shrink-0 w-full snap-start flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-border shadow-[0_2px_12px_rgba(0,0,0,0.05)] hover:shadow-md transition-all active:scale-[0.98] text-left"
-                  style={{ minWidth: "calc(100% - 0px)" }}
-                >
-                  {/* Emoji icon circle */}
-                  <div className={`w-11 h-11 rounded-full ${sugg.accentColor} flex items-center justify-center flex-shrink-0 text-xl`}>
-                    {sugg.emoji}
-                  </div>
-
-                  {/* Text content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[9px] font-extrabold tracking-wider uppercase text-muted-foreground">
-                        {sugg.category}
-                      </span>
-                      {(sugg.season === currentSeason) && (
-                        <span className="text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                          Seasonal
-                        </span>
-                      )}
-                    </div>
-                    <h3 className={`text-[13px] font-extrabold leading-tight ${sugg.textColor}`}>
-                      {sugg.title}
-                    </h3>
-                    <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug line-clamp-1">
-                      {sugg.subtitle}
-                    </p>
-                  </div>
-
-                  {/* Arrow */}
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center">
-                    <ChevronRight size={14} className="text-primary" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ═══ PREMIUM AD BANNERS CAROUSEL ═══ */}
+        <AdBannerCarousel />
 
         {/* ═══ BROWSE SERVICES ═══ */}
         <motion.div variants={itemVariants} className="px-5 pt-6 pb-2">
@@ -507,55 +431,65 @@ const Home = () => {
           </div>
         </motion.div>
 
-        {/* ═══ POPULAR TASKS ═══ */}
-        <motion.div variants={itemVariants} className="pt-6 pb-2">
-          <div className="px-5 flex items-end justify-between mb-4">
-            <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Popular Tasks</h2>
-            <button onClick={() => navigate("/bookings")} className="text-[11px] font-bold text-primary uppercase tracking-wider hover:text-primary/80 transition-colors">
-              See History
-            </button>
-          </div>
-
-          <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
-            {popularTasks.map((task) => (
-              <div
-                key={task.id}
-                className="w-[260px] flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-border snap-start"
-              >
-                <div className="relative h-[140px] bg-gray-100 overflow-hidden">
-                  <img
-                    src={task.image}
-                    alt={task.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-md">
-                    <span className="text-[13px] font-extrabold text-foreground">{task.priceLabel}</span>
-                  </div>
+        {/* ═══ RECOMMENDED FOR YOU ═══ */}
+        {rankedSuggestions.length > 0 && (
+          <motion.div variants={itemVariants} className="pt-6 pb-2">
+            <div className="px-5 flex items-end justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Sparkles size={14} className="text-accent" />
+                  <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Recommended for You</h2>
                 </div>
-
-                <div className="p-4">
-                  <span className="text-[9px] font-extrabold tracking-[0.15em] uppercase text-secondary">
-                    {task.category}
-                  </span>
-                  <h3 className="text-[15px] font-bold text-foreground mt-1 leading-tight">{task.title}</h3>
-                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                    <Clock size={10} /> {task.description}
-                  </p>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => goToProviders(task.serviceId)}
-                    className="w-full mt-4 bg-primary hover:bg-primary/90 text-white font-bold text-[14px] py-3 rounded-xl transition-colors shadow-md shadow-primary/20"
-                  >
-                    Book Now
-                  </motion.button>
-                </div>
+                <p className="text-[13px] text-muted-foreground">Personalized picks based on your activity</p>
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <button onClick={() => navigate("/bookings")} className="text-[11px] font-bold text-primary uppercase tracking-wider hover:text-primary/80 transition-colors">
+                History
+              </button>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
+              {rankedSuggestions.map((sugg, idx) => (
+                <motion.button
+                  key={sugg.id}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => goToProviders(sugg.serviceId)}
+                  className="w-[260px] flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-border snap-start text-left group relative"
+                >
+                  {/* Gradient header bar */}
+                  <div className={`h-2 w-full ${sugg.accentColor}`} />
+
+                  <div className="p-5">
+                    <div className="flex items-start gap-3">
+                      {/* Big emoji */}
+                      <div className={`w-14 h-14 rounded-[18px] ${sugg.accentColor} flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                        {sugg.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-extrabold tracking-[0.15em] uppercase text-muted-foreground">
+                            {sugg.category}
+                          </span>
+                          {sugg.season === currentSeason && (
+                            <span className="text-[8px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                              Seasonal
+                            </span>
+                          )}
+                        </div>
+                        <h3 className={`text-[15px] font-bold leading-tight ${sugg.textColor}`}>{sugg.title}</h3>
+                        <p className="text-[11px] text-muted-foreground mt-1 leading-snug line-clamp-2">{sugg.subtitle}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 w-full bg-primary/5 hover:bg-primary text-primary hover:text-white font-bold text-[13px] py-2.5 rounded-xl transition-all text-center group-hover:shadow-md group-hover:shadow-primary/20">
+                      View Providers
+                    </div>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* ═══ NEARBY PROFESSIONALS ═══ */}
         <motion.div variants={itemVariants} className="pt-6 pb-2">
@@ -566,22 +500,26 @@ const Home = () => {
             </div>
           </div>
           <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
-            {Object.values(nearbyProviders).length === 0 ? (
+            {realNearbyProviders.length === 0 ? (
               <div className="w-full text-center py-6 text-sm text-muted-foreground">
                 No professionals currently online nearby.
               </div>
             ) : (
-              Object.values(nearbyProviders).map((p) => (
+              realNearbyProviders.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => navigate(`/provider/${p.id}`)}
                   className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
                 >
                   <div className="relative w-12 h-12 mx-auto mb-2">
-                    <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary text-lg">
-                      {p.name.charAt(0)}
-                    </div>
-                    {onlineUsers[p.id] && (
+                    {p.avatar_url ? (
+                      <img src={p.avatar_url} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary text-lg">
+                        {p.name?.charAt(0) || "P"}
+                      </div>
+                    )}
+                    {p.is_online === 1 && (
                       <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
@@ -589,9 +527,9 @@ const Home = () => {
                     )}
                   </div>
                   <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
-                  <div className="flex items-center justify-center gap-1 mt-1">
+                  <div className="flex items-center justify-center gap-1 mt-1 text-muted-foreground">
                     <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-bold">New</span>
+                    <span className="text-[10px] font-bold">{parseFloat(p.rating || "4.5").toFixed(1)}</span>
                   </div>
                 </button>
               ))

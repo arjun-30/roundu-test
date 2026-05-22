@@ -154,19 +154,19 @@ export const popularTasks: PopularTask[] = [
     id: "pt-1",
     serviceId: "electrician",
     category: "ELECTRICAL",
-    title: "Smart Lighting Install",
-    description: "Complete setup for all rooms",
-    priceLabel: "₹1800+",
-    image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&h=300&fit=crop",
+    title: "Change Switches & Plugs",
+    description: "Replace old or broken switches",
+    priceLabel: "₹250+",
+    image: "https://images.unsplash.com/photo-1558402529-d2638a7023e9?w=400&h=300&fit=crop", // Outlet installation
   },
   {
     id: "pt-2",
     serviceId: "plumber",
     category: "PLUMBING",
-    title: "Full Bathroom Refit",
-    description: "Fixtures, pipes & drainage",
-    priceLabel: "₹4500+",
-    image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop",
+    title: "Fix Leaky Faucets",
+    description: "Stop drips and save water",
+    priceLabel: "₹150+",
+    image: "https://images.unsplash.com/photo-1585058177583-0498b5e61d85?w=400&h=300&fit=crop", // Faucet repair
   },
   {
     id: "pt-3",
@@ -175,7 +175,7 @@ export const popularTasks: PopularTask[] = [
     title: "Deep Kitchen Cleaning",
     description: "Full sanitization & degreasing",
     priceLabel: "₹1200+",
-    image: "https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=400&h=300&fit=crop",
+    image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop", // Clean kitchen
   },
 ];
 

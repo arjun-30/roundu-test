@@ -32,6 +32,9 @@ const ProviderProfile = () => {
         const response = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
         if (response.data.success && response.data.data.provider) {
           setServiceRadius(response.data.data.provider.service_radius || 15);
+          if (response.data.data.provider.working_hours) {
+            setWorkingHours(response.data.data.provider.working_hours);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch provider profile:", error);
@@ -58,11 +61,19 @@ const ProviderProfile = () => {
     }
   };
 
-  const handleUpdateHours = (hours: string) => {
+  const handleUpdateHours = async (hours: string) => {
     setWorkingHours(hours);
     dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { workingHours: hours } });
     setIsEditingHours(false);
     showNotification("Working hours updated");
+    try {
+      await axios.post('/api/v1/providers/update-hours', {
+        userId: user.id,
+        workingHours: hours
+      });
+    } catch (error) {
+      console.error("API failed to update working hours, but local state updated");
+    }
   };
 
   const logout = () => {

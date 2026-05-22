@@ -12,7 +12,11 @@ import EmptyState from "@/components/EmptyState";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
+import LocationModal from "@/components/LocationModal";
 import { socket } from "@/lib/socket";
+import { useCurrentLocation } from "@/hooks/useLocation";
+import { reverseGeocode } from "@/lib/mapProvider";
+import { useCallback } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +29,9 @@ const Dashboard = () => {
   const [showWarning, setShowWarning] = useState(true);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
+
+  const [locating, setLocating] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
   const [quotePrice, setQuotePrice] = useState("");
@@ -97,6 +104,27 @@ const Dashboard = () => {
       socket.off("incoming_request", handleNewRequest);
     };
   }, [dispatch]);
+
+  // Auto-fetch GPS on mount → reverse geocode → update user.address
+  const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
+    dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+    setLocating(true);
+    try {
+      const result = await reverseGeocode(lat, lng);
+      if (result.address) {
+        const shortAddr = result.area
+          ? `${result.area}${result.city ? ", " + result.city : ""}`
+          : result.address.split(",").slice(0, 2).join(",");
+        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+      }
+    } catch (err) {
+      console.warn("Reverse geocode failed:", err);
+      dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
+    } finally {
+      setLocating(false);
+    }
+  }, [dispatch]);
+  const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
   // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
   useEffect(() => {
@@ -314,14 +342,23 @@ import { motion, AnimatePresence } from "framer-motion";
         <div>
           <p className="text-xs text-muted-foreground font-bold tracking-wide uppercase">Provider Dashboard</p>
           <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight">Hi, {user.name.split(" ")[0]}</h1>
-          <div className="flex items-center gap-1.5 mt-1">
-            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-              <MapPin size={10} className="text-primary" />
+          <button 
+            onClick={() => setIsLocationModalOpen(true)}
+            className="group flex items-center gap-1.5 mt-1 cursor-pointer"
+          >
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+              <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
             </div>
-            <p className="text-[12px] font-bold text-muted-foreground line-clamp-1 max-w-[150px]">
-              {user.address || "Current Location"}
+            <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
+              {locating || gpsLoading ? (
+                <span className="flex items-center gap-1">
+                  <span className="animate-spin text-primary">⚙️</span> Detecting...
+                </span>
+              ) : (
+                user.address || "Set Location"
+              )}
             </p>
-          </div>
+          </button>
         </div>
         <div className="flex gap-3 items-center">
           {/* Online/Offline Toggle */}
@@ -1032,7 +1069,14 @@ import { motion, AnimatePresence } from "framer-motion";
             </div>
           </div>
         </div>
+        </div>
       )}
+
+      {/* Location Modal */}
+      <LocationModal 
+        isOpen={isLocationModalOpen} 
+        onClose={() => setIsLocationModalOpen(false)} 
+      />
     </div>
   );
 };

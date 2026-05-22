@@ -37,9 +37,14 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
 export const searchProviders = async (req: Request, res: Response) => {
   try {
     const { serviceId } = req.query;
-    if (!serviceId) return res.status(400).json({ success: false, message: 'Service ID required' });
 
-    const providers = await ProviderModel.findByServiceId(serviceId as string);
+    let providers;
+    if (serviceId) {
+      providers = await ProviderModel.findByServiceId(serviceId as string);
+    } else {
+      // No serviceId — return all online providers (for Nearby Professionals)
+      providers = await ProviderModel.findAllOnline();
+    }
     
     const filteredProviders = [];
     for (const p of providers) {
@@ -94,6 +99,24 @@ export const updateServiceRadius = async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Service radius updated' });
   } catch (error) {
     console.error('Update service radius error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+export const updateWorkingHours = async (req: Request, res: Response) => {
+  try {
+    const { userId, workingHours } = req.body;
+    if (!userId || workingHours === undefined) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const success = await ProviderModel.updateWorkingHoursByUserId(userId, workingHours);
+    if (!success) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+
+    res.json({ success: true, message: 'Working hours updated' });
+  } catch (error) {
+    console.error('Update working hours error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
