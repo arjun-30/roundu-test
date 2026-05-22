@@ -16,14 +16,7 @@ const Portfolio = () => {
       navigate(location.state?.from === "profile" ? "/provider/profile" : "/provider");
     }
   };
-  const mockPortfolio = [
-    { id: 1, title: "AC Repair", date: "22 Oct 2023", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop" },
-    { id: 2, title: "Electrical Wiring", date: "15 Oct 2023", image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop" },
-    { id: 3, title: "Switchboard Fix", date: "10 Oct 2023", image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&h=300&fit=crop" },
-    { id: 4, title: "Fan Installation", date: "05 Oct 2023", image: "https://images.unsplash.com/photo-1591130901921-3f0652bb3915?w=400&h=300&fit=crop" },
-    { id: 5, title: "Heater Repair", date: "01 Oct 2023", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop" },
-    { id: 6, title: "Kitchen Lighting", date: "28 Sep 2023", image: "https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=400&h=300&fit=crop" },
-  ];
+  const mockPortfolio: any[] = [];
 
   const [portfolio, setPortfolio] = useState(mockPortfolio);
   const [isManaging, setIsManaging] = useState(false);
@@ -82,7 +75,7 @@ const Portfolio = () => {
                     </div>
                  </div>
               </div>
-              <button onClick={() => navigate("/provider/video-portfolio")} className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
+              <button onClick={() => navigate("/provider/video-portfolio", { state: { from: "portfolio" } })} className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
                 Re-record Introduction
               </button>
            </div>

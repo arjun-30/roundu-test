@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, ArrowRight } from "lucide-react";
+import { ArrowLeft, Phone, ArrowRight, Sparkles } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
 import { API_BASE_URL } from "@/config/env";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { motion, AnimatePresence } from "framer-motion";
 
 const loginSchema = z.object({
   phone: z.string().length(10, "Phone number must be exactly 10 digits").regex(/^\d+$/, "Must be numbers only"),
@@ -20,6 +21,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isValid } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -42,19 +44,18 @@ const Login = () => {
         } else {
           setSuccess("OTP sent successfully!");
         }
-        setTimeout(() => navigate("/otp", { state: { devOtp: response.data.devOtp } }), 500);
+        setTimeout(() => navigate("/otp", { state: { devOtp: response.data.devOtp } }), 800);
       } else {
         setError(response.data.message || "Failed to send OTP");
       }
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
       
-      // Development Fallback
       if (import.meta.env.DEV) {
         console.warn('[Login] Using Mock OTP fallback');
         dispatch({ type: "SET_PHONE", phone: data.phone });
         setSuccess("OTP sent (Mock Mode)");
-        setTimeout(() => navigate("/otp"), 500);
+        setTimeout(() => navigate("/otp"), 800);
       } else {
         setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
       }
@@ -64,35 +65,91 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col px-6 py-8 bg-background">
-      <button
-        onClick={() => navigate(-1)}
-        className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center text-foreground hover:text-primary hover:border-primary/30 transition-all active:scale-90"
+    <div className="min-h-screen flex flex-col px-6 py-8 bg-[#F8FAFC] relative overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] pointer-events-none" />
+
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10"
       >
-        <ArrowLeft size={20} />
-      </button>
+        <button
+          onClick={() => navigate(-1)}
+          className="w-11 h-11 rounded-[16px] bg-white border-2 border-transparent hover:border-primary/10 flex items-center justify-center text-primary hover:bg-primary/5 transition-all active:scale-90 shadow-sm"
+        >
+          <ArrowLeft size={22} strokeWidth={2.5} />
+        </button>
+      </motion.div>
 
-      <div className="mt-10 mb-8 animate-fade-in">
-        <h1 className="text-3xl font-extrabold text-foreground leading-tight tracking-tight">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-12 mb-10 relative z-10"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-primary/10 shadow-sm mb-6">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <span className="text-xs font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wider">
+            Authentication
+          </span>
+        </div>
+        <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
           Welcome to<br />
-          <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">Roundu</span>
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">RoundU</span>
         </h1>
-        <p className="text-muted-foreground mt-3 text-sm">Enter your phone number to continue</p>
-      </div>
+        <p className="text-muted-foreground mt-4 text-[15px] max-w-[260px] leading-relaxed">
+          Enter your phone number to continue or create a new account.
+        </p>
+      </motion.div>
       
-      {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">{error}</div>}
-      {success && <div className="bg-green-50 text-green-600 p-3 rounded-xl text-sm font-semibold mb-4">{success}</div>}
+      <AnimatePresence mode="wait">
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-red-100 shadow-sm relative z-10"
+          >
+            {error}
+          </motion.div>
+        )}
+        {success && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-sm relative z-10 flex items-center gap-2"
+          >
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+            {success}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 1 }}>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
-            Phone Number *
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <label className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-3 block ml-1">
+            Phone Number
           </label>
-          <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-muted-foreground">
-              <Phone size={18} />
-              <span className="text-sm font-semibold text-foreground">+91</span>
-              <div className="w-px h-5 bg-border" />
+          <motion.div 
+            className="relative group"
+            animate={{
+              scale: isFocused ? 1.02 : 1,
+              boxShadow: isFocused ? "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" : "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)"
+            }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className={`absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2 transition-colors duration-300 ${isFocused ? 'text-accent' : 'text-primary/40'}`}>
+              <Phone size={20} strokeWidth={2.5} />
+              <span className={`text-[15px] font-bold ${isFocused ? 'text-primary' : 'text-foreground'}`}>+91</span>
+              <div className={`w-[2px] h-5 rounded-full ${isFocused ? 'bg-accent/30' : 'bg-primary/10'}`} />
             </div>
             <input
               type="tel"
@@ -100,32 +157,50 @@ const Login = () => {
               pattern="[0-9]*"
               {...register("phone")}
               maxLength={10}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               placeholder="Enter your number"
-              className={`w-full pl-24 pr-4 py-4 rounded-2xl bg-input border ${errors.phone ? 'border-red-500 focus:ring-red-500/20' : 'border-border focus:ring-primary/30'} text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all text-base`}
+              className={`w-full pl-[110px] pr-5 py-5 rounded-[20px] bg-white text-primary font-bold placeholder:text-primary/30 placeholder:font-semibold focus:outline-none transition-all text-lg border-2 tracking-wide ${errors.phone ? 'border-red-400' : isFocused ? 'border-accent' : 'border-white'}`}
             />
-          </div>
+          </motion.div>
           {errors.phone && (
-            <p className="text-red-500 text-[10px] mt-2 font-semibold ml-1">{errors.phone.message}</p>
+            <motion.p 
+              initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+              className="text-red-500 text-[11px] mt-2 font-bold ml-2"
+            >
+              {errors.phone.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <button
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={isValid && !loading ? { scale: 1.02 } : {}}
+          whileTap={isValid && !loading ? { scale: 0.98 } : {}}
           type="submit"
           disabled={!isValid || loading}
-          className="w-full py-4 rounded-2xl font-bold text-base transition-all duration-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:bg-secondary animate-fade-in-up flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30"
-          style={{ animationDelay: "0.3s", opacity: 1 }}
+          className="w-full py-5 rounded-[20px] font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-white flex items-center justify-center gap-3 shadow-[0_8px_30px_rgb(21,46,75,0.25)] relative overflow-hidden group"
         >
+          <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
           {loading ? (
-            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
           ) : (
             <>
-              Next
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              <span className="relative z-10">Next</span>
+              <motion.div 
+                className="relative z-10"
+                animate={{ x: [0, 4, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+              >
+                <ArrowRight size={20} strokeWidth={2.5} />
+              </motion.div>
             </>
           )}
-        </button>
+        </motion.button>
       </form>
-
     </div>
   );
 };

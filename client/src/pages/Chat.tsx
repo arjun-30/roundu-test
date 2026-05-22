@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Send, Phone, MoreVertical, MessageSquare,
-  Mic, Square, Trash2, Play, Pause, CheckCheck, Check, MicOff,
-  Navigation
+  Mic, Square, Trash2, Play, Pause, CheckCheck, MicOff,
+  Navigation, Minus, ChevronUp
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getProviderById } from "@/data/mockData";
@@ -15,6 +16,8 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user, role, bookings, providerRequests, chatHistories, onlineUsers, dispatch } = useApp() as any;
 
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [message, setMessage] = useState("");
   const [notification, setNotification] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -35,6 +38,7 @@ const Chat = () => {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const prevMsgCountRef = useRef(0);
 
   // 1. Resolve booking / request / participant details
   const booking = bookings.find((b: any) => String(b.id) === id || String(b.id) === String(id).replace('req-', ''));
@@ -71,17 +75,33 @@ const Chat = () => {
     setTimeout(() => setNotification(""), 3000);
   };
 
+  // Track new messages while minimized
+  useEffect(() => {
+    if (isMinimized && messages.length > prevMsgCountRef.current) {
+      setUnreadCount(c => c + (messages.length - prevMsgCountRef.current));
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length, isMinimized]);
+
+  // Clear unread when maximized
+  const handleMaximize = () => {
+    setIsMinimized(false);
+    setUnreadCount(0);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
   // 2. Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, partnerTyping]);
+    if (!isMinimized) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, partnerTyping, isMinimized]);
 
   // 3. Join chat room, listen for typing, fetch history, and mark seen
   useEffect(() => {
     if (!roomId) return;
     socket.emit("join_chat_room", { bookingId: String(roomId) });
 
-    // Fetch history
     if (!chatHistories[roomId] || chatHistories[roomId].length === 0) {
       getChatHistory(roomId).then(res => {
         if (res.success) {
@@ -98,7 +118,6 @@ const Chat = () => {
       }).catch(err => console.error("Failed to load chat history:", err));
     }
 
-    // Mark seen
     if (participantId) {
       socket.emit("mark_messages_seen", { bookingId: String(roomId), recipientId: user.id });
     }
@@ -163,11 +182,8 @@ const Chat = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
         setAudioBlobUrl(url);
-        // Convert to base64 for socket transport
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setAudioBase64(reader.result as string);
-        };
+        reader.onloadend = () => { setAudioBase64(reader.result as string); };
         reader.readAsDataURL(blob);
         stream.getTracks().forEach((t) => t.stop());
       };
@@ -221,161 +237,264 @@ const Chat = () => {
 
   const formatSeconds = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  return (
-    <div className="h-screen flex flex-col bg-[#F0F4F8] font-['DM_Sans',sans-serif]">
-      {/* Header */}
-      <div className="px-4 pt-5 pb-3 flex items-center gap-3 bg-white border-b border-[#E1E8EF] shadow-sm z-10">
+  // ── Minimized floating pill ──────────────────────────────────────────────
+  if (isMinimized) {
+    return (
+      <div className="h-screen flex flex-col bg-[#F0F4F8] font-['DM_Sans',sans-serif] relative">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-30 select-none pointer-events-none px-8 text-center">
+          <MessageSquare size={52} className="text-primary" />
+          <p className="text-sm font-bold text-muted-foreground">Chat minimized</p>
+        </div>
+
         <button
           onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-xl bg-[#F5F8FB] border border-[#E1E8EF] flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute top-5 left-4 w-10 h-10 rounded-[14px] bg-white border border-[#E1E8EF] flex items-center justify-center shadow-sm active:scale-95 transition-transform"
         >
           <ArrowLeft size={18} className="text-primary" />
         </button>
 
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-md">
-          {participantAvatar}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <h1 className="text-[15px] font-bold text-foreground truncate">{participantName}</h1>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${isPartnerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-            <p className={`text-[10px] font-semibold ${isPartnerOnline ? 'text-emerald-600' : 'text-gray-500'}`}>
-              {isPartnerOnline ? 'Online' : 'Offline'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleTrackBooking}
-          className="w-9 h-9 rounded-xl bg-[#F5F8FB] border border-[#E1E8EF] flex items-center justify-center active:scale-95 transition-transform"
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="absolute bottom-8 left-4 right-4"
         >
-          <Navigation size={16} className="text-primary" />
-        </button>
-        <button
-          onClick={handleCall}
-          className="w-9 h-9 rounded-xl bg-[#F5F8FB] border border-[#E1E8EF] flex items-center justify-center active:scale-95 transition-transform"
-        >
-          <Phone size={16} className="text-primary" />
-        </button>
-        <button className="w-9 h-9 rounded-xl bg-[#F5F8FB] border border-[#E1E8EF] flex items-center justify-center active:scale-95 transition-transform">
-          <MoreVertical size={16} className="text-muted-foreground" />
-        </button>
+          <button
+            onClick={handleMaximize}
+            className="w-full flex items-center gap-3 bg-white border border-[#E1E8EF] rounded-[20px] px-4 py-3.5 shadow-xl active:scale-[0.98] transition-transform"
+          >
+            <div className="relative flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-primary/20">
+                {participantAvatar}
+              </div>
+              <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isPartnerOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+            </div>
+
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-[14px] font-extrabold text-foreground truncate">{participantName}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {partnerTyping ? "typing…" : isPartnerOnline ? "Online · tap to chat" : "Offline · tap to chat"}
+              </p>
+            </div>
+
+            {unreadCount > 0 && (
+              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow">
+                <span className="text-[10px] text-white font-black">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              </div>
+            )}
+
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <ChevronUp size={16} className="text-primary" />
+            </div>
+          </button>
+        </motion.div>
       </div>
+    );
+  }
+
+  // ── Full chat UI ─────────────────────────────────────────────────────────
+  return (
+    <div className="h-screen flex flex-col bg-[#F0F4F8] font-['DM_Sans',sans-serif]">
+      {/* Header */}
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="px-4 pt-5 pb-3 flex items-center gap-3 bg-white border-b border-[#E1E8EF] shadow-sm z-10"
+      >
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate(-1)}
+          className="w-10 h-10 rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+        >
+          <ArrowLeft size={20} className="text-foreground" strokeWidth={2.5} />
+        </motion.button>
+
+        {/* Avatar */}
+        <div className="w-11 h-11 rounded-[16px] bg-primary flex items-center justify-center text-white font-extrabold text-[15px] shadow-lg shadow-primary/20 relative">
+          {participantAvatar}
+          {isPartnerOnline && (
+            <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h1 className="text-[16px] font-extrabold text-foreground truncate tracking-tight">{participantName}</h1>
+          <p className={`text-[11px] font-bold mt-0.5 ${isPartnerOnline ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+            {isPartnerOnline ? 'Online' : 'Offline'}
+          </p>
+        </div>
+
+        {/* Minimize button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsMinimized(true)}
+          className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+          title="Minimize chat"
+        >
+          <Minus size={16} className="text-muted-foreground" strokeWidth={2.5} />
+        </motion.button>
+
+        <div className="flex gap-1">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={role === "provider" ? () => navigate(`/provider/job/${roomId}`) : handleTrackBooking}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+          >
+            <Navigation size={18} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCall}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+          >
+            <Phone size={18} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => showNotification("More options coming soon.")}
+            className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
+          >
+            <MoreVertical size={18} className="text-primary" strokeWidth={2.5} />
+          </motion.button>
+        </div>
+      </motion.div>
 
       {/* Safety Banner */}
-      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10 shadow-sm">
+      <div className="bg-orange-50 px-4 py-2 flex items-start gap-2 border-b border-orange-100 z-10">
         <div className="mt-0.5 text-xs">⚠️</div>
         <p className="text-[11px] text-orange-800 font-medium leading-tight">
-          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app. Violations may lead to account suspension.
+          <span className="font-bold">For your safety:</span> Do not negotiate prices or share payment details outside the app.
         </p>
       </div>
 
       {/* Notification banner */}
       {notification && (
-        <div className="bg-primary/90 text-white px-4 py-2 text-xs font-semibold text-center animate-fade-in z-20">
+        <div className="bg-primary/90 text-white px-4 py-2 text-xs font-semibold text-center z-20">
           {notification}
         </div>
       )}
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 no-scrollbar">
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center opacity-60 px-5 gap-3 pt-20">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-1">
-              <MessageSquare size={28} className="text-primary" />
-            </div>
-            <h3 className="text-sm font-bold text-foreground">Start the Conversation</h3>
-            <p className="text-xs text-muted-foreground max-w-[220px]">
-              Send a message or voice note to coordinate with your {role === 'customer' ? 'provider' : 'customer'}.
-            </p>
-          </div>
-        ) : (
-          messages.map((msg: any, index: number) => {
-            const isMe = msg.sender === "me";
-            const isSystem = msg.senderRole === "system";
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar">
+        <AnimatePresence>
+          {messages.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="h-full flex flex-col items-center justify-center text-center opacity-60 px-5 gap-4 pt-20"
+            >
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                <MessageSquare size={32} className="text-primary" strokeWidth={2} />
+              </div>
+              <h3 className="text-[18px] font-extrabold text-foreground tracking-tight">Start the Conversation</h3>
+              <p className="text-[14px] font-medium text-muted-foreground max-w-[220px] leading-relaxed">
+                Send a message or voice note to coordinate with your {role === 'customer' ? 'provider' : 'customer'}.
+              </p>
+            </motion.div>
+          ) : (
+            messages.map((msg: any, index: number) => {
+              const isMe = msg.sender === "me";
+              const isSystem = msg.senderRole === "system";
 
-            if (isSystem) {
-              return (
-                <div key={index} className="flex justify-center my-2 animate-fade-in">
-                  <div className="bg-red-50 border border-red-100 px-3 py-2 rounded-xl max-w-[85%] text-center shadow-sm">
-                    <p className="text-[11px] text-red-600 font-bold leading-snug">{msg.text}</p>
-                    <p className="text-[9px] text-red-400 mt-0.5">{msg.time}</p>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} animate-msg-in`}>
-                {!isMe && (
-                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px] mr-2 mt-auto flex-shrink-0">
-                    {participantAvatar.charAt(0)}
-                  </div>
-                )}
-                <div className={`max-w-[72%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1`}>
-                  {msg.audioBase64 ? (
-                    // Voice message bubble
-                    <div className={`rounded-2xl p-3 shadow-sm flex items-center gap-3 min-w-[160px] ${isMe ? "bg-primary text-white rounded-br-none" : "bg-white border border-[#E1E8EF] rounded-bl-none"}`}>
-                      <button
-                        onClick={() => {
-                          if (playingMsgIndex === index) {
-                            previewAudioRef.current?.pause();
-                            setPlayingMsgIndex(null);
-                          } else {
-                            if (previewAudioRef.current) {
-                              previewAudioRef.current.src = msg.audioBase64;
-                              previewAudioRef.current.play();
-                              setPlayingMsgIndex(index);
-                              previewAudioRef.current.onended = () => setPlayingMsgIndex(null);
-                            }
-                          }
-                        }}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isMe ? "bg-white/20" : "bg-primary/10"}`}
-                      >
-                        {playingMsgIndex === index
-                          ? <Pause size={14} className={isMe ? "text-white" : "text-primary"} />
-                          : <Play size={14} className={isMe ? "text-white" : "text-primary"} />
-                        }
-                      </button>
-                      <div className="flex-1">
-                        <div className={`flex items-center gap-0.5 mb-1 ${isMe ? "opacity-70" : "opacity-40"}`}>
-                          {[...Array(12)].map((_, i) => (
-                            <div key={i} className={`rounded-full ${isMe ? "bg-white" : "bg-primary"}`}
-                              style={{ width: 2, height: `${4 + Math.random() * 12}px` }} />
-                          ))}
-                        </div>
-                        <p className={`text-[9px] font-medium ${isMe ? "text-white/70" : "text-muted-foreground"}`}>Voice note</p>
-                      </div>
+              if (isSystem) {
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={index}
+                    className="flex justify-center my-4"
+                  >
+                    <div className="bg-[#FEF2F2] border-2 border-[#FECACA] px-4 py-2.5 rounded-[16px] max-w-[85%] text-center shadow-sm">
+                      <p className="text-[12px] text-[#991B1B] font-extrabold leading-snug">{msg.text}</p>
+                      <p className="text-[10px] text-[#F87171] font-bold mt-1">{msg.time}</p>
                     </div>
-                  ) : (
-                    // Text message bubble
-                    <div className={`rounded-2xl px-4 py-2.5 shadow-sm ${isMe ? "bg-primary text-white rounded-br-none" : "bg-white border border-[#E1E8EF] rounded-bl-none text-foreground"}`}>
-                      <p className="text-[14px] leading-relaxed">{msg.text}</p>
+                  </motion.div>
+                );
+              }
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  key={index}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  {!isMe && (
+                    <div className="w-8 h-8 rounded-[12px] bg-primary/10 flex items-center justify-center text-primary font-black text-[12px] mr-3 mt-auto flex-shrink-0 shadow-sm">
+                      {participantAvatar.charAt(0)}
                     </div>
                   )}
-                  <div className={`flex items-center gap-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
-                    <p className="text-[9px] text-muted-foreground font-medium">{msg.time}</p>
-                    {isMe && (
-                      <CheckCheck size={12} className={msg.isSeen ? "text-blue-500" : "text-gray-400"} />
+                  <div className={`max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
+                    {msg.audioBase64 ? (
+                      <div className={`rounded-[24px] p-3 shadow-sm flex items-center gap-3 min-w-[180px] ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px]"}`}>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => {
+                            if (playingMsgIndex === index) {
+                              previewAudioRef.current?.pause();
+                              setPlayingMsgIndex(null);
+                            } else {
+                              if (previewAudioRef.current) {
+                                previewAudioRef.current.src = msg.audioBase64;
+                                previewAudioRef.current.play();
+                                setPlayingMsgIndex(index);
+                                previewAudioRef.current.onended = () => setPlayingMsgIndex(null);
+                              }
+                            }
+                          }}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMe ? "bg-white/20" : "bg-[#F8FAFC]"}`}
+                        >
+                          {playingMsgIndex === index
+                            ? <Pause size={16} className={isMe ? "text-white" : "text-primary"} strokeWidth={2.5} />
+                            : <Play size={16} className={isMe ? "text-white ml-0.5" : "text-primary ml-0.5"} strokeWidth={2.5} />
+                          }
+                        </motion.button>
+                        <div className="flex-1">
+                          <div className={`flex items-center gap-1 mb-1 ${isMe ? "opacity-90" : "opacity-60"}`}>
+                            {[...Array(10)].map((_, i) => (
+                              <div key={i} className={`rounded-full ${isMe ? "bg-white" : "bg-primary"}`}
+                                style={{ width: 3, height: `${6 + Math.random() * 14}px` }} />
+                            ))}
+                          </div>
+                          <p className={`text-[10px] font-black uppercase tracking-widest ${isMe ? "text-white/80" : "text-muted-foreground"}`}>Voice note</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`rounded-[24px] px-5 py-3 shadow-sm ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px] text-foreground"}`}>
+                        <p className="text-[15px] leading-relaxed font-medium">{msg.text}</p>
+                      </div>
                     )}
+                    <div className={`flex items-center gap-1.5 px-2 ${isMe ? "justify-end" : "justify-start"}`}>
+                      <p className="text-[10px] text-muted-foreground font-bold">{msg.time}</p>
+                      {isMe && (
+                        <CheckCheck size={14} className={msg.isSeen ? "text-[#3B82F6]" : "text-[#CBD5E1]"} strokeWidth={2.5} />
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
 
         {/* Typing Indicator */}
         {partnerTyping && (
-          <div className="flex justify-start animate-msg-in">
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px] mr-2 flex-shrink-0">
+          <div className="flex justify-start">
+            <div className="w-8 h-8 rounded-[12px] bg-primary/10 flex items-center justify-center text-primary font-black text-[12px] mr-3 flex-shrink-0">
               {participantAvatar.charAt(0)}
             </div>
-            <div className="bg-white border border-[#E1E8EF] rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-1">
+            <div className="bg-white border-2 border-transparent rounded-[24px] rounded-bl-[8px] px-4 py-3 shadow-sm flex items-center gap-1">
               {[0, 0.2, 0.4].map((delay, i) => (
-                <div key={i} className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: `${delay}s` }} />
+                <div key={i} className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: `${delay}s` }} />
               ))}
             </div>
           </div>
@@ -388,14 +507,19 @@ const Chat = () => {
       <audio ref={previewAudioRef} className="hidden" />
 
       {/* Voice Preview Bar */}
-      {audioBlobUrl && !isRecording && (
-        <div className="px-4 py-3 bg-white border-t border-[#E1E8EF] flex items-center gap-3">
-          <button onClick={discardRecording} className="w-9 h-9 rounded-full bg-red-50 border border-red-200 flex items-center justify-center">
-            <Trash2 size={16} className="text-red-500" />
-          </button>
-          <div className="flex-1 bg-[#F0F4F8] rounded-full h-10 flex items-center px-4 gap-3">
-            <button
-              onClick={() => {
+      <AnimatePresence>
+        {audioBlobUrl && !isRecording && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="px-4 py-4 bg-white border-t border-[#E1E8EF] flex items-center gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-20"
+          >
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={discardRecording} className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center shadow-sm">
+              <Trash2 size={20} className="text-[#EF4444]" strokeWidth={2.5} />
+            </motion.button>
+            <div className="flex-1 bg-[#F8FAFC] rounded-full h-12 flex items-center px-5 gap-4 border-2 border-transparent">
+              <button onClick={() => {
                 if (isPlayingPreview) {
                   previewAudioRef.current?.pause();
                   setIsPlayingPreview(false);
@@ -407,80 +531,69 @@ const Chat = () => {
                     previewAudioRef.current.onended = () => setIsPlayingPreview(false);
                   }
                 }
-              }}
-              className="text-primary"
-            >
-              {isPlayingPreview ? <Pause size={16} /> : <Play size={16} />}
-            </button>
-            <div className="flex-1 flex items-center gap-0.5">
-              {[...Array(20)].map((_, i) => (
-                <div key={i} className="rounded-full bg-primary/40 flex-1" style={{ height: `${4 + Math.random() * 14}px` }} />
-              ))}
+              }} className="text-primary">
+                {isPlayingPreview ? <Pause size={20} strokeWidth={2.5} /> : <Play size={20} className="ml-0.5" strokeWidth={2.5} />}
+              </button>
+              <div className="flex-1 flex items-center gap-1">
+                {[...Array(15)].map((_, i) => (
+                  <div key={i} className="rounded-full bg-primary/40 flex-1" style={{ height: `${4 + Math.random() * 16}px` }} />
+                ))}
+              </div>
+              <span className="text-[12px] font-black text-primary font-mono">{formatSeconds(recordingSeconds)}</span>
             </div>
-            <span className="text-[11px] font-bold text-primary">{formatSeconds(recordingSeconds)}</span>
-          </div>
-          <button
-            onClick={handleSendVoice}
-            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-md active:scale-95 transition-transform"
-          >
-            <Send size={16} className="text-white" />
-          </button>
-        </div>
-      )}
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleSendVoice} className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_8px_20px_rgba(249,115,22,0.3)]">
+              <Send size={20} className="text-white -ml-0.5" strokeWidth={2.5} />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input Area */}
       {!audioBlobUrl && (
-        <div className="px-4 py-3 bg-white border-t border-[#E1E8EF]">
+        <div className="px-4 py-4 bg-white border-t border-[#E1E8EF] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-20">
           {isRecording ? (
-            <div className="flex items-center gap-3 h-12">
-              <button onClick={discardRecording} className="w-9 h-9 rounded-full bg-red-50 border border-red-200 flex items-center justify-center active:scale-95">
-                <MicOff size={16} className="text-red-500" />
-              </button>
-              <div className="flex-1 bg-red-50 border border-red-200 rounded-full h-10 flex items-center px-4 gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[13px] font-bold text-red-600">Recording... {formatSeconds(recordingSeconds)}</span>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-3 h-[52px]">
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={discardRecording} className="w-12 h-12 rounded-full bg-[#FEF2F2] flex items-center justify-center">
+                <Trash2 size={20} className="text-[#EF4444]" strokeWidth={2.5} />
+              </motion.button>
+              <div className="flex-1 bg-[#FEF2F2] border-2 border-[#FECACA] rounded-full h-12 flex items-center justify-center gap-3 shadow-inner">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444] animate-pulse" />
+                <span className="text-[14px] font-extrabold text-[#991B1B] font-mono">{formatSeconds(recordingSeconds)}</span>
               </div>
-              <button
-                onClick={stopRecording}
-                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-md active:scale-95 transition-transform"
-              >
-                <Square size={14} className="text-white fill-white" />
-              </button>
-            </div>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={stopRecording} className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
+                <Square size={16} className="text-white fill-white" />
+              </motion.button>
+            </motion.div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={startRecording} className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center text-primary transition-colors">
+                <Mic size={22} strokeWidth={2.5} />
+              </motion.button>
               <input
                 ref={inputRef}
                 value={message}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
                 placeholder="Type your message..."
-                className="flex-1 h-10 bg-white border border-[#E1E8EF] rounded-full px-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-shadow"
+                className="flex-1 h-12 bg-[#F8FAFC] border-2 border-transparent rounded-full px-5 text-[15px] font-medium text-foreground focus:outline-none focus:border-primary/20 focus:bg-white transition-all shadow-inner placeholder:font-bold placeholder:text-muted-foreground/60"
               />
-              <button
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                  message.trim() ? "bg-primary text-white active:scale-95 shadow-md" : "bg-[#F0F4F8] text-[#A0B0C0]"
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                  message.trim() ? "bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)]" : "bg-[#F8FAFC] text-[#CBD5E1]"
                 }`}
               >
-                <Send size={16} />
-              </button>
+                <Send size={20} className={message.trim() ? "-ml-0.5" : ""} strokeWidth={2.5} />
+              </motion.button>
             </div>
           )}
         </div>
       )}
 
       <style>{`
-        @keyframes msg-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-msg-in { animation: msg-in 0.2s ease-out forwards; }
-        @keyframes fade-in {
-          from { opacity: 0; } to { opacity: 1; }
-        }
-        .animate-fade-in { animation: fade-in 0.25s ease forwards; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>

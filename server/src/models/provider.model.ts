@@ -26,6 +26,14 @@ export const ProviderModel = {
     return (res.rowCount ?? 0) > 0;
   },
 
+  async updateWorkingHoursByUserId(userId: string, workingHours: string): Promise<boolean> {
+    const res = await getPool().query(
+      'UPDATE providers SET working_hours = $1 WHERE user_id = $2',
+      [workingHours, userId]
+    );
+    return (res.rowCount ?? 0) > 0;
+  },
+
   async getStats(providerId: string): Promise<any> {
     const earningsRes = await getPool().query(
       "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
@@ -53,6 +61,18 @@ export const ProviderModel = {
     return res.rows;
   },
 
+  async findAllOnline(): Promise<any[]> {
+    const res = await getPool().query(
+      `SELECT p.*, u.name, u.phone, u.avatar_url 
+       FROM providers p 
+       JOIN users u ON p.user_id = u.id 
+       WHERE p.is_online = true
+       ORDER BY p.rating DESC
+       LIMIT 20`
+    );
+    return res.rows;
+  },
+
   async register(
     userId: string,
     data: {
@@ -71,10 +91,10 @@ export const ProviderModel = {
       // 1. Update user role to provider
       await client.query("UPDATE users SET role = 'provider' WHERE id = $1", [userId]);
 
-      // 2. Insert provider profile
+      // 2. Insert provider profile (auto-verify for now since they passed DigiLocker)
       const providerRes = await client.query(
         `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating) 
-         VALUES ($1, $2, $3, $4, $5, false, true, 5.0) 
+         VALUES ($1, $2, $3, $4, $5, true, true, 5.0) 
          RETURNING *`,
         [userId, data.bio, data.experienceYears, data.workingHours, data.serviceRadius]
       );

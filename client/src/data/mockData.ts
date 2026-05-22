@@ -154,19 +154,19 @@ export const popularTasks: PopularTask[] = [
     id: "pt-1",
     serviceId: "electrician",
     category: "ELECTRICAL",
-    title: "Smart Lighting Install",
-    description: "Complete setup for all rooms",
-    priceLabel: "₹1500+",
-    image: "https://images.unsplash.com/photo-1565814329452-e1efa11c5b89?w=400&h=300&fit=crop",
+    title: "Change Switches & Plugs",
+    description: "Replace old or broken switches",
+    priceLabel: "₹250+",
+    image: "https://images.unsplash.com/photo-1558402529-d2638a7023e9?w=400&h=300&fit=crop", // Outlet installation
   },
   {
     id: "pt-2",
     serviceId: "plumber",
     category: "PLUMBING",
-    title: "Full Bathroom Refit",
-    description: "Fixtures, pipes & drainage",
-    priceLabel: "₹3000+",
-    image: "https://images.unsplash.com/photo-1585128903994-9788298932a4?w=400&h=300&fit=crop",
+    title: "Fix Leaky Faucets",
+    description: "Stop drips and save water",
+    priceLabel: "₹150+",
+    image: "https://images.unsplash.com/photo-1585058177583-0498b5e61d85?w=400&h=300&fit=crop", // Faucet repair
   },
   {
     id: "pt-3",
@@ -174,18 +174,12 @@ export const popularTasks: PopularTask[] = [
     category: "HOUSE KEEPING",
     title: "Deep Kitchen Cleaning",
     description: "Full sanitization & degreasing",
-    priceLabel: "₹800+",
-    image: "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=400&h=300&fit=crop",
+    priceLabel: "₹1200+",
+    image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop", // Clean kitchen
   },
 ];
 
-const baseProviders: Omit<Provider, "id" | "serviceId">[] = [
-  { name: "Rajesh Kumar", rating: 4.9, reviews: 238, pricePerHr: 299, distanceKm: 1.2, etaMin: 30, experienceYrs: 8, avatar: "RK", verified: true, topRated: true, bio: "Certified expert with 8+ years of hands-on experience. Quick, clean and reliable.", tags: ["Verified", "Fast"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9716, lng: 77.5946, phone: "9999999991" },
-  { name: "Suresh Menon", rating: 4.7, reviews: 156, pricePerHr: 249, distanceKm: 2.5, etaMin: 45, experienceYrs: 5, avatar: "SM", verified: true, topRated: false, bio: "Friendly professional focused on quality work and customer satisfaction.", tags: ["Experienced"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9783, lng: 77.6408, phone: "9999999992" },
-  { name: "Deepak Jain", rating: 4.8, reviews: 312, pricePerHr: 349, distanceKm: 0.8, etaMin: 20, experienceYrs: 10, avatar: "DJ", verified: true, topRated: true, bio: "Top-rated specialist serving the city for over a decade.", tags: ["Verified", "Top Rated"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9698, lng: 77.7499, phone: "9999999993" },
-  { name: "Vikram Singh", rating: 4.6, reviews: 89, pricePerHr: 199, distanceKm: 3.1, etaMin: 50, experienceYrs: 3, avatar: "VS", verified: false, topRated: false, bio: "Affordable and dependable service for all your needs.", tags: ["Budget"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 12.9279, lng: 77.6271, phone: "9999999994" },
-  { name: "Arun Patel", rating: 4.9, reviews: 421, pricePerHr: 399, distanceKm: 1.8, etaMin: 35, experienceYrs: 12, avatar: "AP", verified: true, topRated: true, bio: "Premium professional with years of expertise and outstanding reviews.", tags: ["Verified", "Premium"], available: true, videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", lat: 13.0358, lng: 77.5970, phone: "9999999995" },
-];
+const baseProviders: Omit<Provider, "id" | "serviceId">[] = [];
 
 
 // Generate 5 providers per service
@@ -199,56 +193,9 @@ export const providers: Provider[] = services.flatMap((s) =>
 
 export const getProviderById = (id: string) => providers.find((p) => p.id === id);
 
-// Initial provider-side incoming requests
-export const initialProviderRequests: ProviderRequest[] = [
-  {
-    id: "req-1",
-    customerName: "Anita Sharma",
-    serviceId: "electrician",
-    address: "12, MG Road, Indiranagar",
-    date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    time: "10:00 AM",
-    price: 299,
-    status: "pending",
-    notes: "Fan installation needed.",
-    customerPhone: "9876543210",
-  },
-  {
-    id: "req-2",
-    customerName: "Rohit Verma",
-    serviceId: "electrician",
-    address: "44, 5th Cross, Koramangala",
-    date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    time: "2:30 PM",
-    price: 349,
-    status: "pending",
-    notes: "Wiring inspection.",
-    customerPhone: "9876543211",
-  },
-];
+export const initialProviderRequests: ProviderRequest[] = [];
 
-export const initialCompletedJobs: ProviderRequest[] = [
-  {
-    id: "job-c1",
-    customerName: "Priya Das",
-    serviceId: "electrician",
-    address: "8, Park Street",
-    date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-    time: "11:00 AM",
-    price: 499,
-    status: "completed",
-  },
-  {
-    id: "job-c2",
-    customerName: "Karan Mehta",
-    serviceId: "electrician",
-    address: "21, HSR Layout",
-    date: new Date(Date.now() - 86400000 * 5).toISOString().slice(0, 10),
-    time: "4:00 PM",
-    price: 299,
-    status: "completed",
-  },
-];
+export const initialCompletedJobs: ProviderRequest[] = [];
 
 export const timeSlots = [
   "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",

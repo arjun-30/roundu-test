@@ -753,7 +753,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     status: b.status,
                     notes: b.notes,
                     voiceNote: b.voice_note || false,
-                    voiceNoteUrl: b.voice_note_url || null
+                    voiceNoteUrl: b.voice_note_url || null,
+                    scheduled_at: b.scheduled_at
                   };
                 });
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
@@ -772,6 +773,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
     syncDb();
   }, [state.isAuthenticated, state.user.id, state.role]);
+
+  useEffect(() => {
+    if (state.isAuthenticated && state.user.id && state.role) {
+      socket.emit("register", {
+        userId: state.user.id,
+        role: state.role,
+        serviceIds: state.providerRegistrationDraft?.serviceIds || []
+      });
+    }
+  }, [state.isAuthenticated, state.user.id, state.role, state.providerRegistrationDraft?.serviceIds]);
 
   useEffect(() => {
     socket.connect();

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Camera, Upload, AlertTriangle, FileText, Activity, Wrench } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { socket } from "@/lib/socket";
 
 const ServiceReport = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ const ServiceReport = () => {
     }
     
     dispatch({ type: "COMPLETE_REQUEST", id: job.id });
+    socket.emit("update_job_status", { bookingId: job.id, status: "completed" });
     setNotification(`Job completed! ₹${job.quote || job.price} added to your earnings.`);
     setTimeout(() => navigate("/provider", { replace: true }), 1500);
   };
