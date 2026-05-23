@@ -22,8 +22,8 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    id: "basic",
-    name: "Basic Plan",
+    id: "starter",
+    name: "Starter Plan",
     priceMonthly: "₹999",
     priceYearly: "₹9,590",
     features: [
@@ -33,8 +33,8 @@ const plans: Plan[] = [
     ],
   },
   {
-    id: "pro",
-    name: "Pro Plan",
+    id: "essential",
+    name: "Essential Plan",
     priceMonthly: "₹1,999",
     priceYearly: "₹19,190",
     isPopular: true,
@@ -46,8 +46,8 @@ const plans: Plan[] = [
     ],
   },
   {
-    id: "advanced",
-    name: "Advanced Plan",
+    id: "premium",
+    name: "Premium Plan",
     priceMonthly: "₹3,499",
     priceYearly: "₹33,590",
     features: [
@@ -146,7 +146,7 @@ const Subscription = () => {
         className="flex-1 px-5 pt-5 pb-6 space-y-6 overflow-y-auto"
       >
         {plans.map((plan) => {
-          const isPro = plan.id === "pro";
+          const isPro = plan.id === "essential";
           const isActive = activePlan === plan.id;
           
           return (
