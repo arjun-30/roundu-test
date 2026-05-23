@@ -1,9 +1,10 @@
-import { Home, CalendarCheck, User, Crown } from "lucide-react";
+import { Home, CalendarCheck, User, Crown, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const navItems = [
   { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "bookings", label: "Bookings", icon: CalendarCheck, path: "/bookings" },
+  { id: "subscriptions", label: "Subscribe", icon: Crown, path: "/subscriptions" },
   { id: "profile", label: "Profile", icon: User, path: "/profile" },
 ];
 
@@ -20,12 +21,12 @@ const BottomNav = () => {
               key={item.id}
               onClick={() => navigate(item.path)}
               className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 active:scale-95 ${
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
               <span className="text-[10px] font-semibold">{item.label}</span>
-              {isActive && <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />}
+              {isActive && <div className="w-1 h-1 rounded-full bg-accent mt-0.5" />}
             </button>
           );
         })}

@@ -29,7 +29,7 @@ async function main() {
 
   const io = new Server(httpServer, {
     path: "/socket.io/",
-    cors: { 
+    cors: {
       origin: true, // Echo origin to bypass CORS
       credentials: false, // Allow non-credentialed connections from Android WebView
       methods: ["GET", "POST"]
@@ -54,12 +54,12 @@ async function main() {
     socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
-      
+
       // Join user-specific room
       if (data.userId) {
         socket.join(`user:${data.userId}`);
         console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
-        
+
         // Track online status
         let userSockets = onlineUserConnections.get(data.userId);
         if (!userSockets) {
@@ -72,9 +72,9 @@ async function main() {
 
       if (data.role === 'provider') {
         socket.join('providers');
-        
+
         let serviceIds: string[] = Array.isArray(data.serviceIds) ? data.serviceIds : [];
-        
+
         // If client didn't send serviceIds, fetch from DB as fallback
         if (serviceIds.length === 0 && data.userId) {
           try {
@@ -91,28 +91,28 @@ async function main() {
             console.error('[socket] failed to fetch serviceIds from DB:', err);
           }
         }
-        
+
         // Join service-specific rooms
         serviceIds.forEach((serviceId: string) => {
           const roomName = `service:${serviceId}`;
           socket.join(roomName);
           console.log(`[socket] provider ${data.userId} joined room: ${roomName}`);
         });
-        
+
         // Send active broadcasts for their services (skip expired ones — 120s popup TTL)
         const BROADCAST_TTL_MS = 120 * 1000;
         activeBroadcasts.forEach((payload, id) => {
           if (serviceIds.includes(payload.serviceId)) {
             const age = Date.now() - (payload.createdAt || 0);
             if (age > BROADCAST_TTL_MS) {
-              console.log(`[socket] skipping expired broadcast ${id} (age: ${Math.floor(age/1000)}s) for provider ${data.userId}`);
+              console.log(`[socket] skipping expired broadcast ${id} (age: ${Math.floor(age / 1000)}s) for provider ${data.userId}`);
               return;
             }
             socket.emit('incoming_broadcast', payload);
             console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
           }
         });
-        
+
         console.log(`[socket] provider ${data.userId} fully registered`);
       }
     });
@@ -156,38 +156,38 @@ async function main() {
           return;
         }
       }
-      
+
       // 2. Room-based Broadcast
       const roomName = `service:${data.serviceId}`;
       console.log(`[socket] broadcasting request to room: ${roomName}`);
       io.to(roomName).emit('incoming_request', payload);
-      
+
       // 3. Optional: broadcast to 'providers' room as well if roomName might be empty
       // but to avoid double notification we rely on service room.
     });
 
     socket.on('broadcast_job', (data: any) => {
       console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
-      
+
       const isNew = !activeBroadcasts.has(data.broadcastId);
 
       const broadcastPayload = isNew
         ? {
-            broadcastId: data.broadcastId,
-            customerId: data.customerId,
-            customerName: data.customerName || "Customer",
-            serviceId: data.serviceId,
-            address: data.address || "Client Address",
-            lat: data.lat ?? null,
-            lng: data.lng ?? null,
-            date: data.date,
-            time: data.time,
-            notes: data.notes,
-            voiceNote: data.voiceNote || false,
-            voiceNoteUrl: data.voiceNoteUrl || null,
-            status: "active",
-            createdAt: Date.now()   // only set on first emit so TTL is accurate
-          }
+          broadcastId: data.broadcastId,
+          customerId: data.customerId,
+          customerName: data.customerName || "Customer",
+          serviceId: data.serviceId,
+          address: data.address || "Client Address",
+          lat: data.lat ?? null,
+          lng: data.lng ?? null,
+          date: data.date,
+          time: data.time,
+          notes: data.notes,
+          voiceNote: data.voiceNote || false,
+          voiceNoteUrl: data.voiceNoteUrl || null,
+          status: "active",
+          createdAt: Date.now()   // only set on first emit so TTL is accurate
+        }
         : activeBroadcasts.get(data.broadcastId); // reuse stored payload (preserves createdAt)
 
       if (isNew) {
@@ -214,7 +214,7 @@ async function main() {
 
     socket.on('accept_quote', (data: any) => {
       console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}, bookingId=${data.bookingId}`);
-      
+
       const broadcast = activeBroadcasts.get(data.broadcastId);
       const serviceId = data.serviceId || broadcast?.serviceId;
       const customerName = data.customerName || broadcast?.customerName || 'Customer';
@@ -223,14 +223,14 @@ async function main() {
       if (broadcast || data.bookingId) {
         // Notify other providers in the service room and providers room the job is taken
         if (serviceId) {
-          io.to(`service:${serviceId}`).to('providers').emit('job_taken', { 
-            broadcastId: data.broadcastId, 
-            acceptedProviderId: data.acceptedProviderId 
+          io.to(`service:${serviceId}`).to('providers').emit('job_taken', {
+            broadcastId: data.broadcastId,
+            acceptedProviderId: data.acceptedProviderId
           });
         }
-        
+
         // ✅ Notify the WINNING provider with full job details
-        io.to(`user:${data.acceptedProviderId}`).emit('quote_accepted', { 
+        io.to(`user:${data.acceptedProviderId}`).emit('quote_accepted', {
           broadcastId: data.broadcastId,
           bookingId: data.bookingId,
           serviceId,
@@ -246,9 +246,9 @@ async function main() {
           voiceNote: broadcast?.voiceNote || false,
           voiceNoteUrl: broadcast?.voiceNoteUrl || null,
         });
-        
+
         console.log(`[socket] quote_accepted sent to user:${data.acceptedProviderId} for booking ${data.bookingId}`);
-        
+
         // Remove from active broadcasts
         if (broadcast) activeBroadcasts.delete(data.broadcastId);
       } else {
@@ -258,7 +258,7 @@ async function main() {
 
     socket.on('submit_quote', async (data: any) => {
       console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
-      
+
       try {
         const provider = await ProviderModel.findByUserId(data.providerId);
         const providerId = provider ? provider.id : data.providerId;
@@ -417,7 +417,7 @@ async function main() {
 
     socket.on('update_job_status', async (data: any) => {
       console.log(`[socket] update_job_status for booking ${data.bookingId} to ${data.status}, paid=${data.paid}`);
-      
+
       // Persist to DB
       const dbId = String(data.bookingId).replace('req-', '');
       try {
@@ -443,7 +443,7 @@ async function main() {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);
       }
-      
+
       const userId = socket.data.userId;
       if (userId) {
         const userSockets = onlineUserConnections.get(userId);

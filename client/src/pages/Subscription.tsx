@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Crown } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Crown, Zap, Tag, Briefcase, Star, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import { motion } from "framer-motion";
+
+interface PlanFeature {
+  text: string;
+  icon: any;
+}
 
 interface Plan {
   id: string;
   name: string;
   priceMonthly: string;
   priceYearly: string;
-  features: string[];
+  features: PlanFeature[];
   isPopular?: boolean;
   active?: boolean;
   badge?: string;
@@ -21,9 +27,9 @@ const plans: Plan[] = [
     priceMonthly: "₹999",
     priceYearly: "₹9,590",
     features: [
-      "2 Housekeeping services",
-      "1 Car Wash",
-      "1 AC Cleaning"
+      { text: "2 Housekeeping services", icon: Briefcase },
+      { text: "1 Car Wash", icon: Briefcase },
+      { text: "1 AC Cleaning", icon: Briefcase }
     ],
   },
   {
@@ -34,9 +40,9 @@ const plans: Plan[] = [
     isPopular: true,
     badge: "MOST POPULAR",
     features: [
-      "6 Services across categories",
-      "Priority booking",
-      "10% discount on extra services"
+      { text: "6 Services across categories", icon: Star },
+      { text: "Priority booking", icon: Zap },
+      { text: "10% discount on extra services", icon: Tag }
     ],
   },
   {
@@ -45,12 +51,27 @@ const plans: Plan[] = [
     priceMonthly: "₹3,499",
     priceYearly: "₹33,590",
     features: [
-      "10 Services across all categories",
-      "Priority support",
-      "Best value package"
+      { text: "10 Services across all categories", icon: Sparkles },
+      { text: "Priority support", icon: Zap },
+      { text: "Best value package", icon: Tag }
     ]
   }
 ];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+};
 
 const Subscription = () => {
   const navigate = useNavigate();
@@ -66,13 +87,13 @@ const Subscription = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-white pb-24 font-sans">
+    <div className="min-h-full flex flex-col bg-gradient-to-b from-slate-50 to-white pb-24 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-8 pb-4 border-b border-border sticky top-0 bg-white z-20">
+      <div className="flex items-center justify-between px-5 pt-8 pb-4 border-b border-border sticky top-0 bg-white/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shadow-sm"
           >
             <ArrowLeft size={20} className="text-foreground" />
           </button>
@@ -84,10 +105,14 @@ const Subscription = () => {
       </div>
 
       {/* Toggle */}
-      <div className="px-5 pt-6 pb-2">
-        <div className="bg-gray-100 p-1.5 rounded-2xl flex items-center relative">
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-5 pt-6 pb-2"
+      >
+        <div className="bg-gray-100/80 backdrop-blur-sm p-1.5 rounded-2xl flex items-center relative shadow-inner">
           <div 
-            className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-sm transition-all duration-300 ease-in-out ${
+            className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-md transition-all duration-300 ease-in-out ${
               billingCycle === "monthly" ? "left-1.5" : "left-[calc(50%+4.5px)]"
             }`}
           />
@@ -102,28 +127,36 @@ const Subscription = () => {
             onClick={() => setBillingCycle("yearly")}
           >
             Yearly
-            <span className="text-[9px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wider">Save 20%</span>
+            <motion.span 
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="text-[9px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wider"
+            >
+              Save 20%
+            </motion.span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Plans */}
-      <div className="flex-1 px-5 pt-5 pb-6 space-y-6 overflow-y-auto">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="flex-1 px-5 pt-5 pb-6 space-y-6 overflow-y-auto"
+      >
         {plans.map((plan) => {
           const isPro = plan.id === "pro";
           const isActive = activePlan === plan.id;
           
           return (
-            <div 
+            <motion.div 
+              variants={itemVariants}
               key={plan.id}
-              className={`relative bg-white rounded-[20px] p-6 transition-all duration-300 ${
-                isPro 
-                  ? "border-[2px] border-blue-500 shadow-[0_8px_30px_rgba(59,130,246,0.12)]" 
-                  : "border border-gray-200 shadow-sm hover:shadow-md"
-              }`}
+              className="relative bg-white rounded-[20px] p-6 transition-all duration-300 border-[2px] border-gray-100 shadow-sm hover:border-accent hover:shadow-[0_8px_30px_rgba(245,158,11,0.15)] hover:scale-[1.02]"
             >
               {isPro && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-[0.1em] px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-extrabold uppercase tracking-[0.1em] px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
                   <Crown size={12} fill="currentColor" /> {plan.badge}
                 </div>
               )}
@@ -132,9 +165,13 @@ const Subscription = () => {
                 <div>
                   <h3 className="text-[17px] font-extrabold text-foreground">{plan.name}</h3>
                   {isActive && (
-                    <span className="inline-block mt-1.5 bg-green-100 text-green-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md">
+                    <motion.span 
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="inline-block mt-1.5 bg-green-100 text-green-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md"
+                    >
                       Active Plan
-                    </span>
+                    </motion.span>
                   )}
                 </div>
               </div>
@@ -151,10 +188,10 @@ const Subscription = () => {
               <div className="mt-6 space-y-3.5">
                 {plan.features.map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check size={12} className="text-secondary" strokeWidth={3} />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isPro ? 'bg-accent/15' : 'bg-gray-100'}`}>
+                      <feature.icon size={12} className={isPro ? 'text-accent' : 'text-gray-500'} strokeWidth={3} />
                     </div>
-                    <span className="text-[14px] text-gray-600 font-medium leading-snug">{feature}</span>
+                    <span className="text-[14px] text-gray-700 font-medium leading-snug pt-0.5">{feature.text}</span>
                   </div>
                 ))}
               </div>
@@ -165,9 +202,7 @@ const Subscription = () => {
                   className={`w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
                     isActive
                       ? "bg-gray-100 text-foreground hover:bg-gray-200"
-                      : isPro
-                        ? "bg-primary text-white shadow-[0_4px_14px_rgba(37,99,235,0.3)] hover:bg-blue-700"
-                        : "bg-secondary/10 text-blue-700 hover:bg-blue-100"
+                      : "bg-accent/10 text-accent hover:bg-accent/20"
                   }`}
                 >
                   {isActive ? "Manage Plan" : "Subscribe"}
@@ -180,10 +215,10 @@ const Subscription = () => {
                   Cancel anytime
                 </p>
               </div>
-            </div>
+            </motion.div>
           )
         })}
-      </div>
+      </motion.div>
 
       <BottomNav />
     </div>
