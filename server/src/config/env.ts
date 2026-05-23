@@ -4,8 +4,12 @@ import fs from 'fs';
 
 function loadDotEnv() {
   const envPath = path.resolve(process.cwd(), '.env');
-  if (!fs.existsSync(envPath)) return;
-  const text = fs.readFileSync(envPath, 'utf8');
+  let text: string = "";
+  try {
+    text = fs.readFileSync(envPath, 'utf8');
+  } catch (err) {
+    return;
+  }
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
@@ -39,9 +43,10 @@ const envSchema = z.object({
   MSG91_SENDER_ID: z.string().default('ROUNDU'),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
-  CASHFREE_CLIENT_ID: z.string().optional(),
-  CASHFREE_CLIENT_SECRET: z.string().optional(),
+  CASHFREE_CLIENT_ID: z.string(),
+  CASHFREE_CLIENT_SECRET: z.string(),
   CASHFREE_BASE_URL: z.string().default('https://sandbox.cashfree.com/verification'),
+  CASHFREE_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

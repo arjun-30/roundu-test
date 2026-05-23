@@ -205,3 +205,46 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_booking ON chat_messages(booking_id);
+
+
+-- Fraud flags for ops review
+CREATE TABLE IF NOT EXISTS fraud_flags (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               UUID NOT NULL,
+  bank_account          VARCHAR(40),
+  ifsc                  VARCHAR(11),
+  cashfree_reference_id BIGINT,
+  flagged_at            TIMESTAMP DEFAULT NOW(),
+  reviewed              BOOLEAN DEFAULT FALSE,
+  reviewed_by           VARCHAR(100),
+  reviewed_at           TIMESTAMP,
+  notes                 TEXT
+);
+
+-- BAV attempt counter per user
+CREATE TABLE IF NOT EXISTS bav_attempts (
+  user_id               UUID PRIMARY KEY,
+  attempts              INT DEFAULT 0,
+  locked                BOOLEAN DEFAULT FALSE,
+  last_status_code      VARCHAR(30),
+  last_attempt_at       TIMESTAMP,
+  created_at            TIMESTAMP DEFAULT NOW()
+);
+
+-- Penny drop queue stub (next iteration)
+CREATE TABLE IF NOT EXISTS penny_drop_queue (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               UUID NOT NULL,
+  bank_account          VARCHAR(40),
+  ifsc                  VARCHAR(11),
+  name                  VARCHAR(200),
+  status                VARCHAR(20) DEFAULT 'QUEUED',
+  reason                VARCHAR(100),
+  queued_at             TIMESTAMP DEFAULT NOW(),
+  processed_at          TIMESTAMP
+);
+
+-- Add fraud flag columns to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_reason VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged_at TIMESTAMP;

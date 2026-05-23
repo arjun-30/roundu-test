@@ -3,6 +3,6 @@ import { WebhookController } from '../controllers/webhook.controller';
 
 const router = Router();
 
-router.post('/setu', WebhookController.handleSetuWebhook);
+router.post('/cashfree', WebhookController.handleCashfreeWebhook);
 
 export default router;

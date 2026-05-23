@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Loader2, Landmark } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
@@ -37,18 +38,58 @@ const DigiLockerKYC = () => {
   const getToken = () => localStorage.getItem("roundu_token") || "";
 
   useEffect(() => {
-    // Left empty for mock flow
+    const checkPendingAadhaar = async () => {
+      const pendingReqId = localStorage.getItem('cf_aadhaar_verification_id');
+      if (pendingReqId && !kyc.aadhaarVerified) {
+        setIsVerifyingAadhaar(true);
+        try {
+          const res = await axios.post(`${API_URL}/kyc/aadhaar/verify`, { requestId: pendingReqId }, {
+            headers: { Authorization: `Bearer ${getToken()}` }
+          });
+          
+          if (res.data.success && res.data.data?.verified) {
+            dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
+            showNotification('Aadhaar Verified Successfully');
+            setActiveStep(2);
+            localStorage.removeItem('cf_aadhaar_verification_id');
+          } else {
+            if (res.data.data?.status === 'AADHAAR_NOT_LINKED') {
+              showError(res.data.data?.message || 'Aadhaar not linked in DigiLocker.');
+            } else {
+              showError(res.data.data?.message || 'Aadhaar verification failed. Please try again.');
+            }
+            localStorage.removeItem('cf_aadhaar_verification_id');
+          }
+        } catch (err: any) {
+          showError(err.response?.data?.message || 'Failed to verify Aadhaar status');
+          localStorage.removeItem('cf_aadhaar_verification_id');
+        } finally {
+          setIsVerifyingAadhaar(false);
+        }
+      }
+    };
+
+    checkPendingAadhaar();
   }, [kyc.aadhaarVerified, dispatch]);
 
   const handleConnectDigiLocker = async () => {
     setIsConnecting(true);
-    // Simulate API delay
-    setTimeout(() => {
+    try {
+      const res = await axios.post(`${API_URL}/kyc/aadhaar/init`, {
+        clientRedirectUrl: window.location.href
+      }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      
+      if (res.data.success && res.data.data) {
+        const { id, url } = res.data.data;
+        localStorage.setItem('cf_aadhaar_verification_id', id);
+        window.location.href = url; // Redirect to Cashfree/DigiLocker
+      }
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Failed to initiate DigiLocker. Please try again.');
       setIsConnecting(false);
-      dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
-      showNotification('Aadhaar Verified Successfully');
-      setActiveStep(2);
-    }, 1500);
+    }
   };
 
   const verifyBankAndPan = async () => {
@@ -58,12 +99,61 @@ const DigiLockerKYC = () => {
     }
     setIsVerifyingBank(true);
     
-    // Simulate API delay
-    setTimeout(() => {
+    try {
+      // 1. Verify PAN
+      const panRes = await axios.post(`${API_URL}/kyc/pan/verify`, { pan }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      
+      if (!panRes.data.success || !panRes.data.data?.verified) {
+        showError(panRes.data.data?.message || panRes.data.message || 'PAN Verification Failed');
+        setIsVerifyingBank(false);
+        return;
+      }
+
+      if (panRes.data.data?.warningMessage) {
+        showNotification(panRes.data.data.warningMessage);
+      }
+
+      dispatch({ type: 'UPDATE_KYC', patch: { panVerified: true } });
+
+      // 2. Verify Bank
+      const bankInitRes = await axios.post(`${API_URL}/kyc/bav/init`, { 
+        accountNumber: accNum, 
+        ifsc 
+      }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+
+      if (bankInitRes.data.success && bankInitRes.data.data?.requestId) {
+        const reqId = bankInitRes.data.data.requestId;
+        
+        // Check Status
+        const bankStatusRes = await axios.get(`${API_URL}/kyc/bav/${reqId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+
+        if (bankStatusRes.data.success && bankStatusRes.data.data?.verified) {
+          dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true } });
+          showNotification('Bank Account & PAN Verified Successfully');
+        } else {
+          showError(bankStatusRes.data.data?.message || bankStatusRes.data.message || 'Bank verification failed');
+        }
+      } else if (bankInitRes.data.queued) {
+         showNotification(bankInitRes.data.message || 'Bank verification queued.');
+         dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true } }); 
+      }
+    } catch (err: any) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.message || 'Verification failed. Please try again.';
+      showError(msg);
+      
+      if (status === 429 || status === 403) {
+        // Handle 429 locks and 403 fraud flags naturally
+      }
+    } finally {
       setIsVerifyingBank(false);
-      dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true, panVerified: true } });
-      showNotification('Bank Account & PAN Verified Successfully');
-    }, 2000);
+    }
   };
 
   const allVerified = kyc.aadhaarVerified && kyc.bankVerified;
@@ -142,7 +232,7 @@ const DigiLockerKYC = () => {
 
           {activeStep === 1 && !kyc.aadhaarVerified && (
             <div className="p-4 pt-0 border-t border-border animate-fade-in-up">
-              <p className="text-xs text-muted-foreground mb-3">Click the "Connect DigiLocker" button above to authenticate with Setu and verify your Aadhaar securely.</p>
+              <p className="text-xs text-muted-foreground mb-3">Click the "Connect DigiLocker" button above to authenticate and verify your Aadhaar securely.</p>
             </div>
           )}
         </div>

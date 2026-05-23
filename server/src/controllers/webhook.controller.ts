@@ -3,10 +3,10 @@ import { getPool } from '../config/database';
 const db = { query: (sql: string, params?: any[]) => getPool().query(sql, params) };
 
 export class WebhookController {
-  static async handleSetuWebhook(req: Request, res: Response) {
+  static async handleCashfreeWebhook(req: Request, res: Response) {
     try {
       const event = req.body;
-      console.log('[Webhook] Setu event received:', JSON.stringify(event));
+      console.log('[Webhook] Cashfree event received:', JSON.stringify(event));
 
       const { id, event: eventName, data, status } = event;
       
