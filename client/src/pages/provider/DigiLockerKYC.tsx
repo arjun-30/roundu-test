@@ -163,12 +163,10 @@ const DigiLockerKYC = () => {
   };
 
   // ── DEV ONLY: delete this block before go-live ──────────────────────────────
-  const devAutoFill = import.meta.env.DEV
-    ? () => {
-        dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, panVerified: true, bankVerified: true } });
-        navigate('/provider/video-portfolio');
-      }
-    : null;
+  const devAutoFill = () => {
+    dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, panVerified: true, bankVerified: true } });
+    navigate('/provider/video-portfolio');
+  };
   // ────────────────────────────────────────────────────────────────────────────
 
   return (
