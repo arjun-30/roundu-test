@@ -162,6 +162,15 @@ const DigiLockerKYC = () => {
     navigate('/provider/video-portfolio');
   };
 
+  // ── DEV ONLY: delete this block before go-live ──────────────────────────────
+  const devAutoFill = import.meta.env.DEV
+    ? () => {
+        dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, panVerified: true, bankVerified: true } });
+        navigate('/provider/video-portfolio');
+      }
+    : null;
+  // ────────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
@@ -340,6 +349,17 @@ const DigiLockerKYC = () => {
 
       {/* Footer / Continue button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex flex-col gap-2">
+
+        {/* DEV ONLY: delete this block before go-live */}
+        {devAutoFill && (
+          <button
+            onClick={devAutoFill}
+            className="w-full py-2 rounded-xl border border-dashed border-yellow-400 text-yellow-500 text-xs font-bold tracking-wide hover:bg-yellow-400/10 transition-colors"
+          >
+            ⚡ Auto Fill (Demo Only)
+          </button>
+        )}
+        {/* /DEV ONLY */}
 
         <button
           onClick={handleNext}
