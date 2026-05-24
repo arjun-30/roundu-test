@@ -32,8 +32,9 @@ function getHeaders(apiVersion?: string) {
       ).toString('base64');
       
       headers['x-cf-signature'] = signature;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[CashfreeService] Failed to generate RSA signature:', err);
+      throw new Error(`RSA Signature generation failed: ${err.message}`);
     }
   }
 
