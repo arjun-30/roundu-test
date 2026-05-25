@@ -144,11 +144,12 @@ const SearchingProviders = () => {
   }, []);
 
   // ── Derive Found Count ───────────────────────────────────────────────────
+  // Only count providers who have actually responded with a quote for this
+  // specific broadcast. nearbyProviders is a GPS-tracking map that persists
+  // stale entries across sessions and must NOT be used for this count.
   useEffect(() => {
-    const providerCount = Object.keys(nearbyProviders).length;
-    const quotesCount = receivedQuotes.length;
-    setFoundCount(Math.max(providerCount, quotesCount, 1));
-  }, [nearbyProviders, receivedQuotes]);
+    setFoundCount(receivedQuotes.length);
+  }, [receivedQuotes]);
 
   // ── Save Search State to Caches ──────────────────────────────────────────
   useEffect(() => {
@@ -427,8 +428,10 @@ const SearchingProviders = () => {
 
         {/* Found Counter Badge (Top Right) */}
         <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md border border-slate-100 py-1.5 px-3.5 rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] z-10 animate-fade-in flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-black text-primary uppercase tracking-wider">{foundCount} pros found</span>
+          <div className={`w-2 h-2 rounded-full ${foundCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400 animate-pulse'}`} />
+          <span className="text-[11px] font-black text-primary uppercase tracking-wider">
+            {foundCount > 0 ? `${foundCount} pros found` : 'Searching...'}
+          </span>
         </div>
 
         {/* Floating Provider Dots Layer (REAL TIME) */}
