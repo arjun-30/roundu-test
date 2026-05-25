@@ -785,8 +785,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               dispatch({ type: "SET_BOOKINGS", bookings: bookings.data });
             }
           }
-        } catch (err) {
-          console.error("DB Sync error:", err);
+        } catch (err: any) {
+          // 404 is expected (e.g. customer has no provider profile) — don't spam console
+          const status = err?.response?.status;
+          if (status !== 404) {
+            console.warn("DB Sync error:", err?.message || err);
+          }
         }
       }
     };
