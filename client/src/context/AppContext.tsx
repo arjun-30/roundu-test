@@ -910,16 +910,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "UPDATE_ONLINE_STATUS", payload: data });
     });
 
+    const forceLogout = (reason: string) => {
+      toast.error(`⚠️ ${reason}`, { duration: 3000, id: 'session-kicked' });
+      // Clear everything so no stale state survives
+      localStorage.removeItem('roundu_token');
+      sessionStorage.clear();
+      // Short delay so the user can read the toast before redirect
+      setTimeout(() => {
+        dispatch({ type: "LOGOUT" });
+        window.location.href = "/auth";
+      }, 2000);
+    };
+
     socket.on("session_expired", (data: { reason: string }) => {
-      alert("Session Expired: " + data.reason);
-      dispatch({ type: "LOGOUT" });
-      window.location.href = "/";
+      forceLogout(data.reason || "You've been logged out. Another device signed in.");
     });
 
     const handleWindowSessionExpired = (e: any) => {
-      alert("Session Expired: " + (e.detail?.reason || "Logged in from another device."));
-      dispatch({ type: "LOGOUT" });
-      window.location.href = "/";
+      forceLogout(e.detail?.reason || "Your session has expired. Please log in again.");
     };
     window.addEventListener("session_expired", handleWindowSessionExpired);
 
