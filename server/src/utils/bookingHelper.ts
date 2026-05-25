@@ -11,7 +11,8 @@ export async function getProviderActiveBookings(providerId: string): Promise<any
   const now = new Date();
   return res.rows.filter(booking => {
     const timeRef = booking.scheduled_at ? new Date(booking.scheduled_at) : null;
-    if (!timeRef || isNaN(timeRef.getTime())) return true;
+    // No date = can't determine overlap → treat as NOT busy (don't block the provider)
+    if (!timeRef || isNaN(timeRef.getTime())) return false;
     
     const ageHours = (now.getTime() - timeRef.getTime()) / (1000 * 60 * 60);
     // Ignore jobs scheduled more than 24 hours in the past
