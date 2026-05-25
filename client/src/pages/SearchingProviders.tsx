@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Phone, MessageCircle, ChevronRight, Star } fro
 import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
+import api from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
 
 /**
@@ -144,12 +145,27 @@ const SearchingProviders = () => {
   }, []);
 
   // ── Derive Found Count ───────────────────────────────────────────────────
-  // Only count providers who have actually responded with a quote for this
-  // specific broadcast. nearbyProviders is a GPS-tracking map that persists
-  // stale entries across sessions and must NOT be used for this count.
+  // Fetch available (online) provider count for this service on mount.
+  // Also bump up whenever a new quote arrives so the badge is never lower
+  // than the number of actual responders.
+  const [availableCount, setAvailableCount] = useState(0);
   useEffect(() => {
-    setFoundCount(receivedQuotes.length);
-  }, [receivedQuotes]);
+    if (!serviceId) return;
+    api.get(`/providers/search?serviceId=${serviceId}`)
+      .then(res => {
+        if (res.data?.success) {
+          const online = (res.data.data || []).filter((p: any) => p.is_online);
+          setAvailableCount(online.length);
+        }
+      })
+      .catch(() => {}); // non-critical
+  }, [serviceId]);
+
+  useEffect(() => {
+    // foundCount = max(availableCount, receivedQuotes.length)
+    // so it never shows fewer than actual responders
+    setFoundCount(Math.max(availableCount, receivedQuotes.length));
+  }, [availableCount, receivedQuotes]);
 
   // ── Save Search State to Caches ──────────────────────────────────────────
   useEffect(() => {
