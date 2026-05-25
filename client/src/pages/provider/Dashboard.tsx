@@ -46,9 +46,10 @@ const Dashboard = () => {
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
   const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  // Use sessionStorage to persist seen IDs across re-renders/reconnects within same session
+  // Key seen IDs per-user so multiple providers on the same device don't share a seen-set
+  const seenKey = `seen_broadcast_ids_${user?.id || 'anon'}`;
   const seenBroadcastIds = useRef(new Set<string>(
-    JSON.parse(sessionStorage.getItem("seen_broadcast_ids") || "[]")
+    JSON.parse(sessionStorage.getItem(seenKey) || "[]")
   ));
 
   const pending = providerRequests.filter((r) => r.status === "pending");
@@ -141,13 +142,13 @@ const Dashboard = () => {
         console.log("[Dashboard] ⏰ Broadcast expired, skipping:", broadcast.broadcastId);
         seenBroadcastIds.current.add(broadcast.broadcastId); // mark as seen so it won't show later
         const updated = Array.from(seenBroadcastIds.current);
-        sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
+        sessionStorage.setItem(seenKey, JSON.stringify(updated));
         return;
       }
 
       seenBroadcastIds.current.add(broadcast.broadcastId);
       const updated = Array.from(seenBroadcastIds.current);
-      sessionStorage.setItem("seen_broadcast_ids", JSON.stringify(updated));
+      sessionStorage.setItem(seenKey, JSON.stringify(updated));
       setActiveBroadcast(broadcast);
     };
     socket.on("incoming_broadcast", handleBroadcast);
