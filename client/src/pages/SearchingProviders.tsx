@@ -151,11 +151,11 @@ const SearchingProviders = () => {
   const [availableCount, setAvailableCount] = useState(0);
   useEffect(() => {
     if (!serviceId) return;
-    api.get(`/providers/search?serviceId=${serviceId}`)
+    // Use real-time socket room count — not the stale DB is_online flag
+    api.get(`/providers/online-count?serviceId=${serviceId}`)
       .then(res => {
         if (res.data?.success) {
-          const online = (res.data.data || []).filter((p: any) => p.is_online);
-          setAvailableCount(online.length);
+          setAvailableCount(res.data.count || 0);
         }
       })
       .catch(() => {}); // non-critical
