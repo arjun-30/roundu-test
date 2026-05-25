@@ -767,7 +767,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                   return {
                     id: b.id,
                     customerId: b.customer_id,
-                    customerName: "Customer",
+                    customerName: b.customer_name || "Customer",
+                    customerPhone: b.customer_phone || "",
                     serviceId: b.service_id,
                     date,
                     time,

@@ -28,8 +28,15 @@ export const BookingModel = {
     return res.rows;
   },
 
-  async findByProviderId(providerId: string): Promise<Booking[]> {
-    const res = await getPool().query('SELECT * FROM bookings WHERE provider_id = $1 ORDER BY created_at DESC', [providerId]);
+  async findByProviderId(providerId: string): Promise<any[]> {
+    const res = await getPool().query(
+      `SELECT b.*, u.name AS customer_name, u.phone AS customer_phone
+       FROM bookings b
+       LEFT JOIN users u ON b.customer_id = u.id
+       WHERE b.provider_id = $1
+       ORDER BY b.created_at DESC`,
+      [providerId]
+    );
     return res.rows;
   },
 
