@@ -716,15 +716,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
         // Exclude homeType — column doesn't exist in onboarding_responses table
-        const { homeType: _homeType, ...onboardingFields } = state.onboardingData;
+        // Serialize serviceIds as JSON string for TEXT column compatibility
+        // Use snake_case to match DB column names
         const { error } = await supabase
           .from('onboarding_responses')
           .upsert({
             phone: state.phone,
-            ...onboardingFields,
+            service_ids: JSON.stringify(state.onboardingData.serviceIds),
+            household_size: state.onboardingData.householdSize || null,
+            frequency: state.onboardingData.frequency || null,
+            budget: state.onboardingData.budget || null,
             updated_at: new Date().toISOString()
           });
-        if (error) console.error('Supabase sync error:', error);
+        if (error) console.warn('Supabase sync (non-critical):', error.message);
       }
     };
     syncData();
