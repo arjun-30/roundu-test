@@ -804,11 +804,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state.isAuthenticated && state.user.id && state.role) {
-      socket.emit("register", {
+      const registerPayload = {
         userId: state.user.id,
         role: state.role,
-        serviceIds: state.providerRegistrationDraft?.serviceIds || []
-      });
+        // Only send serviceIds for providers — customers must NOT join service rooms
+        serviceIds: state.role === 'provider' ? (state.providerRegistrationDraft?.serviceIds || []) : []
+      };
+      socket.emit("register", registerPayload);
+
+      // Re-register on every reconnect so the user:${id} room is always active
+      // Without this, Provider 2's quote arrives AFTER a reconnect and goes nowhere
+      const handleReconnect = () => {
+        console.log("[socket] reconnected — re-registering user:", state.user.id);
+        socket.emit("register", registerPayload);
+      };
+      socket.on("connect", handleReconnect);
+      return () => { socket.off("connect", handleReconnect); };
     }
   }, [state.isAuthenticated, state.user.id, state.role, state.providerRegistrationDraft?.serviceIds]);
 

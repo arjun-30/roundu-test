@@ -55,10 +55,10 @@ async function main() {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
 
-      // Join user-specific room
+      // Join user-specific room (always, for all roles)
       if (data.userId) {
         socket.join(`user:${data.userId}`);
-        console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
+        console.log(`[socket] user ${data.userId} (${data.role}) joined room: user:${data.userId}`);
 
         // Track online status
         let userSockets = onlineUserConnections.get(data.userId);
@@ -68,6 +68,18 @@ async function main() {
           broadcastStatus(data.userId, true); // First connection
         }
         userSockets.add(socket.id);
+      }
+
+      // If customer: ensure they are NOT in any provider/service rooms (stale from previous session)
+      if (data.role === 'customer') {
+        socket.leave('providers');
+        // Leave any service rooms they may have joined previously
+        const rooms = Array.from(socket.rooms);
+        rooms.forEach(room => {
+          if (room.startsWith('service:')) socket.leave(room);
+        });
+        console.log(`[socket] customer ${data.userId} cleaned from provider/service rooms`);
+        return;
       }
 
       if (data.role === 'provider') {
