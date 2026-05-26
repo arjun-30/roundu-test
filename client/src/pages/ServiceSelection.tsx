@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Wrench, Droplets, Zap, Sparkles, Car, Paintbrush, Box, CheckCircle2, HelpCircle, ShieldCheck, Clock, ThumbsUp, Loader2 } from "lucide-react";
+import { ArrowLeft, Wrench, Droplets, Zap, Sparkles, Car, Paintbrush, Box, CheckCircle2, HelpCircle, ShieldCheck, Clock, ThumbsUp, Loader2, ArrowRight, Check } from "lucide-react";
 import { getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +23,7 @@ const ServiceSelection = () => {
   const { dispatch } = useApp();
   
   const service = getServiceById(serviceId || "");
-  const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
+  const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Acting Drivers has its own dedicated booking screen — redirect immediately
@@ -46,9 +46,17 @@ const ServiceSelection = () => {
 
 
   const toggleSelection = (problem: string) => {
-    setSelectedProblem(problem);
-    
-    // Auto-navigate to the next page
+    setSelectedProblems(prev => {
+      if (prev.includes(problem)) {
+        return prev.filter(p => p !== problem);
+      } else {
+        return [...prev, problem];
+      }
+    });
+  };
+
+  const handleContinue = () => {
+    if (selectedProblems.length === 0) return;
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
@@ -56,7 +64,7 @@ const ServiceSelection = () => {
       navigate(`/book-service/${service.id}`, { 
         state: { 
           serviceId: service.id,
-          issue: problem 
+          issue: selectedProblems.join(", ") 
         } 
       });
     }, 400);
@@ -106,6 +114,15 @@ const ServiceSelection = () => {
           <h1 className="text-[22px] font-extrabold text-foreground leading-tight tracking-tight">{service.label}</h1>
           <p className="text-[13px] text-muted-foreground font-medium">Fine-tune your request</p>
         </div>
+        {selectedProblems.length > 0 && (
+          <motion.span 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="ml-auto bg-accent/15 text-accent text-[12px] font-extrabold px-3 py-1.5 rounded-full"
+          >
+            {selectedProblems.length} selected
+          </motion.span>
+        )}
       </motion.div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-8 relative z-10">
@@ -117,7 +134,7 @@ const ServiceSelection = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
            <h2 className="text-[24px] font-extrabold text-foreground tracking-tight">What's the problem?</h2>
-            <p className="text-[14px] text-muted-foreground mt-1 leading-snug">Choose an issue to help us match the right expert.</p>
+            <p className="text-[14px] text-muted-foreground mt-1 leading-snug">Select one or more issues to help us match the right expert.</p>
         </motion.div>
 
         {/* Dynamic Grid */}
@@ -143,7 +160,7 @@ const ServiceSelection = () => {
             </AnimatePresence>
 
             {problemsList.map((problem) => {
-              const isActive = selectedProblem === problem;
+              const isActive = selectedProblems.includes(problem);
               const IconComponent = getProblemIcon(problem);
               
               return (
@@ -161,7 +178,6 @@ const ServiceSelection = () => {
                 >
                   {isActive && (
                     <motion.div 
-                      layoutId="activeGlow"
                       className="absolute inset-0 bg-gradient-to-br from-white via-white to-accent/10 opacity-100"
                     />
                   )}
@@ -186,7 +202,9 @@ const ServiceSelection = () => {
                         exit={{ scale: 0, opacity: 0 }}
                         className="absolute top-4 right-4 z-10"
                       >
-                        <CheckCircle2 size={22} className="text-accent fill-white" strokeWidth={2.5} />
+                        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shadow-md shadow-accent/30">
+                          <Check size={14} className="text-white" strokeWidth={3} />
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -231,6 +249,37 @@ const ServiceSelection = () => {
             <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ThumbsUp size={28} className="text-accent/70 mb-1" strokeWidth={1.5}/> 100%<br/>Satisfaction</span>
         </motion.div>
       </div>
+
+      {/* Sticky Continue Button */}
+      <AnimatePresence>
+        {selectedProblems.length > 0 && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="sticky bottom-0 left-0 right-0 z-30 px-5 pb-6 pt-3 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC] to-transparent"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleContinue}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-[20px] bg-accent text-white font-extrabold text-[16px] shadow-[0_8px_30px_rgba(245,158,11,0.3)] hover:shadow-[0_12px_40px_rgba(245,158,11,0.4)] transition-all disabled:opacity-60 relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 pointer-events-none" />
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Continue with {selectedProblems.length} {selectedProblems.length === 1 ? 'issue' : 'issues'}
+                  <ArrowRight size={20} strokeWidth={2.5} />
+                </>
+              )}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
