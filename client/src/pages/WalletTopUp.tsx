@@ -87,7 +87,7 @@ const WalletTopUp = () => {
         modal: {
           ondismiss: () => {
             setLoading(false);
-            setError("Payment cancelled");
+            navigate("/payment-cancelled", { replace: true });
           }
         }
       };
@@ -105,7 +105,7 @@ const WalletTopUp = () => {
     <div className="min-h-full flex flex-col bg-background relative overflow-hidden pb-10">
       {/* Premium Background */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      
+
       {/* Header */}
       <div className="px-6 pt-8 pb-4 flex items-center gap-4 relative z-10">
         <button
@@ -164,21 +164,21 @@ const WalletTopUp = () => {
 
         {/* Payment Methods Mock */}
         <div className="space-y-3 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-           <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest pl-1">Payment Method</p>
-           <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
-             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-lg bg-input flex items-center justify-center">
-                 <img src="https://img.icons8.com/color/48/000000/google-pay-new.png" className="w-6" alt="GPay" />
-               </div>
-               <p className="text-sm font-bold text-foreground">Google Pay / UPI</p>
-             </div>
-             <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
-               <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-             </div>
-           </div>
-           <button className="w-full flex items-center justify-center gap-1 py-1 text-[11px] font-bold text-primary opacity-60">
-             Change Payment Method <ChevronRight size={12} />
-           </button>
+          <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest pl-1">Payment Method</p>
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-input flex items-center justify-center">
+                <img src="https://img.icons8.com/color/48/000000/google-pay-new.png" className="w-6" alt="GPay" />
+              </div>
+              <p className="text-sm font-bold text-foreground">Google Pay / UPI</p>
+            </div>
+            <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+            </div>
+          </div>
+          <button className="w-full flex items-center justify-center gap-1 py-1 text-[11px] font-bold text-primary opacity-60">
+            Change Payment Method <ChevronRight size={12} />
+          </button>
         </div>
       </div>
 
@@ -202,17 +202,17 @@ const WalletTopUp = () => {
       {/* Success Modal Overlay Placeholder */}
       {loading && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center text-center px-10">
-           <div className="space-y-6 animate-scale-in">
-             <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-               <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                 <Check size={32} strokeWidth={3} />
-               </div>
-             </div>
-             <div>
-               <h2 className="text-2xl font-extrabold text-foreground">Processing...</h2>
-               <p className="text-sm text-muted-foreground mt-2">Connecting to secure gateway</p>
-             </div>
-           </div>
+          <div className="space-y-6 animate-scale-in">
+            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                <Check size={32} strokeWidth={3} />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold text-foreground">Processing...</h2>
+              <p className="text-sm text-muted-foreground mt-2">Connecting to secure gateway</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

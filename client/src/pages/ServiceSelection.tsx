@@ -21,10 +21,13 @@ const ServiceSelection = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
   const { dispatch } = useApp();
-  
+
   const service = getServiceById(serviceId || "");
   const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showHelpForm, setShowHelpForm] = useState(false);
+  const [helpDesc, setHelpDesc] = useState("");
+  const [helpContact, setHelpContact] = useState("");
 
   // Acting Drivers has its own dedicated booking screen — redirect immediately
   useEffect(() => {
@@ -32,6 +35,11 @@ const ServiceSelection = () => {
       navigate(`/book-driver/${serviceId}`, { replace: true });
     }
   }, [serviceId, navigate]);
+
+  // Reset any previous booking draft (like descriptions/voice notes) when selecting a new service
+  useEffect(() => {
+    dispatch({ type: "RESET_BOOKING_DRAFT" });
+  }, [dispatch, serviceId]);
 
   if (!service) {
     return (
@@ -61,11 +69,26 @@ const ServiceSelection = () => {
     setTimeout(() => {
       setIsLoading(false);
       dispatch({ type: "SELECT_SERVICE", id: service.id });
-      navigate(`/book-service/${service.id}`, { 
-        state: { 
+      navigate(`/book-service/${service.id}`, {
+        state: {
           serviceId: service.id,
-          issue: selectedProblems.join(", ") 
-        } 
+          issue: selectedProblems.join(", ")
+        }
+      });
+    }, 400);
+  };
+
+  const handleConfirmHelp = () => {
+    if (!helpDesc.trim() || !helpContact.trim()) return;
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      dispatch({ type: "SELECT_SERVICE", id: service.id });
+      navigate(`/book-service/${service.id}`, {
+        state: {
+          serviceId: service.id,
+          issue: `Help Request: ${helpDesc} (Contact: ${helpContact})`
+        }
       });
     }, 400);
   };
@@ -97,15 +120,15 @@ const ServiceSelection = () => {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] pb-6 font-sans text-foreground relative overflow-hidden">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="px-5 pt-6 pb-4 flex items-center gap-3 bg-white shadow-sm sticky top-0 z-20"
       >
-        <motion.button 
+        <motion.button
           whileTap={{ scale: 0.9 }}
-          onClick={() => navigate("/home")} 
+          onClick={() => navigate("/home")}
           className="w-11 h-11 rounded-[16px] bg-[#F8FAFC] flex flex-shrink-0 items-center justify-center border-2 border-transparent hover:border-primary/10 transition-all shadow-sm"
         >
           <ArrowLeft size={22} className="text-primary" strokeWidth={2.5} />
@@ -115,7 +138,7 @@ const ServiceSelection = () => {
           <p className="text-[13px] text-muted-foreground font-medium">Fine-tune your request</p>
         </div>
         {selectedProblems.length > 0 && (
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             className="ml-auto bg-accent/15 text-accent text-[12px] font-extrabold px-3 py-1.5 rounded-full"
@@ -126,20 +149,20 @@ const ServiceSelection = () => {
       </motion.div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-8 relative z-10">
-        
+
         {/* Section Title */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-           <h2 className="text-[24px] font-extrabold text-foreground tracking-tight">What's the problem?</h2>
-            <p className="text-[14px] text-muted-foreground mt-1 leading-snug">Select one or more issues to help us match the right expert.</p>
+          <h2 className="text-[24px] font-extrabold text-foreground tracking-tight">What's the problem?</h2>
+          <p className="text-[14px] text-muted-foreground mt-1 leading-snug">Select one or more issues to help us match the right expert.</p>
         </motion.div>
 
         {/* Dynamic Grid */}
         {problemsList.length > 0 && (
-          <motion.div 
+          <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -148,7 +171,7 @@ const ServiceSelection = () => {
             {/* Loading Overlay */}
             <AnimatePresence>
               {isLoading && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -162,7 +185,7 @@ const ServiceSelection = () => {
             {problemsList.map((problem) => {
               const isActive = selectedProblems.includes(problem);
               const IconComponent = getProblemIcon(problem);
-              
+
               return (
                 <motion.button
                   variants={itemVariants}
@@ -170,14 +193,13 @@ const ServiceSelection = () => {
                   whileTap={{ scale: 0.96 }}
                   key={problem}
                   onClick={() => toggleSelection(problem)}
-                  className={`flex flex-col items-start p-5 rounded-[24px] border-2 transition-all duration-300 relative shadow-sm text-left overflow-hidden ${
-                    isActive 
-                      ? "border-accent bg-accent/5 shadow-[0_8px_30px_rgba(245,158,11,0.15)]" 
+                  className={`flex flex-col items-start p-5 rounded-[24px] border-2 transition-all duration-300 relative shadow-sm text-left overflow-hidden ${isActive
+                      ? "border-accent bg-accent/5 shadow-[0_8px_30px_rgba(245,158,11,0.15)]"
                       : "border-transparent bg-white hover:border-primary/10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
-                  }`}
+                    }`}
                 >
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       className="absolute inset-0 bg-gradient-to-br from-white via-white to-accent/10 opacity-100"
                     />
                   )}
@@ -185,18 +207,17 @@ const ServiceSelection = () => {
                   <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center mb-4 transition-colors relative z-10 ${isActive ? 'bg-accent/20 text-accent' : 'bg-[#F8FAFC] text-primary group-hover:bg-primary/5'}`}>
                     <IconComponent size={24} strokeWidth={2} />
                   </div>
-                  
+
                   {/* Label */}
-                  <span className={`text-[14px] font-bold leading-snug relative z-10 transition-colors ${
-                    isActive ? "text-foreground" : "text-foreground"
-                  }`}>
+                  <span className={`text-[14px] font-bold leading-snug relative z-10 transition-colors ${isActive ? "text-foreground" : "text-foreground"
+                    }`}>
                     {problem}
                   </span>
 
                   {/* Active Indicator Checkmark */}
                   <AnimatePresence>
                     {isActive && (
-                      <motion.div 
+                      <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
@@ -215,45 +236,93 @@ const ServiceSelection = () => {
         )}
 
         {/* Helper Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="bg-white rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-transparent flex flex-col sm:flex-row items-start sm:items-center gap-5 mt-4"
         >
-           <div className="w-14 h-14 rounded-[20px] bg-primary/5 flex items-center justify-center flex-shrink-0">
-               <HelpCircle size={26} className="text-primary" strokeWidth={2} />
-           </div>
-           <div className="flex-1">
-               <h3 className="text-[17px] font-extrabold text-foreground">Not sure what's wrong?</h3>
-               <p className="text-[13px] text-muted-foreground mt-1 mb-4 leading-relaxed">Let our experts inspect and identify the exact issue for you.</p>
-               <motion.button 
-                 whileHover={{ scale: 1.02 }}
-                 whileTap={{ scale: 0.98 }}
-                 className="bg-primary text-white text-[13px] font-bold tracking-wide px-5 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-colors w-full sm:w-auto"
-               >
-                  Request Inspection
-               </motion.button>
-           </div>
+          <div className="w-14 h-14 rounded-[20px] bg-primary/5 flex items-center justify-center flex-shrink-0">
+            <HelpCircle size={26} className="text-primary" strokeWidth={2} />
+          </div>
+          <div className="flex-1 w-full">
+            <h3 className="text-[17px] font-extrabold text-foreground">Not sure what's wrong?</h3>
+            <p className="text-[13px] text-muted-foreground mt-1 mb-4 leading-relaxed">Let our experts inspect and identify the exact issue for you.</p>
+            
+            <AnimatePresence mode="wait">
+              {!showHelpForm ? (
+                <motion.button
+                  key="btn"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowHelpForm(true)}
+                  className="bg-primary text-white text-[13px] font-bold tracking-wide px-5 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-colors w-full sm:w-auto"
+                >
+                  Get Help
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-3 mt-2 overflow-hidden"
+                >
+                  <textarea
+                    value={helpDesc}
+                    onChange={(e) => setHelpDesc(e.target.value)}
+                    placeholder="Enter your problem..."
+                    rows={3}
+                    className="w-full bg-[#F8FAFC] rounded-[14px] p-3 text-[13px] font-semibold text-primary border border-primary/10 focus:border-accent/50 focus:outline-none transition-all resize-none"
+                  />
+                  <input
+                    type="text"
+                    value={helpContact}
+                    onChange={(e) => setHelpContact(e.target.value)}
+                    placeholder="Phone number or Email address"
+                    className="w-full bg-[#F8FAFC] rounded-[14px] p-3 text-[13px] font-semibold text-primary border border-primary/10 focus:border-accent/50 focus:outline-none transition-all"
+                  />
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setShowHelpForm(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-foreground font-bold text-[13px] active:scale-95 transition-all hover:bg-black/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmHelp}
+                      disabled={!helpDesc.trim() || !helpContact.trim() || isLoading}
+                      className="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold text-[13px] active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
 
         {/* Trust Bar */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex gap-4 items-end justify-between opacity-80 px-2 pt-4 pb-2"
         >
-            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ShieldCheck size={28} className="text-secondary/70 mb-1" strokeWidth={1.5}/> Verified<br/>Experts</span>
-            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><Clock size={28} className="text-primary/70 mb-1" strokeWidth={1.5}/> On-time<br/>Service</span>
-            <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ThumbsUp size={28} className="text-accent/70 mb-1" strokeWidth={1.5}/> 100%<br/>Satisfaction</span>
+          <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ShieldCheck size={28} className="text-secondary/70 mb-1" strokeWidth={1.5} /> Verified<br />Experts</span>
+          <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><Clock size={28} className="text-primary/70 mb-1" strokeWidth={1.5} /> On-time<br />Service</span>
+          <span className="flex flex-col items-center gap-1.5 text-[10px] font-extrabold text-muted-foreground text-center uppercase tracking-widest"><ThumbsUp size={28} className="text-accent/70 mb-1" strokeWidth={1.5} /> 100%<br />Satisfaction</span>
         </motion.div>
       </div>
 
       {/* Sticky Continue Button */}
       <AnimatePresence>
         {selectedProblems.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}

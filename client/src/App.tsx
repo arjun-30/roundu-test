@@ -36,6 +36,7 @@ const EditProfile = lazy(() => import("@/pages/EditProfile"));
 const Emergency = lazy(() => import("@/pages/Emergency"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const WalletTopUp = lazy(() => import("@/pages/WalletTopUp"));
+const PaymentCancelled = lazy(() => import("@/pages/PaymentCancelled"));
 const WalletHistory = lazy(() => import("@/pages/WalletHistory"));
 const ReferEarn = lazy(() => import("@/pages/ReferEarn"));
 const TopReferrers = lazy(() => import("@/pages/TopReferrers"));
@@ -120,6 +121,7 @@ const AppRoutes = () => (
         <Route path="/wallet" element={<RequireAuth><Wallet /></RequireAuth>} />
         <Route path="/wallet/topup" element={<RequireAuth><WalletTopUp /></RequireAuth>} />
         <Route path="/wallet/history" element={<RequireAuth><WalletHistory /></RequireAuth>} />
+        <Route path="/payment-cancelled" element={<RequireAuth><PaymentCancelled /></RequireAuth>} />
         <Route path="/refer-earn" element={<RequireAuth><ReferEarn /></RequireAuth>} />
         <Route path="/top-referrers" element={<RequireAuth><TopReferrers /></RequireAuth>} />
         <Route path="/offers" element={<RequireAuth><Offers /></RequireAuth>} />

@@ -174,7 +174,8 @@ const BookService = () => {
           whileTap={{ scale: 0.9 }}
           onClick={() => {
             if (isCancelled) {
-              navigate(`/service-select/${serviceId}`);
+              dispatch({ type: "RESET_BOOKING_DRAFT" });
+              navigate("/home", { replace: true });
             } else {
               navigate(-1);
             }

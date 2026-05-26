@@ -50,11 +50,11 @@ const WalletHistory = () => {
               <Calendar size={14} />
               <span className="text-[10px] font-extrabold uppercase tracking-widest">April 2026</span>
             </div>
-            
+
             <div className="space-y-3">
               {transactions.map((tx, idx) => (
-                <div 
-                  key={tx.id} 
+                <div
+                  key={tx.id}
                   className="bg-card border border-border p-4 rounded-3xl flex items-center justify-between animate-fade-in-up"
                   style={{ animationDelay: `${idx * 0.1}s`, opacity: 0 }}
                 >
