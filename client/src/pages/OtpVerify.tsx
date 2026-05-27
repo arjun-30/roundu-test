@@ -11,17 +11,21 @@ const OtpVerify = () => {
   const location = useLocation();
   const devOtp = (location.state as { devOtp?: string } | null)?.devOtp;
   const { phone, dispatch } = useApp();
+
   const [otp, setOtp] = useState<string[]>(() => {
     if (devOtp && /^\d{6}$/.test(devOtp)) return devOtp.split("");
     return ["", "", "", "", "", ""];
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (!phone) {
       const pendingPhone = localStorage.getItem("roundu_pending_phone");
+
       if (pendingPhone) {
         dispatch({ type: "SET_PHONE", phone: pendingPhone });
       } else {
@@ -29,61 +33,88 @@ const OtpVerify = () => {
         return;
       }
     }
+
     refs.current[0]?.focus();
   }, [phone, navigate, dispatch]);
 
   const handleChange = (i: number, v: string) => {
     const digit = v.replace(/\D/g, "").slice(-1);
+
     const next = [...otp];
     next[i] = digit;
+
     setOtp(next);
+
     if (digit && i < 5) refs.current[i + 1]?.focus();
   };
 
-  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
-    if (e.key === "Enter" && otp.join("").length === 6) handleVerify();
+  const handleKeyDown = (
+    i: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Backspace" && !otp[i] && i > 0) {
+      refs.current[i - 1]?.focus();
+    }
+
+    if (e.key === "Enter" && otp.join("").length === 6) {
+      handleVerify();
+    }
   };
 
   const handleVerify = async () => {
     const otpCode = otp.join("");
+
     if (otpCode.length < 6) {
       setError("Enter the 6-digit code");
       return;
     }
+
     setError("");
-    
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
-        phone,
-        otp: otpCode
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/verify-otp`,
+        {
+          phone,
+          otp: otpCode,
+        }
+      );
 
       if (response.data.success) {
         const { token, user: apiUser } = response.data;
-        
+
         // Store session info
         if (token) {
           localStorage.removeItem("roundu_token");
           localStorage.removeItem("roundu_user");
           localStorage.removeItem("roundu_role");
-          
+
           localStorage.setItem("roundu_token", token);
           localStorage.setItem("roundu_user", JSON.stringify(apiUser));
-          localStorage.setItem("roundu_role", apiUser.role || "customer");
+          localStorage.setItem(
+            "roundu_role",
+            apiUser.role || "customer"
+          );
         }
 
         // Update Context
         dispatch({ type: "SET_AUTH", value: true });
-        dispatch({ type: "SET_USER_ID", id: apiUser.id });
-        dispatch({ type: "UPDATE_USER", user: {
-          name: apiUser.name || "",
-          email: apiUser.email || "",
-          address: apiUser.address || "",
-          role: apiUser.role || "customer"
-        }});
+
+        dispatch({
+          type: "SET_USER_ID",
+          id: apiUser.id,
+        });
+
+        dispatch({
+          type: "UPDATE_USER",
+          user: {
+            name: apiUser.name || "",
+            email: apiUser.email || "",
+            address: apiUser.address || "",
+            role: apiUser.role || "customer",
+          },
+        });
 
         // Check if onboarding is needed
         if (apiUser.name) {
@@ -94,40 +125,51 @@ const OtpVerify = () => {
       }
     } catch (err: any) {
       console.error("Verify Error:", err);
-      
+
       // Development Fallback
       if (import.meta.env.DEV) {
-        console.warn('[OtpVerify] Using Mock Login fallback');
+        console.warn("[OtpVerify] Using Mock Login fallback");
+
         const mockUser = {
-          // eslint-disable-next-line react-hooks/purity
           id: "mock-user-" + Date.now(),
-          name: "", // Empty name triggers onboarding flow
+          name: "",
           phone: phone || "9999999999",
           email: "",
           address: "",
-          role: "customer"
+          role: "customer",
         };
 
         localStorage.removeItem("roundu_token");
         localStorage.removeItem("roundu_user");
         localStorage.removeItem("roundu_role");
-        
+
         localStorage.setItem("roundu_token", "mock-token");
         localStorage.setItem("roundu_user", JSON.stringify(mockUser));
         localStorage.setItem("roundu_role", "customer");
 
         dispatch({ type: "SET_AUTH", value: true });
-        dispatch({ type: "SET_USER_ID", id: mockUser.id });
-        dispatch({ type: "UPDATE_USER", user: {
-          name: "",
-          email: "",
-          address: "",
-          role: "customer"
-        }});
+
+        dispatch({
+          type: "SET_USER_ID",
+          id: mockUser.id,
+        });
+
+        dispatch({
+          type: "UPDATE_USER",
+          user: {
+            name: "",
+            email: "",
+            address: "",
+            role: "customer",
+          },
+        });
 
         navigate("/onboarding-name", { replace: true });
       } else {
-        setError(err.response?.data?.error || "Verification failed. Check the code.");
+        setError(
+          err.response?.data?.error ||
+          "Verification failed. Check the code."
+        );
       }
     } finally {
       setLoading(false);
@@ -144,21 +186,35 @@ const OtpVerify = () => {
       </button>
 
       <div className="mt-10 mb-8 animate-fade-in">
-        <h1 className="text-3xl font-extrabold text-foreground leading-tight">Verify your number</h1>
+        <h1 className="text-3xl font-extrabold text-foreground leading-tight">
+          Enter your verification code
+        </h1>
+
         <p className="text-muted-foreground mt-3 text-sm">
-          We sent a 6-digit code to <span className="font-semibold text-foreground">+91 {phone}</span>
+          We sent a 6-digit code to{" "}
+          <span className="font-semibold text-foreground">
+            +91 {phone}
+          </span>
         </p>
       </div>
 
-      {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">{error}</div>}
-
-      {devOtp && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center">
-          <span className="font-semibold">Dev OTP:</span> <span className="font-mono tracking-widest">{devOtp}</span>
+      {error && (
+        <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">
+          {error}
         </div>
       )}
 
-      <div className="flex gap-2 justify-center mb-6 animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 1 }}>
+      {devOtp && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center">
+          <span className="font-semibold">Dev OTP:</span>{" "}
+          <span className="font-mono tracking-widest">{devOtp}</span>
+        </div>
+      )}
+
+      <div
+        className="flex gap-2 justify-center mb-6 animate-fade-in-up"
+        style={{ animationDelay: "0.15s", opacity: 1 }}
+      >
         {otp.map((d, i) => (
           <input
             key={i}
@@ -174,7 +230,10 @@ const OtpVerify = () => {
       </div>
 
       <p className="text-center text-xs text-muted-foreground mb-6">
-        Didn't get a code? <button className="font-semibold text-primary">Resend</button>
+        Didn't get a code?{" "}
+        <button className="font-semibold text-primary">
+          Resend
+        </button>
       </p>
 
       <button
