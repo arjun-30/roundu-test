@@ -564,51 +564,6 @@ const Home = () => {
           </div>
         )}
 
-        {/* ═══ NEARBY PROFESSIONALS ═══ */}
-        <motion.div variants={itemVariants} className="pt-6 pb-2">
-          <div className="px-5 flex items-end justify-between mb-4">
-            <div>
-              <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Nearby Professionals</h2>
-              <p className="text-[13px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
-            </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
-            {realNearbyProviders.length === 0 ? (
-              <div className="w-full text-center py-6 text-sm text-muted-foreground">
-                No professionals currently online nearby.
-              </div>
-            ) : (
-              realNearbyProviders.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/provider/${p.id}`)}
-                  className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
-                >
-                  <div className="relative w-12 h-12 mx-auto mb-2">
-                    {p.avatar_url ? (
-                      <img src={p.avatar_url} alt={p.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary text-lg">
-                        {p.name?.charAt(0) || "P"}
-                      </div>
-                    )}
-                    {p.is_online === 1 && (
-                      <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
-                  <div className="flex items-center justify-center gap-1 mt-1 text-muted-foreground">
-                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-bold">{parseFloat(p.rating || "4.5").toFixed(1)}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </motion.div>
 
 
         {/* ═══ REFER & EARN ═══ */}
