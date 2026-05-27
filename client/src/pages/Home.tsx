@@ -518,18 +518,118 @@ const Home = () => {
                 const IconComponent = conf.icon;
                 return (
                   <button
+
                     key={sugg.id}
                     onClick={() => goToRecommendedBooking(sugg)}
-                    className="w-[280px] flex-shrink-0 bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)] snap-start text-left group relative transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 active:scale-[0.98]"
-                  >
-                    {/* Top row with Category and Smart Badge */}
-                    <div className="flex items-center justify-between mb-3.5">
-                      <span className="text-[10px] font-black tracking-widest uppercase text-muted-foreground/60">
+                    className={`
+                    w-[280px] flex-shrink-0 rounded-3xl p-5 border snap-start text-left
+                    group relative overflow-hidden transition-all duration-500
+                    hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)]
+                    hover:-translate-y-1 active:scale-[0.98]
+
+                    ${sugg.season === "summer"
+                        ? "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-100 border-amber-100"
+                        : sugg.season === "monsoon"
+                          ? "bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-100 border-sky-100"
+                          : sugg.season === "winter"
+                            ? "bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-100 border-slate-200"
+                            : sugg.season === "festival"
+                              ? "bg-gradient-to-br from-rose-50 via-pink-50 to-orange-50 border-rose-100"
+                              : "bg-gradient-to-br from-white via-slate-50 to-primary/5 border-slate-100"
+                      }
+                     `}                  >
+                    {/* Seasonal Background Effects */}
+
+                    {sugg.season === "summer" && (
+                      <>
+                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-amber-300/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-[-30px] left-[-20px] w-24 h-24 bg-orange-300/10 rounded-full blur-2xl" />
+                      </>
+                    )}
+
+                    {sugg.season === "monsoon" && (
+                      <>
+                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-sky-300/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-cyan-300/10 rounded-full blur-2xl" />
+                      </>
+                    )}
+
+                    {sugg.season === "winter" && (
+                      <>
+                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-slate-300/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-gray-300/10 rounded-full blur-2xl" />
+                      </>
+                    )}
+
+                    {sugg.season === "festival" && (
+                      <>
+                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-rose-300/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-orange-300/10 rounded-full blur-2xl" />
+                      </>
+                    )}
+                    {/* Top row with Premium Seasonal Badge */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[10px] font-black tracking-[0.18em] uppercase text-muted-foreground/50">
                         {sugg.category}
                       </span>
-                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border ${conf.bgColor} transition-all duration-300`}>
-                        {sugg.season === currentSeason ? "🍁 Seasonal Pick" : conf.badge}
-                      </span>
+
+                      {(() => {
+                        const seasonStyles = {
+                          summer: {
+                            label: "Summer Essential",
+                            className:
+                              "bg-amber-50 text-amber-700 border border-amber-200 shadow-[0_2px_8px_rgba(245,158,11,0.12)]",
+                            dot: "bg-amber-500",
+                          },
+
+                          monsoon: {
+                            label: "Monsoon Care",
+                            className:
+                              "bg-sky-50 text-sky-700 border border-sky-200 shadow-[0_2px_8px_rgba(14,165,233,0.12)]",
+                            dot: "bg-sky-500",
+                          },
+
+                          winter: {
+                            label: "Winter Protection",
+                            className:
+                              "bg-slate-100 text-slate-700 border border-slate-200 shadow-[0_2px_8px_rgba(100,116,139,0.10)]",
+                            dot: "bg-slate-500",
+                          },
+
+                          festival: {
+                            label: "Festive Special",
+                            className:
+                              "bg-rose-50 text-rose-700 border border-rose-200 shadow-[0_2px_8px_rgba(244,63,94,0.12)]",
+                            dot: "bg-rose-500",
+                          },
+
+                          all: {
+                            label: "Recommended",
+                            className:
+                              "bg-primary/5 text-primary border border-primary/10 shadow-[0_2px_8px_rgba(21,46,75,0.08)]",
+                            dot: "bg-primary",
+                          },
+                        };
+
+                        const season =
+                          seasonStyles[
+                          sugg.season as keyof typeof seasonStyles
+                          ] || seasonStyles.all;
+
+                        return (
+                          <div
+                            className={`flex items-center gap-2 px-3 py-[7px] rounded-full text-[10px] font-bold tracking-wide backdrop-blur-sm transition-all duration-300 ${season.className}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${season.dot}`}
+                            />
+
+                            <span className="leading-none">
+                              {season.label}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Middle row: Icon and Title */}
@@ -564,51 +664,6 @@ const Home = () => {
           </div>
         )}
 
-        {/* ═══ NEARBY PROFESSIONALS ═══ */}
-        <motion.div variants={itemVariants} className="pt-6 pb-2">
-          <div className="px-5 flex items-end justify-between mb-4">
-            <div>
-              <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Nearby Professionals</h2>
-              <p className="text-[13px] text-muted-foreground mt-0.5">Top-rated experts in your area</p>
-            </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto px-5 pb-4 scrollbar-hide">
-            {realNearbyProviders.length === 0 ? (
-              <div className="w-full text-center py-6 text-sm text-muted-foreground">
-                No professionals currently online nearby.
-              </div>
-            ) : (
-              realNearbyProviders.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/provider/${p.id}`)}
-                  className="flex-shrink-0 w-36 bg-white rounded-2xl p-3 border border-border shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
-                >
-                  <div className="relative w-12 h-12 mx-auto mb-2">
-                    {p.avatar_url ? (
-                      <img src={p.avatar_url} alt={p.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center font-bold text-primary text-lg">
-                        {p.name?.charAt(0) || "P"}
-                      </div>
-                    )}
-                    {p.is_online === 1 && (
-                      <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-[12px] font-bold text-foreground text-center line-clamp-1">{p.name}</h4>
-                  <div className="flex items-center justify-center gap-1 mt-1 text-muted-foreground">
-                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-bold">{parseFloat(p.rating || "4.5").toFixed(1)}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </motion.div>
 
 
         {/* ═══ REFER & EARN ═══ */}

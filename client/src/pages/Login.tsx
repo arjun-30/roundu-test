@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowLeft, Phone, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import axios from "axios";
 import { API_BASE_URL } from "@/config/env";
@@ -18,6 +18,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const Login = () => {
   const navigate = useNavigate();
   const { dispatch } = useApp();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -50,7 +51,7 @@ const Login = () => {
       }
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
-      
+
       if (import.meta.env.DEV) {
         console.warn('[Login] Using Mock OTP fallback');
         dispatch({ type: "SET_PHONE", phone: data.phone });
@@ -70,7 +71,7 @@ const Login = () => {
       <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] pointer-events-none" />
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
@@ -84,30 +85,23 @@ const Login = () => {
         </button>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="mt-12 mb-10 relative z-10"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-primary/10 shadow-sm mb-6">
-          <Sparkles className="w-4 h-4 text-accent" />
-          <span className="text-xs font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wider">
-            Authentication
-          </span>
-        </div>
         <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
-          Welcome to<br />
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">RoundU</span>
+          {isSignUp ? "Create an account" : "Welcome to "}<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">RoundU</span>
         </h1>
         <p className="text-muted-foreground mt-4 text-[15px] max-w-[260px] leading-relaxed">
-          Enter your phone number to continue or create a new account.
+          {isSignUp ? "Quick Sign-Up, Instant Access" : "Enter your phone number to continue."}
         </p>
       </motion.div>
-      
+
       <AnimatePresence mode="wait">
         {error && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0, y: -10 }}
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -10 }}
@@ -117,7 +111,7 @@ const Login = () => {
           </motion.div>
         )}
         {success && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -130,7 +124,7 @@ const Login = () => {
       </AnimatePresence>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 relative z-10">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
@@ -138,7 +132,7 @@ const Login = () => {
           <label className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-3 block ml-1">
             Phone Number
           </label>
-          <motion.div 
+          <motion.div
             className="relative group"
             animate={{
               scale: isFocused ? 1.02 : 1,
@@ -164,7 +158,7 @@ const Login = () => {
             />
           </motion.div>
           {errors.phone && (
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
               className="text-red-500 text-[11px] mt-2 font-bold ml-2"
             >
@@ -184,13 +178,13 @@ const Login = () => {
           className="w-full py-5 rounded-[20px] font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-white flex items-center justify-center gap-3 shadow-[0_8px_30px_rgb(21,46,75,0.25)] relative overflow-hidden group"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
+
           {loading ? (
             <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
           ) : (
             <>
-              <span className="relative z-10">Next</span>
-              <motion.div 
+              <span className="relative z-10">{isSignUp ? "Sign Up" : "Next"}</span>
+              <motion.div
                 className="relative z-10"
                 animate={{ x: [0, 4, 0] }}
                 transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -201,6 +195,7 @@ const Login = () => {
           )}
         </motion.button>
       </form>
+
     </div>
   );
 };
