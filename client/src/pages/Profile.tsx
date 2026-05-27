@@ -1,11 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench, Repeat } from "lucide-react";
+import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench, Repeat, User, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useApp } from "@/context/AppContext";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, dispatch } = useApp();
+  const { user, role, dispatch } = useApp();
+
+  const handleRoleChange = (newRole: "customer" | "provider") => {
+    if (newRole === role) return;
+    dispatch({ type: "SET_ROLE", role: newRole });
+    if (newRole === "provider") {
+      navigate("/provider", { replace: true });
+    }
+    // Future navigation logic for customer mode can be added here
+  };
 
   const handleLogout = () => {
     dispatch({ type: "LOGOUT" });
@@ -19,6 +28,57 @@ const Profile = () => {
       </div>
 
       <div className="px-5 pt-5 flex-1 overflow-y-auto space-y-4">
+
+        {/* Role Switcher Card */}
+        <div
+          className="rounded-[18px] p-[14px] flex flex-col gap-[10px]"
+          style={{
+            background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
+            boxShadow: "0 4px 24px rgba(37, 99, 235, 0.22), 0 1px 4px rgba(37, 99, 235, 0.10)",
+          }}
+          role="region"
+          aria-label="User role switcher"
+        >
+          {/* Segmented Toggle */}
+          <div className="flex items-center bg-white/15 rounded-[12px] p-[3px] gap-[3px]">
+            {/* Customer Button */}
+            <button
+              id="role-toggle-customer"
+              onClick={() => handleRoleChange("customer")}
+              aria-pressed={role === "customer"}
+              aria-label="Switch to Customer mode"
+              className={`flex-1 flex items-center justify-center gap-[7px] py-[10px] rounded-[9px] text-[13.5px] font-bold tracking-tight transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+                role === "customer"
+                  ? "bg-white text-[#2563EB] shadow-[0_2px_8px_rgba(37,99,235,0.18)] scale-[1.025]"
+                  : "bg-transparent text-white/80 hover:bg-white/10 hover:text-white active:scale-95"
+              }`}
+            >
+              <User size={15} strokeWidth={2.4} />
+              <span>Customer</span>
+            </button>
+
+            {/* Provider Button */}
+            <button
+              id="role-toggle-provider"
+              onClick={() => handleRoleChange("provider")}
+              aria-pressed={role === "provider"}
+              aria-label="Switch to Provider mode"
+              className={`flex-1 flex items-center justify-center gap-[7px] py-[10px] rounded-[9px] text-[13.5px] font-bold tracking-tight transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+                role === "provider"
+                  ? "bg-white text-[#2563EB] shadow-[0_2px_8px_rgba(37,99,235,0.18)] scale-[1.025]"
+                  : "bg-transparent text-white/80 hover:bg-white/10 hover:text-white active:scale-95"
+              }`}
+            >
+              <Briefcase size={15} strokeWidth={2.4} />
+              <span>Provider</span>
+            </button>
+          </div>
+
+          {/* Subtitle */}
+          <p className="text-center text-[11.5px] text-white/80 font-medium tracking-wide leading-snug">
+            Switch between customer and provider mode
+          </p>
+        </div>
 
         {/* Profile Card */}
         <div className="bg-white border border-border rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 relative">
