@@ -667,7 +667,7 @@ const Home = () => {
 
 
         {/* ═══ REFER & EARN ═══ */}
-        <motion.div variants={itemVariants} className="px-5 pb-6 pt-4">
+        <motion.div variants={itemVariants} className="px-5 pb-4 pt-4">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -685,6 +685,28 @@ const Home = () => {
               </p>
             </div>
             <ChevronRight size={20} className="text-accent flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
+          </motion.button>
+        </motion.div>
+
+        {/* ═══ GET HELP ═══ */}
+        <motion.div variants={itemVariants} className="px-5 pb-6 pt-2">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/get-help")}
+            className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 shadow-[0_8px_30px_rgba(21,46,75,0.04)] relative overflow-hidden group"
+          >
+            <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-primary/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-primary/20 transition-colors duration-500" />
+            <div className="w-14 h-14 rounded-[18px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-300">
+              <HelpCircle size={26} className="text-primary" strokeWidth={2} />
+            </div>
+            <div className="flex-1 text-left z-10">
+              <h3 className="text-[16px] font-extrabold text-foreground leading-tight">Get Help</h3>
+              <p className="text-[12px] font-bold text-primary/80 mt-1">
+                Not sure what's wrong? Let our experts inspect it.
+              </p>
+            </div>
+            <ChevronRight size={20} className="text-primary flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
           </motion.button>
         </motion.div>
       </motion.div>

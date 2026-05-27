@@ -219,6 +219,7 @@ const ServiceSelection = () => {
           </motion.div>
         )}
 
+<<<<<<< HEAD
         {/* Helper Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -244,6 +245,9 @@ const ServiceSelection = () => {
             </motion.button>
           </div>
         </motion.div>
+=======
+
+>>>>>>> 3472a41e85375d6f3375c0b0df7783ab47c9af41
 
         {/* Trust Bar */}
         <motion.div

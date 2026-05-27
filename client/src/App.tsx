@@ -131,6 +131,7 @@ const AppRoutes = () => (
         <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
         <Route path="/favorites" element={<RequireAuth><Favorites /></RequireAuth>} />
         <Route path="/support" element={<RequireAuth><HelpSupport /></RequireAuth>} />
+        <Route path="/get-help" element={<RequireAuth><GetHelp /></RequireAuth>} />
         <Route path="/report-issue" element={<RequireAuth><ReportIssue /></RequireAuth>} />
         <Route path="/subscriptions" element={<RequireAuth><Subscription /></RequireAuth>} />
         <Route path="/subscriptions/manage" element={<RequireAuth><ManageSubscriptions /></RequireAuth>} />
