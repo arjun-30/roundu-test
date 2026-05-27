@@ -45,6 +45,7 @@ const Settings = lazy(() => import("@/pages/Settings"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const HelpSupport = lazy(() => import("@/pages/HelpSupport"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
+const GetHelp = lazy(() => import("@/pages/GetHelp"));
 
 const ReportIssue = lazy(() => import("@/pages/ReportIssue"));
 const ManageSubscriptions = lazy(() => import("@/pages/ManageSubscriptions"));
@@ -100,6 +101,7 @@ const AppRoutes = () => (
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
         <Route path="/services" element={<RequireAuth><ServicesPage /></RequireAuth>} />
         <Route path="/service-select/:serviceId" element={<RequireAuth><ServiceSelection /></RequireAuth>} />
+        <Route path="/get-help/:serviceId" element={<RequireAuth><GetHelp /></RequireAuth>} />
         <Route path="/providers/:serviceId" element={<RequireAuth><ProvidersPage /></RequireAuth>} />
         <Route path="/provider/:id" element={<RequireAuth><ProviderDetail /></RequireAuth>} />
         <Route path="/book-service/:serviceId" element={<RequireAuth><BookService /></RequireAuth>} />
