@@ -396,8 +396,16 @@ function reducer(state: State, action: Action): State {
         localStorage.setItem("roundu_role", action.role);
       }
       return { ...state, role: action.role };
-    case "UPDATE_USER":
-      return { ...state, user: { ...state.user, ...action.user } };
+    case "UPDATE_USER": {
+      const newUser = { ...state.user, ...action.user };
+      // Persist user to localStorage for session restoration
+      try {
+        localStorage.setItem("roundu_user", JSON.stringify(newUser));
+      } catch (e) {
+        console.error("Failed to persist user to localStorage", e);
+      }
+      return { ...state, user: newUser };
+    }
     case "SELECT_SERVICE":
       return { ...state, selectedServiceId: action.id };
     case "SELECT_PROVIDER":

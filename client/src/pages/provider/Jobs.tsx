@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+
 import { getServiceById } from "@/data/mockData";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import EmptyState from "@/components/EmptyState";
@@ -15,6 +16,32 @@ const Jobs = () => {
   const { providerRequests, completedJobs } = useApp();
   const [tab, setTab] = useState<"upcoming" | "active" | "completed">("upcoming");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+// Persist date range in localStorage
+useEffect(() => {
+  const raw = localStorage.getItem('jobsDateRange');
+  if (raw) {
+    try {
+      const obj = JSON.parse(raw);
+      setDateRange({
+        from: obj.from ? new Date(obj.from) : undefined,
+        to: obj.to ? new Date(obj.to) : undefined,
+      });
+    } catch {}
+  }
+}, []);
+
+useEffect(() => {
+  if (dateRange?.from || dateRange?.to) {
+    const obj = {
+      from: dateRange?.from?.toISOString(),
+      to: dateRange?.to?.toISOString(),
+    };
+    localStorage.setItem('jobsDateRange', JSON.stringify(obj));
+  } else {
+    localStorage.removeItem('jobsDateRange');
+  }
+}, [dateRange]);
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {

@@ -27,9 +27,16 @@ const EditProfile = () => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || "hello@roundu.in");
   const [phone, setPhone] = useState(user.phone);
+  const [emailError, setEmailError] = useState('');
   const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
 
   const handleSave = () => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+    setEmailError('');
     dispatch({ type: "UPDATE_USER", user: { name, email, phone } });
     if (user.role === "provider" && providerRegistrationDraft) {
       dispatch({ 
@@ -85,6 +92,9 @@ const EditProfile = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm"
               />
+              {emailError && (
+                <p className="text-sm text-destructive mt-1 pl-11">{emailError}</p>
+              )}
             </div>
           </div>
 
