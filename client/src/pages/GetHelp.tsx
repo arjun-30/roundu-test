@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, HelpCircle, ShieldCheck, Mail, Phone, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, HelpCircle, ShieldCheck, Mail, Contact, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,8 +32,19 @@ const GetHelp = () => {
       setError("Please describe the problem you are facing.");
       return;
     }
-    if (!contact.trim()) {
+    
+    const contactVal = contact.trim();
+    if (!contactVal) {
       setError("Please provide a contact number or email address.");
+      return;
+    }
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactVal);
+    const cleanPhone = contactVal.replace(/[-\s()]/g, "");
+    const isPhone = /^\+?[0-9]{10,14}$/.test(cleanPhone);
+
+    if (!isEmail && !isPhone) {
+      setError("Please enter a valid phone number or email address.");
       return;
     }
 
@@ -126,7 +137,7 @@ const GetHelp = () => {
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 placeholder="What symptoms or issues are you experiencing? (e.g., tap dripping, water not cooling, sparkling switch...)"
-                className="w-full bg-[#F8FAFC] rounded-[20px] p-4 text-[14px] font-semibold text-slate-900 border border-slate-200 focus:border-accent/40 focus:ring-2 focus:ring-accent/10 focus:outline-none transition-all resize-none placeholder:text-slate-400"
+                className="w-full bg-[#F8FAFC] rounded-[20px] p-4 text-[14px] font-semibold text-slate-900 border border-slate-200 focus:border-accent/40 focus:ring-2 focus:ring-accent/10 focus:outline-none transition-all resize-none placeholder:text-slate-500"
               />
             </div>
 
@@ -137,7 +148,7 @@ const GetHelp = () => {
               </label>
               <div className="relative flex items-center">
                 <div className="absolute left-4 text-slate-400 pointer-events-none">
-                  <Phone size={18} strokeWidth={2} />
+                  <Contact size={18} strokeWidth={2} />
                 </div>
                 <input
                   id="contact-info"
@@ -145,7 +156,7 @@ const GetHelp = () => {
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
                   placeholder="Phone number or Email address"
-                  className="w-full bg-[#F8FAFC] rounded-[20px] pl-11 pr-4 py-4 text-[14px] font-semibold text-slate-900 border border-slate-200 focus:border-accent/40 focus:ring-2 focus:ring-accent/10 focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full bg-[#F8FAFC] rounded-[20px] pl-11 pr-4 py-4 text-[14px] font-semibold text-slate-900 border border-slate-200 focus:border-accent/40 focus:ring-2 focus:ring-accent/10 focus:outline-none transition-all placeholder:text-slate-500"
                 />
               </div>
             </div>
