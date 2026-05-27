@@ -359,7 +359,6 @@ const BookService = () => {
     };
 
   return (
-<<<<<<< HEAD
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] font-sans pb-6">
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -399,36 +398,6 @@ const BookService = () => {
           )}
         </AnimatePresence>
       </motion.div>
-=======
-    <div className="min-h-screen bg-[#F8FAFC] pb-32">
->>>>>>> 42ce9f41949f2009fe02013d1acf8542853b5e8f
-
-      {/* HEADER */}
-      <div className="bg-white px-5 pt-6 pb-5 flex items-center shadow-sm sticky top-0 z-20 border-b border-slate-100">
-
-        <button
-          onClick={() => navigate(-1)}
-          className="w-11 h-11 rounded-2xl bg-[#F8FAFC] flex items-center justify-center border border-slate-200 mr-4"
-        >
-          <ArrowLeft
-            size={22}
-            className="text-[#17375E]"
-          />
-        </button>
-
-        <div>
-          <h1 className="text-[22px] font-extrabold text-[#0F172A] leading-tight">
-            Book{" "}
-            {service?.label ||
-              "Service"}
-          </h1>
-
-          <p className="text-[13px] text-slate-500 font-medium mt-1">
-            Describe your issue and
-            choose a schedule
-          </p>
-        </div>
-      </div>
 
       {/* CONTENT */}
       <div className="px-5 pt-5 space-y-5">
