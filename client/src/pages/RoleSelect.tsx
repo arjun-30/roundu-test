@@ -86,7 +86,8 @@ const RoleSelect = () => {
     <div
       className="min-h-screen px-5 py-7 relative overflow-hidden"
       style={{
-        background: "#F8FAFC",
+        background:
+          "linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%)",
       }}
     >
       {/* BACKGROUND DOTS */}
@@ -96,6 +97,15 @@ const RoleSelect = () => {
           backgroundImage:
             "radial-gradient(#dbe3ec 1px, transparent 1px)",
           backgroundSize: "22px 22px",
+        }}
+      />
+
+      {/* FLOATING GLOW */}
+      <div
+        className="absolute top-[-120px] right-[-100px] w-[320px] h-[320px] rounded-full blur-[90px]"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(244,185,66,0.28), transparent 70%)",
         }}
       />
 
@@ -178,7 +188,7 @@ const RoleSelect = () => {
             onClick={() =>
               setSelectedRole("customer")
             }
-            className="w-full rounded-[28px] border bg-white p-6 text-left transition-all duration-300 relative"
+            className="glass-card service-card w-full rounded-[28px] border bg-white/80 p-6 text-left transition-all duration-300 relative overflow-hidden"
             style={{
               borderColor:
                 selectedRole === "customer"
@@ -187,8 +197,8 @@ const RoleSelect = () => {
 
               boxShadow:
                 selectedRole === "customer"
-                  ? "0 10px 30px rgba(198,146,20,0.12)"
-                  : "0 4px 14px rgba(15,23,42,0.04)",
+                  ? "0 12px 35px rgba(198,146,20,0.16)"
+                  : "0 8px 25px rgba(15,23,42,0.06)",
             }}
           >
             {/* CHECK */}
@@ -219,7 +229,8 @@ const RoleSelect = () => {
             <div
               className="w-14 h-14 rounded-[18px] flex items-center justify-center mb-5"
               style={{
-                background: "#F8FAFC",
+                background:
+                  "rgba(255,255,255,0.7)",
                 color: "#64748B",
               }}
             >
@@ -254,7 +265,7 @@ const RoleSelect = () => {
             onClick={() =>
               setSelectedRole("provider")
             }
-            className="w-full rounded-[28px] border bg-white p-6 text-left transition-all duration-300 relative"
+            className="glass-card service-card w-full rounded-[28px] border bg-white/80 p-6 text-left transition-all duration-300 relative overflow-hidden"
             style={{
               borderColor:
                 selectedRole === "provider"
@@ -263,8 +274,8 @@ const RoleSelect = () => {
 
               boxShadow:
                 selectedRole === "provider"
-                  ? "0 10px 30px rgba(198,146,20,0.12)"
-                  : "0 4px 14px rgba(15,23,42,0.04)",
+                  ? "0 12px 35px rgba(198,146,20,0.16)"
+                  : "0 8px 25px rgba(15,23,42,0.06)",
             }}
           >
             {/* CHECK */}
@@ -295,7 +306,8 @@ const RoleSelect = () => {
             <div
               className="w-14 h-14 rounded-[18px] flex items-center justify-center mb-5"
               style={{
-                background: "#F8FAFC",
+                background:
+                  "rgba(255,255,255,0.7)",
                 color: "#64748B",
               }}
             >
@@ -377,17 +389,12 @@ const RoleSelect = () => {
             selectedRole &&
             select(selectedRole)
           }
-          className="w-full mt-7 py-5 rounded-[24px] text-white font-bold text-[17px] flex items-center justify-center gap-3 transition-all duration-300"
+          className="premium-button w-full mt-7 py-5 rounded-[24px] text-white font-bold text-[17px] flex items-center justify-center gap-3 transition-all duration-300"
           style={{
-            background:
+            opacity:
               selectedRole && acceptedTerms
-                ? PRIMARY
-                : "#CBD5E1",
-
-            boxShadow:
-              selectedRole && acceptedTerms
-                ? "0 12px 30px rgba(23,55,94,0.22)"
-                : "none",
+                ? 1
+                : 0.5,
 
             cursor:
               selectedRole && acceptedTerms
