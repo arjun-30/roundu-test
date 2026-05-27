@@ -45,6 +45,7 @@ const Settings = lazy(() => import("@/pages/Settings"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const HelpSupport = lazy(() => import("@/pages/HelpSupport"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
+const GetHelp = lazy(() => import("@/pages/GetHelp"));
 
 const ReportIssue = lazy(() => import("@/pages/ReportIssue"));
 const ManageSubscriptions = lazy(() => import("@/pages/ManageSubscriptions"));
@@ -129,6 +130,7 @@ const AppRoutes = () => (
         <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
         <Route path="/favorites" element={<RequireAuth><Favorites /></RequireAuth>} />
         <Route path="/support" element={<RequireAuth><HelpSupport /></RequireAuth>} />
+        <Route path="/get-help" element={<RequireAuth><GetHelp /></RequireAuth>} />
         <Route path="/report-issue" element={<RequireAuth><ReportIssue /></RequireAuth>} />
         <Route path="/subscriptions" element={<RequireAuth><Subscription /></RequireAuth>} />
         <Route path="/subscriptions/manage" element={<RequireAuth><ManageSubscriptions /></RequireAuth>} />

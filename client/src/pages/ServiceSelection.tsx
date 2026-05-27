@@ -25,9 +25,6 @@ const ServiceSelection = () => {
   const service = getServiceById(serviceId || "");
   const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showHelpForm, setShowHelpForm] = useState(false);
-  const [helpDesc, setHelpDesc] = useState("");
-  const [helpContact, setHelpContact] = useState("");
 
   // Acting Drivers has its own dedicated booking screen — redirect immediately
   useEffect(() => {
@@ -78,20 +75,7 @@ const ServiceSelection = () => {
     }, 400);
   };
 
-  const handleConfirmHelp = () => {
-    if (!helpDesc.trim() || !helpContact.trim()) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      dispatch({ type: "SELECT_SERVICE", id: service.id });
-      navigate(`/book-service/${service.id}`, {
-        state: {
-          serviceId: service.id,
-          issue: `Help Request: ${helpDesc} (Contact: ${helpContact})`
-        }
-      });
-    }, 400);
-  };
+
 
   // Mock expansion to closely emulate user's examples
   const getExtendedProblems = () => {
@@ -235,76 +219,7 @@ const ServiceSelection = () => {
           </motion.div>
         )}
 
-        {/* Helper Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-white rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-transparent flex flex-col sm:flex-row items-start sm:items-center gap-5 mt-4"
-        >
-          <div className="w-14 h-14 rounded-[20px] bg-primary/5 flex items-center justify-center flex-shrink-0">
-            <HelpCircle size={26} className="text-primary" strokeWidth={2} />
-          </div>
-          <div className="flex-1 w-full">
-            <h3 className="text-[17px] font-extrabold text-foreground">Not sure what's wrong?</h3>
-            <p className="text-[13px] text-muted-foreground mt-1 mb-4 leading-relaxed">Let our experts inspect and identify the exact issue for you.</p>
-            
-            <AnimatePresence mode="wait">
-              {!showHelpForm ? (
-                <motion.button
-                  key="btn"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowHelpForm(true)}
-                  className="bg-primary text-white text-[13px] font-bold tracking-wide px-5 py-3 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-colors w-full sm:w-auto"
-                >
-                  Get Help
-                </motion.button>
-              ) : (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-3 mt-2 overflow-hidden"
-                >
-                  <textarea
-                    value={helpDesc}
-                    onChange={(e) => setHelpDesc(e.target.value)}
-                    placeholder="Enter your problem..."
-                    rows={3}
-                    className="w-full bg-[#F8FAFC] rounded-[14px] p-3 text-[13px] font-semibold text-primary border border-primary/10 focus:border-accent/50 focus:outline-none transition-all resize-none"
-                  />
-                  <input
-                    type="text"
-                    value={helpContact}
-                    onChange={(e) => setHelpContact(e.target.value)}
-                    placeholder="Phone number or Email address"
-                    className="w-full bg-[#F8FAFC] rounded-[14px] p-3 text-[13px] font-semibold text-primary border border-primary/10 focus:border-accent/50 focus:outline-none transition-all"
-                  />
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={() => setShowHelpForm(false)}
-                      className="flex-1 py-2.5 rounded-xl border border-border text-foreground font-bold text-[13px] active:scale-95 transition-all hover:bg-black/5"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleConfirmHelp}
-                      disabled={!helpDesc.trim() || !helpContact.trim() || isLoading}
-                      className="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold text-[13px] active:scale-95 transition-all disabled:opacity-50"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+
 
         {/* Trust Bar */}
         <motion.div
