@@ -1,9 +1,12 @@
 import { ArrowLeft, Camera, User, Mail, Phone, Briefcase } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
+import type { ChangeEvent } from "react";
+import { useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 
 import { services } from "@/data/mockData";
+import AvatarDisplay from "@/components/AvatarDisplay";
+import { persistProfileImage, uploadProfileImage, validateProfileImageFile } from "@/lib/profileImage";
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -29,6 +32,42 @@ const EditProfile = () => {
   const [phone, setPhone] = useState(user.phone);
   const [emailError, setEmailError] = useState('');
   const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handlePhotoButtonClick = () => {
+    if (uploadingPhoto) return;
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const validationError = validateProfileImageFile(file);
+    if (validationError) {
+      setPhotoError(validationError);
+      return;
+    }
+
+    setPhotoError("");
+    setUploadingPhoto(true);
+
+    try {
+      const imageUrl = await uploadProfileImage(file);
+      if (user.id) {
+        await persistProfileImage(user.id, imageUrl);
+      }
+      dispatch({ type: "UPDATE_USER", user: { photoURL: imageUrl, avatar_url: imageUrl } });
+    } catch (error) {
+      console.error("Profile image upload failed:", error);
+      setPhotoError("Could not upload photo. Please try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleSave = () => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -59,13 +98,33 @@ const EditProfile = () => {
       </div>
 
       <div className="px-5 pt-8 flex flex-col items-center">
-        <div className="relative mb-8">
-          <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center border-4 border-white shadow-md">
-            <span className="text-3xl font-extrabold text-white">{name.charAt(0)}</span>
+        <div className="relative mb-3">
+          <div className="rounded-full border-4 border-white shadow-md bg-white">
+            <AvatarDisplay photoURL={user.photoURL} name={name} size={96} showStatus={false} />
           </div>
-          <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary border-2 border-white flex items-center justify-center shadow-sm active:scale-95 transition-transform">
-            <Camera size={14} className="text-white" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handlePhotoChange}
+          />
+          <button
+            type="button"
+            onClick={handlePhotoButtonClick}
+            disabled={uploadingPhoto}
+            aria-label="Upload profile photo"
+            className="absolute bottom-0 right-0 z-20 w-9 h-9 rounded-full bg-primary border-2 border-white flex items-center justify-center shadow-md hover:bg-[#1C3D63] active:scale-90 transition-all disabled:opacity-70 disabled:cursor-wait touch-manipulation"
+          >
+            {uploadingPhoto ? (
+              <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+            ) : (
+              <Camera size={15} className="text-white" />
+            )}
           </button>
+        </div>
+        <div className="min-h-5 mb-5">
+          {photoError && <p className="text-xs font-semibold text-destructive text-center">{photoError}</p>}
         </div>
 
         <div className="w-full space-y-4">

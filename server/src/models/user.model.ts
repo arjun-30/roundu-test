@@ -7,6 +7,7 @@ export interface User {
   name: string | null;
   email: string | null;
   address: string | null;
+  avatar_url: string | null;
   role: string;
 }
 
@@ -40,6 +41,7 @@ export const UserModel = {
           name: 'Mock User',
           email: 'mock@example.com',
           address: 'Mock Address, City',
+          avatar_url: null,
           role: user.role || 'customer'
         };
       }
@@ -49,8 +51,21 @@ export const UserModel = {
 
   async update(id: string, patch: Partial<User>): Promise<User> {
     try {
-      const keys = Object.keys(patch);
-      const values = Object.values(patch);
+      const allowedColumns = new Set(['phone', 'name', 'email', 'address', 'avatar_url', 'role']);
+      const normalizedPatch = { ...(patch as any) };
+      if (normalizedPatch.photoURL && !normalizedPatch.avatar_url) {
+        normalizedPatch.avatar_url = normalizedPatch.photoURL;
+      }
+      delete normalizedPatch.photoURL;
+
+      const entries = Object.entries(normalizedPatch).filter(([key]) => allowedColumns.has(key));
+      if (entries.length === 0) {
+        const res = await getPool().query('SELECT * FROM users WHERE id = $1', [id]);
+        return res.rows[0];
+      }
+
+      const keys = entries.map(([key]) => key);
+      const values = entries.map(([, value]) => value);
       const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
       
       const res = await getPool().query(
@@ -67,6 +82,7 @@ export const UserModel = {
           name: patch.name || 'Mock User',
           email: patch.email || 'mock@example.com',
           address: patch.address || 'Mock Address',
+          avatar_url: patch.avatar_url || null,
           role: patch.role || 'customer',
           ...patch
         };

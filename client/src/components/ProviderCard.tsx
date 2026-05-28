@@ -1,5 +1,6 @@
 import { Star, MapPin, Clock, BadgeCheck } from "lucide-react";
 import { Provider } from "@/data/mockData";
+import AvatarDisplay from "@/components/AvatarDisplay";
 
 interface ProviderCardProps {
   provider: Provider;
@@ -22,9 +23,13 @@ const ProviderCard = ({ provider, onClick, onBook }: ProviderCardProps) => {
               e.stopPropagation();
               onClick?.();
             }}
-            className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0 hover:bg-secondary transition-colors"
+            className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0 overflow-hidden hover:bg-secondary transition-colors"
           >
-            {provider.avatar}
+            {provider.avatar.startsWith("http") ? (
+              <AvatarDisplay photoURL={provider.avatar} name={provider.name} size={56} showStatus={false} />
+            ) : (
+              provider.avatar
+            )}
           </div>
           {provider.verified && (
             <BadgeCheck size={18} className="absolute -top-1 -right-1 text-accent fill-card" />

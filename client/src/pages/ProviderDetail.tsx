@@ -60,7 +60,7 @@ const ProviderDetail = () => {
       return {
         id: quote?.providerId || id,
         name: quote?.providerName || dynamicProfile?.name || "Professional",
-        avatar: quote?.providerAvatar || "P",
+        avatar: quote?.providerAvatar || dynamicProfile?.avatar_url || "P",
         pricePerHr: quote?.price || 500,
         etaMin: quote?.etaMin || 15,
         distanceKm: quote?.distanceKm || 0,
@@ -216,7 +216,7 @@ const ProviderDetail = () => {
       {/* Header Image & Action Bar */}
       <div className="relative h-80 bg-gray-900 overflow-hidden">
         <img 
-          src={provider.avatar.length === 2 ? `https://ui-avatars.com/api/?name=${provider.name}&background=152E4B&color=fff&size=512` : provider.image} 
+          src={provider.avatar?.startsWith("http") ? provider.avatar : (provider.image || `https://ui-avatars.com/api/?name=${provider.name}&background=152E4B&color=fff&size=512`)}
           alt={provider.name} 
           className="w-full h-full object-cover opacity-80" 
         />

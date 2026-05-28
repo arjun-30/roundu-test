@@ -1,5 +1,6 @@
 import { Check, Crown } from "lucide-react";
 import { MembershipBillingCycle, MembershipPlan, MembershipPlanId } from "@/types/membership";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 interface MembershipPlanCardProps {
   plan: MembershipPlan;
@@ -30,7 +31,7 @@ const MembershipPlanCard = ({ plan, billingCycle, isActive, onSelect }: Membersh
               </span>
             )}
           </div>
-          <p className="text-2xl font-black mt-3 text-foreground">₹{amount}</p>
+          <p className="text-2xl font-black mt-3 text-foreground">{formatCurrency(amount)}</p>
           <p className="text-xs text-muted-foreground">per {period}</p>
         </div>
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.highlight ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"}`}>

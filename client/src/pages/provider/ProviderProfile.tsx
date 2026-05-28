@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchCamera, MapPin, Clock, Image as ImageIcon, FileText, Settings } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
+import AvatarDisplay from "@/components/AvatarDisplay";
 import { getMembershipBadgeLabel } from "@/lib/membership";
 import axios from "axios";
 
@@ -108,9 +109,8 @@ const ProviderProfile = () => {
         {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card text-center">
-          <div className="w-20 h-20 rounded-2xl bg-primary mx-auto flex items-center justify-center text-primary-foreground text-xl font-extrabold relative">
-            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-card ${isOnline ? 'bg-success' : 'bg-muted-foreground'}`} />
+          <div className="mx-auto w-20 h-20 rounded-full bg-white p-0.5 shadow-sm ring-1 ring-border">
+            <AvatarDisplay photoURL={user.photoURL} name={user.name} isOnline={isOnline} size={76} />
           </div>
           <h2 className="text-base font-bold text-foreground mt-3">{user.name}</h2>
           <p className="text-xs text-muted-foreground">+91 {user.phone || "—"}</p>

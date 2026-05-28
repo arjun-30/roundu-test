@@ -1,13 +1,55 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Plus, Image as ImageIcon, Play } from "lucide-react";
+import { ArrowLeft, Plus, Image as ImageIcon, Play, Loader2 } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
+import { useApp } from "@/context/AppContext";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getProviderVideoBlobUrl } from "@/lib/videoStorage";
 
 const Portfolio = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { providerRegistrationDraft } = useApp();
   const [notification, setNotification] = useState("");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isLoadingVideo, setIsLoadingVideo] = useState(true);
+
+  // Load saved video on mount
+  useEffect(() => {
+    const loadVideo = () => {
+      try {
+        setIsLoadingVideo(true);
+        
+        // First check if we have a video URL in AppContext
+        if (providerRegistrationDraft?.introVideoUrl) {
+          setVideoUrl(providerRegistrationDraft.introVideoUrl);
+          setIsLoadingVideo(false);
+          return;
+        }
+
+        // Otherwise try to load from localStorage
+        const savedVideoUrl = getProviderVideoBlobUrl();
+        if (savedVideoUrl) {
+          setVideoUrl(savedVideoUrl);
+        }
+      } catch (err) {
+        console.error("Failed to load video:", err);
+      } finally {
+        setIsLoadingVideo(false);
+      }
+    };
+
+    loadVideo();
+  }, [providerRegistrationDraft]);
+
+  // Cleanup effect to revoke blob URLs when component unmounts or video changes
+  useEffect(() => {
+    return () => {
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -16,9 +58,17 @@ const Portfolio = () => {
       navigate(location.state?.from === "profile" ? "/provider/profile" : "/provider");
     }
   };
-  const mockPortfolio: any[] = [];
 
-  const [portfolio, setPortfolio] = useState(mockPortfolio);
+  interface PortfolioItem {
+    id: number;
+    title: string;
+    date: string;
+    image: string;
+  }
+
+  const mockPortfolio: PortfolioItem[] = [];
+
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>(mockPortfolio);
   const [isManaging, setIsManaging] = useState(false);
 
   const handleAddPair = () => {
@@ -65,18 +115,49 @@ const Portfolio = () => {
            <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden group">
               <div className="flex items-center justify-between mb-4">
                  <h2 className="text-white font-extrabold text-base">Video Introduction</h2>
-                 <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Active</span>
+                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                   videoUrl 
+                     ? 'bg-emerald-500/20 text-emerald-400' 
+                     : 'bg-amber-500/20 text-amber-400'
+                 }`}>
+                   {videoUrl ? 'Active' : 'Not Set'}
+                 </span>
               </div>
-              <div className="aspect-video bg-slate-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-700">
-                 <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80" alt="Video Preview" className="w-full h-full object-cover opacity-50" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
-                       <Play size={24} className="text-white fill-white ml-1" />
-                    </div>
-                 </div>
-              </div>
-              <button onClick={() => navigate("/provider/video-portfolio", { state: { from: "portfolio" } })} className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
-                Re-record Introduction
+              
+              {isLoadingVideo ? (
+                <div className="aspect-video bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 size={32} className="text-white animate-spin" />
+                    <p className="text-white text-sm">Loading video...</p>
+                  </div>
+                </div>
+              ) : videoUrl ? (
+                <div className="aspect-video bg-slate-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-700 group">
+                   <video 
+                     src={videoUrl} 
+                     controls 
+                     className="w-full h-full object-contain bg-black"
+                   />
+                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                      <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                         <Play size={24} className="text-white fill-white ml-1" />
+                      </div>
+                   </div>
+                </div>
+              ) : (
+                <div className="aspect-video bg-slate-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-700">
+                   <div className="flex flex-col items-center gap-3">
+                      <Play size={48} className="text-slate-600" />
+                      <p className="text-slate-400 text-sm">No introduction video recorded yet</p>
+                   </div>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => navigate("/provider/video-portfolio", { state: { from: "portfolio" } })} 
+                className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors"
+              >
+                {videoUrl ? 'Re-record Introduction' : 'Record Introduction'}
               </button>
            </div>
         </div>

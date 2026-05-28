@@ -52,6 +52,8 @@ interface UserProfile {
   phone: string;
   email: string;
   address: string;
+  photoURL?: string | null;
+  avatar_url?: string | null;
   role?: "customer" | "provider";
   savedAddresses?: SavedAddress[];
 }
@@ -96,6 +98,7 @@ interface State {
       panVerified: boolean;
       bankVerified: boolean;
     };
+    introVideoUrl?: string | null;
   };
   // New Flow State
   isNewUser: boolean;
@@ -146,6 +149,7 @@ type Action =
   | { type: "COMPLETE_REQUEST"; id: string }
   | { type: "UPDATE_REGISTRATION_DRAFT"; patch: Partial<State["providerRegistrationDraft"]> }
   | { type: "UPDATE_KYC"; patch: Partial<State["providerRegistrationDraft"]["kyc"]> }
+  | { type: "SET_PROVIDER_VIDEO"; videoUrl: string | null }
   | { type: "UPDATE_ONBOARDING"; patch: Partial<State["onboardingData"]> }
   | { type: "SET_NEW_USER"; value: boolean }
   | { type: "UPDATE_WALLET"; amount: number }
@@ -175,10 +179,13 @@ const token = localStorage.getItem("roundu_token");
 const savedUser = localStorage.getItem("roundu_user");
 const savedRole = localStorage.getItem("roundu_role");
 
-let parsedUser = { id: "", name: "", phone: "", email: "", address: "" };
+let parsedUser: Partial<UserProfile> = { id: "", name: "", phone: "", email: "", address: "" };
 if (savedUser) {
   try {
     parsedUser = JSON.parse(savedUser);
+    if (!parsedUser.photoURL && parsedUser.avatar_url) {
+      parsedUser.photoURL = parsedUser.avatar_url;
+    }
   } catch (e) {
     console.error("Failed to parse saved user", e);
   }
@@ -194,6 +201,8 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
+    photoURL: parsedUser.photoURL || parsedUser.avatar_url || null,
+    avatar_url: parsedUser.avatar_url || parsedUser.photoURL || null,
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
@@ -219,6 +228,7 @@ const initialState: State = {
     workingHours: "All day",
     serviceRadius: 5,
     kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
+    introVideoUrl: null,
   },
   isNewUser: true,
   walletBalance: 0,
@@ -402,7 +412,14 @@ function reducer(state: State, action: Action): State {
       }
       return { ...state, role: action.role };
     case "UPDATE_USER": {
-      const newUser = { ...state.user, ...action.user };
+      const nextUserPatch = { ...action.user };
+      if (nextUserPatch.photoURL && !nextUserPatch.avatar_url) {
+        nextUserPatch.avatar_url = nextUserPatch.photoURL;
+      }
+      if (nextUserPatch.avatar_url && !nextUserPatch.photoURL) {
+        nextUserPatch.photoURL = nextUserPatch.avatar_url;
+      }
+      const newUser = { ...state.user, ...nextUserPatch };
       // Persist user to localStorage for session restoration
       try {
         localStorage.setItem("roundu_user", JSON.stringify(newUser));
@@ -591,6 +608,14 @@ function reducer(state: State, action: Action): State {
           kyc: { ...state.providerRegistrationDraft.kyc, ...action.patch },
         },
       };
+    case "SET_PROVIDER_VIDEO":
+      return {
+        ...state,
+        providerRegistrationDraft: {
+          ...state.providerRegistrationDraft,
+          introVideoUrl: action.videoUrl,
+        },
+      };
     case "UPDATE_ONBOARDING": {
       const newData = { ...state.onboardingData, ...action.patch };
       return {
@@ -771,6 +796,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const dashboard = await fetchProviderDashboard(state.user.id);
             if (dashboard.success) {
               dispatch({ type: "UPDATE_STATS", patch: dashboard.data.stats });
+              const providerAvatarUrl = dashboard.data.provider?.avatar_url;
+              if (typeof providerAvatarUrl === "string" && providerAvatarUrl.trim()) {
+                dispatch({ type: "UPDATE_USER", user: { photoURL: providerAvatarUrl, avatar_url: providerAvatarUrl } });
+              }
               const providerId = dashboard.data.provider.id;
               const pbRes = await fetchProviderBookings(providerId);
               if (pbRes.success) {

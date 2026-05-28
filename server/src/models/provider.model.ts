@@ -10,11 +10,20 @@ export interface Provider {
   is_online: boolean;
   service_radius: number;
   working_hours: string | null;
+  name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
 }
 
 export const ProviderModel = {
   async findByUserId(userId: string): Promise<Provider | null> {
-    const res = await getPool().query('SELECT * FROM providers WHERE user_id = $1', [userId]);
+    const res = await getPool().query(
+      `SELECT p.*, u.name, u.phone, u.avatar_url
+       FROM providers p
+       JOIN users u ON p.user_id = u.id
+       WHERE p.user_id = $1`,
+      [userId]
+    );
     return res.rows[0] || null;
   },
 

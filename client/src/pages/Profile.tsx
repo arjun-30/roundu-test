@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench, Repeat, User, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useApp } from "@/context/AppContext";
+import AvatarDisplay from "@/components/AvatarDisplay";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -82,9 +83,7 @@ const Profile = () => {
 
         {/* Profile Card */}
         <div className="bg-white border border-border rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 relative">
-          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-xl font-extrabold shadow-sm">
-            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-          </div>
+          <AvatarDisplay photoURL={user.photoURL} name={user.name} size={64} showStatus={false} />
           <div className="flex-1 min-w-0">
             <h2 className="text-[17px] font-extrabold text-foreground">{user.name}</h2>
             <p className="text-[13px] text-muted-foreground font-medium mt-0.5">+91 {user.phone || "—"}</p>

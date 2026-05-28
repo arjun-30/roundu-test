@@ -3,8 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Video, Camera, ImagePlus, X, Play, RotateCcw,
   CheckCircle2, ChevronRight, Clock, FileText, Upload,
-  Trash2, Plus, Sparkles, AlertCircle, Image as ImageIcon
+  Trash2, Plus, Sparkles, AlertCircle, Image as ImageIcon, Loader2
 } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
+import { 
+  saveProviderVideo, 
+  getProviderVideoBlobUrl, 
+  blobToBase64,
+  base64ToBlob 
+} from '@/lib/videoStorage';
 
 interface PhotoPair {
   id: string;
@@ -21,11 +28,14 @@ interface Certificate {
 
 const VideoPortfolio = () => {
   const navigate = useNavigate();
+  const { dispatch, providerRegistrationDraft } = useApp();
 
   // Video state
-  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>('idle');
+  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded' | 'saving'>('idle');
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const recordedBlobRef = useRef<Blob | null>(null);
 
   const showError = (msg: string) => {
     setError(msg);
@@ -78,6 +88,7 @@ const VideoPortfolio = () => {
 
       recorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        recordedBlobRef.current = blob;
         setVideoUri(URL.createObjectURL(blob));
         setVideoState('recorded');
       };
@@ -134,6 +145,7 @@ const VideoPortfolio = () => {
       return;
     }
 
+    recordedBlobRef.current = file;
     const uri = URL.createObjectURL(file);
     setVideoUri(uri);
     setVideoState('recorded');
@@ -145,11 +157,93 @@ const VideoPortfolio = () => {
     setVideoUri(null);
     setRecordingTime(0);
     setIsRecording(false);
+    recordedBlobRef.current = null;
   };
 
   const acceptVideo = async () => {
-    setVideoState('uploaded');
+    if (!recordedBlobRef.current) {
+      showError('No video to save');
+      return;
+    }
+
+    setIsSaving(true);
+    setVideoState('saving');
+
+    try {
+      // Save blob to localStorage
+      const success = await saveProviderVideo(
+        recordedBlobRef.current,
+        `intro-video-${Date.now()}.${recordedBlobRef.current.type.includes('webm') ? 'webm' : recordedBlobRef.current.type.includes('mp4') ? 'mp4' : 'mov'}`
+      );
+
+      if (!success) {
+        showError('Failed to save video. Storage quota may be exceeded.');
+        setVideoState('recorded');
+        setIsSaving(false);
+        return;
+      }
+
+      // Get the blob URL for displaying
+      const videoUrl = getProviderVideoBlobUrl();
+      if (!videoUrl) {
+        showError('Failed to load saved video');
+        setVideoState('recorded');
+        setIsSaving(false);
+        return;
+      }
+
+      // Update AppContext with the video URL
+      dispatch({ type: 'SET_PROVIDER_VIDEO', videoUrl });
+
+      setVideoState('uploaded');
+      setIsSaving(false);
+    } catch (err) {
+      console.error('Error saving video:', err);
+      showError('Failed to save video. Please try again.');
+      setVideoState('recorded');
+      setIsSaving(false);
+    }
   };
+
+  // Load saved video on mount
+  useEffect(() => {
+    const loadSavedVideo = () => {
+      try {
+        // Check if video is already in AppContext
+        if (providerRegistrationDraft?.introVideoUrl) {
+          setVideoUri(providerRegistrationDraft.introVideoUrl);
+          setVideoState('uploaded');
+          return;
+        }
+
+        // Try to load from localStorage
+        const videoUrl = getProviderVideoBlobUrl();
+        if (videoUrl) {
+          setVideoUri(videoUrl);
+          setVideoState('uploaded');
+          // Update AppContext as well
+          dispatch({ type: 'SET_PROVIDER_VIDEO', videoUrl });
+        }
+      } catch (err) {
+        console.error('Error loading saved video:', err);
+      }
+    };
+
+    loadSavedVideo();
+  }, [dispatch, providerRegistrationDraft]);
+
+  // Cleanup effect to revoke blob URLs and stop camera stream
+  useEffect(() => {
+    return () => {
+      // Stop any active camera stream
+      stopCamera();
+      
+      // Revoke blob URL to free memory
+      if (videoUri && videoUri.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUri);
+      }
+    };
+  }, [videoUri]);
 
   // Photos state
   const [photoPairs, setPhotoPairs] = useState<PhotoPair[]>([]);
@@ -263,9 +357,8 @@ const VideoPortfolio = () => {
   const removeCertificate = (id: string) => {
     setCertificates(certificates.filter((c) => c.id !== id));
   };
-  // TODO: Rollback this change. Uncomment the line below to enforce video upload before proceeding.
-  // const canProceed = videoState === 'uploaded';
-  const canProceed = true; // Temporary bypass
+  // Enforce video upload before proceeding
+  const canProceed = videoState === 'uploaded' && !isSaving;
 
   const location = useLocation();
   const from = location.state?.from;
@@ -430,7 +523,8 @@ const VideoPortfolio = () => {
                 <div className="flex gap-2.5 mt-4">
                   <button 
                     onClick={resetRecording}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-colors"
+                    disabled={isSaving}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RotateCcw size={18} className="text-primary" />
                     <span className="text-[13px] font-bold text-primary">Re-record</span>
@@ -438,13 +532,33 @@ const VideoPortfolio = () => {
 
                   <button 
                     onClick={acceptVideo}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl bg-emerald-600 border border-emerald-600 hover:bg-emerald-700 transition-colors"
+                    disabled={isSaving}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-xl bg-emerald-600 border border-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <CheckCircle2 size={18} className="text-white" />
-                    <span className="text-[13px] font-bold text-white">Accept</span>
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={18} className="text-white animate-spin" />
+                        <span className="text-[13px] font-bold text-white">Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={18} className="text-white" />
+                        <span className="text-[13px] font-bold text-white">Accept</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </>
+            )}
+
+            {videoState === 'saving' && (
+              <div className="flex flex-col items-center py-6 gap-3">
+                <Loader2 size={40} className="text-primary animate-spin" />
+                <h3 className="text-lg font-bold text-primary">Saving your video...</h3>
+                <p className="text-[13px] text-muted-foreground text-center">
+                  This may take a moment
+                </p>
+              </div>
             )}
 
             {videoState === 'uploaded' && (

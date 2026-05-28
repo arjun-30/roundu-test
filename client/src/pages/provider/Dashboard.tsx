@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X,
-  Power, Star, TrendingUp, AlertTriangle, Lightbulb,
+  Power, Star, AlertTriangle, Lightbulb,
   ChevronRight, Inbox, Briefcase, FileText, Image as ImageIcon, Video, Play, Mic, Eye,
   ClipboardCheck, Images, Wrench, LogOut
 } from "lucide-react";
@@ -10,12 +10,14 @@ import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
+import AvatarDisplay from "@/components/AvatarDisplay";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
 import MembershipStatusCard from "@/components/provider/MembershipStatusCard";
 import { socket } from "@/lib/socket";
 import { getShortAddress } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formatCurrency";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +32,8 @@ const Dashboard = () => {
     dispatch({ type: "SET_ROLE", role: "provider" });
   }, [dispatch]);
   const [showWarning, setShowWarning] = useState(true);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
 
@@ -43,6 +47,11 @@ const Dashboard = () => {
   const [showPip, setShowPip] = useState(false);
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
+  const providerPhotoURL = user?.photoURL;
+  const providerName = typeof user?.name === "string" ? user.name : "";
+  const firstName = providerName.trim().split(/\s+/).filter(Boolean)[0] || "Provider";
+  const ratingValue = Number(providerStats.rating);
+  const ratingDisplay = Number.isFinite(ratingValue) ? ratingValue.toFixed(1) : "0.0";
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
   // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
@@ -54,7 +63,10 @@ const Dashboard = () => {
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
-  const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
+  const earnings = completedJobs.reduce((s, j) => {
+    const price = typeof j.price === "number" ? j.price : Number(j.price);
+    return s + (Number.isFinite(price) ? price : 0);
+  }, 0);
 
   const isBusy = providerRequests.some((r: any) => {
     // Check if job is stale (older than 24 hours)
@@ -270,7 +282,7 @@ const Dashboard = () => {
       customerId: quotingBroadcast.customerId,
       providerId: user.id,
       providerName: user.name,
-      providerAvatar: user.name.charAt(0),
+      providerAvatar: user.photoURL || user.name.charAt(0),
       providerPhone: user.phone || "9999999992",
       price: Number(quotePrice),
       rating: providerStats.rating || 0,
@@ -295,6 +307,25 @@ const Dashboard = () => {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
   } as any;
+
+  useLayoutEffect(() => {
+    const node = headerRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      setHeaderHeight(node.getBoundingClientRect().height);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
@@ -335,37 +366,22 @@ const Dashboard = () => {
       )}
 
       {/* Header */}
-      <motion.div 
+      <motion.div
+        ref={headerRef}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="px-5 pt-3 pb-4 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm"
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="fixed inset-x-0 top-0 z-50 mx-auto flex w-full max-w-[430px] items-center justify-between gap-3 rounded-b-3xl border-b border-slate-200/70 bg-white/95 px-4 py-3 shadow-sm shadow-slate-200/40 backdrop-blur-xl"
       >
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-bold tracking-wide uppercase">Provider Dashboard</p>
-          <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight truncate">Hi, {user.name.split(" ")[0]}</h1>
-          <button 
-            onClick={() => setIsLocationModalOpen(true)}
-            className="group flex items-center gap-1.5 mt-1 cursor-pointer"
-          >
-            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
-              <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
-            </div>
-            <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px] sm:max-w-[240px] truncate">
-              {locating || gpsLoading ? (
-                <span className="flex items-center gap-1">
-                  <span className="animate-spin text-primary">⚙️</span> Detecting...
-                </span>
-              ) : (
-                getShortAddress(user.address) || "Set Location"
-              )}
-            </p>
-          </button>
-        </div>
-        <div className="flex gap-3 items-center">
-          {/* Online/Offline Toggle */}
-          <div className="flex flex-col items-center gap-1 mt-1">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-full bg-white p-0.5 shadow-sm ring-1 ring-slate-200/80">
+            <AvatarDisplay photoURL={providerPhotoURL} name={providerName} isOnline={isOnline} size={44} />
+          </div>
+
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold leading-tight text-slate-950 truncate">Hi, {firstName}</h1>
             <button
+<<<<<<< HEAD
               disabled={isBusy}
               onClick={toggleOnline}
               className={`w-[36px] h-6 rounded-full p-0.5 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -401,7 +417,58 @@ const Dashboard = () => {
                 </span>
               )}
             </motion.button>
+=======
+              onClick={() => setIsLocationModalOpen(true)}
+              className="group mt-1 inline-flex min-w-0 items-center gap-1 truncate text-xs font-medium text-slate-500 transition-colors hover:text-slate-900"
+            >
+              <MapPin size={12} className="text-slate-400" />
+              <span className="truncate max-w-[150px]">
+                {locating || gpsLoading ? "Detecting..." : getShortAddress(user.address) || "Set Location"}
+              </span>
+            </button>
+>>>>>>> 1274865 (Updated provider dashboard and profile improvements)
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            disabled={isBusy}
+            onClick={toggleOnline}
+            className={`inline-flex h-8 min-w-[84px] items-center justify-center gap-2 rounded-full border px-3 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors ${
+              isOnline
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-slate-200 bg-slate-100 text-slate-700"
+            } ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-success" : "bg-slate-500"}`} />
+            {isOnline ? "Online" : "Offline"}
+          </button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/notifications")}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/25"
+            title="Notifications"
+          >
+            <Bell size={18} strokeWidth={2.2} />
+            {(pending.length > 0 || notifications.length > 0) && (
+              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+              </span>
+            )}
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/provider/profile")}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/25"
+            title="Provider Profile"
+          >
+            <User size={18} strokeWidth={2.2} />
+          </motion.button>
         </div>
       </motion.div>
 
@@ -409,7 +476,8 @@ const Dashboard = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="flex-1 overflow-y-auto pb-6"
+        className="flex-1 overflow-y-auto pb-6 relative z-0"
+        style={{ paddingTop: `${headerHeight}px` }}
       >
         {/* Active Booking Lock Banner */}
         <AnimatePresence>
@@ -593,39 +661,31 @@ const Dashboard = () => {
         )}
 
         {/* Stats Row */}
-        <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
-          <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar -mx-5 px-5">
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+        <motion.div variants={itemVariants} className="mb-6 mt-4">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-2 no-scrollbar">
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] flex flex-col items-center justify-center text-center p-4 flex-1 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors">
+              <div className="flex flex-row items-center justify-center gap-1 w-full text-xs font-semibold uppercase tracking-wide text-emerald-600">
                 <Wallet size={14} strokeWidth={2.5} />
-                <span className="text-[10px] uppercase tracking-widest font-black">Earnings</span>
+                <span>Earnings</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">₹{earnings}</p>
-              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Earned Today</p>
+              <p className="text-2xl font-bold text-gray-900 text-center mt-2">{formatCurrency(earnings)}</p>
+              <p className="text-xs text-gray-500 text-center mt-1">Earned Today</p>
             </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
-              <div className="flex items-center gap-2 mb-3 text-primary bg-primary/10 w-fit px-2.5 py-1 rounded-lg">
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] flex flex-col items-center justify-center text-center p-4 flex-1 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors">
+              <div className="flex flex-row items-center justify-center gap-1 w-full text-xs font-semibold uppercase tracking-wide text-primary">
                 <Briefcase size={14} strokeWidth={2.5} />
-                <span className="text-[10px] uppercase tracking-widest font-black">Completed</span>
+                <span>Completed</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{completedJobs.length}</p>
-              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Total Jobs</p>
+              <p className="text-2xl font-bold text-gray-900 text-center mt-2">{completedJobs.length}</p>
+              <p className="text-xs text-gray-500 text-center mt-1">Total Jobs</p>
             </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-accent/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
-              <div className="flex items-center gap-2 mb-3 text-accent bg-accent/10 w-fit px-2.5 py-1 rounded-lg">
+            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-accent/20 rounded-[24px] flex flex-col items-center justify-center text-center p-4 flex-1 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors">
+              <div className="flex flex-row items-center justify-center gap-1 w-full text-xs font-semibold uppercase tracking-wide text-accent">
                 <Star size={14} fill="currentColor" strokeWidth={2.5} />
-                <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
+                <span>RATING</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.rating}</p>
-              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
-                <TrendingUp size={14} strokeWidth={2.5} />
-                <span className="text-[10px] uppercase tracking-widest font-black">Response</span>
-              </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.responseRate}%</p>
-              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Acceptance Rate</p>
+              <p className="text-2xl font-bold text-gray-900 text-center mt-2">{ratingDisplay}</p>
+              <p className="text-xs text-gray-500 text-center mt-1">Out of 5.0</p>
             </motion.div>
           </div>
         </motion.div>
@@ -680,7 +740,7 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Earnings</p>
-                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">₹{earnings} earned</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">{formatCurrency(earnings)} earned</p>
               </div>
             </motion.button>
 
@@ -754,7 +814,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-extrabold text-foreground tracking-tight">{r.customerName}</p>
-                        <p className="text-[11px] font-black text-primary uppercase tracking-widest mt-0.5">{service?.label} · ₹{r.price}</p>
+                        <p className="text-[11px] font-black text-primary uppercase tracking-widest mt-0.5">{service?.label} · {formatCurrency(Number(r.price) || 0)}</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-[12px] font-semibold text-muted-foreground">
                           <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md"><MapPin size={12} /> {r.address}</span>
                           <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md"><Calendar size={12} /> {r.date}</span>
@@ -858,7 +918,7 @@ const Dashboard = () => {
                       <p className="text-[12px] font-bold text-muted-foreground mt-0.5">{job.date || 'Today'}</p>
                     </div>
                   </div>
-                  <p className="text-[16px] font-black text-emerald-600">+₹{job.price}</p>
+                  <p className="text-[16px] font-black text-emerald-600">+{formatCurrency(Number(job.price) || 0)}</p>
                 </div>
               );
             })}
@@ -915,7 +975,7 @@ const Dashboard = () => {
 
               <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 shadow-sm">
                 <p className="text-[10px] text-emerald-600 uppercase font-bold mb-1 flex items-center gap-1"><Wallet size={12} /> Earnings</p>
-                <p className="text-xl font-extrabold text-emerald-700">₹{selectedJob.price}</p>
+                <p className="text-xl font-extrabold text-emerald-700">{formatCurrency(Number(selectedJob.price) || 0)}</p>
               </div>
 
               {selectedJob.notes && (

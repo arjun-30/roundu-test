@@ -87,6 +87,8 @@ const OtpVerify = () => {
             name: apiUser.name || "",
             email: apiUser.email || "",
             address: apiUser.address || "",
+            photoURL: apiUser.photoURL || apiUser.avatar_url || null,
+            avatar_url: apiUser.avatar_url || apiUser.photoURL || null,
             role: apiUser.role || "customer",
             phone: phone || "",
           },

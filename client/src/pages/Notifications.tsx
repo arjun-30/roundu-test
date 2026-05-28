@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, CalendarCheck, Gift, CheckCircle2, Star, Clock, Chevro
 import { useApp } from "@/context/AppContext";
 import { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
+import AvatarDisplay from "@/components/AvatarDisplay";
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -174,7 +175,11 @@ const Notifications = () => {
                         onClick={() => navigate(`/provider/${quote.providerId}`, { state: { quote } })}
                         className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center font-bold text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer text-sm shadow-sm"
                       >
-                        {quote.providerAvatar || quote.providerName.charAt(0)}
+                        {typeof quote.providerAvatar === "string" && quote.providerAvatar.startsWith("http") ? (
+                          <AvatarDisplay photoURL={quote.providerAvatar} name={quote.providerName} size={40} showStatus={false} />
+                        ) : (
+                          quote.providerAvatar || quote.providerName.charAt(0)
+                        )}
                       </div>
                       
                       <div className="min-w-0">

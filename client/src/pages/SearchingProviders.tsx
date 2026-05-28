@@ -12,6 +12,7 @@ import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
+import AvatarDisplay from "@/components/AvatarDisplay";
 
 /**
  * MODERN SEARCHING EXPERIENCE
@@ -530,42 +531,46 @@ const SearchingProviders = () => {
           </div>
         </div>
 
-        {/* QUOTES */}
-        {receivedQuotes.length > 0 ? (
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="flex flex-col gap-3 max-h-[300px] overflow-y-auto mb-6"
-          >
-            {receivedQuotes.map((q) => (
-              <div
-                key={q.providerId}
-                className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm"
-              >
-                <div className="flex justify-between">
-
-                  <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-blue-600">
-                      {q.providerAvatar}
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-slate-800">
-                        {q.providerName}
-                      </h3>
-
-                      <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                        <span className="flex items-center gap-1 text-yellow-500 font-bold">
-                          <Star
-                            size={13}
-                            className="fill-yellow-500"
-                          />
-                          {q.rating}
-                        </span>
-
-                        <span>
-                          {q.distanceKm} km away
-                        </span>
+          {/* Received Quotes Section */}
+          {receivedQuotes.length > 0 ? (
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="w-full flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto no-scrollbar"
+            >
+              {receivedQuotes
+                .filter((q) => !acceptingQuoteId || q.providerId === acceptingQuoteId)
+                .map((q) => (
+                <div 
+                  key={q.providerId} 
+                  onClick={() => !acceptingQuoteId && navigate(`/provider/${q.providerId}`, { state: { quote: q } })}
+                  className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer active:scale-[0.98] transition-transform hover:shadow-md"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!acceptingQuoteId) navigate(`/provider/${q.providerId}`, { state: { quote: q } });
+                        }}
+                        className="w-12 h-12 rounded-full bg-[#F5F8FB] flex items-center justify-center font-bold text-primary border border-[#E1E8EF] hover:border-primary transition-colors"
+                      >
+                        {typeof q.providerAvatar === "string" && q.providerAvatar.startsWith("http") ? (
+                          <AvatarDisplay photoURL={q.providerAvatar} name={q.providerName} size={48} showStatus={false} />
+                        ) : (
+                          q.providerAvatar
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-[16px] font-bold text-foreground">{q.providerName}</h4>
+                        <div className="flex items-center gap-2 text-[12px] text-muted-foreground mt-0.5">
+                          {q.rating === 0 ? (
+                            <span className="flex items-center gap-0.5 text-yellow-600 bg-yellow-100 px-1 py-0.5 rounded font-bold uppercase text-[10px]">New</span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 text-yellow-500 font-bold"><Star size={12} className="fill-yellow-500 text-yellow-500" /> {q.rating}</span>
+                          )}
+                          <span>• {q.distanceKm}km away</span>
+                        </div>
                       </div>
                     </div>
                   </div>
