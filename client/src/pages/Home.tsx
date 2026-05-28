@@ -134,13 +134,16 @@ const Home = () => {
 
   const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
-  // ─── Logout: clears everything and hard-redirects ────────────────────────
+  // ─── Logout: removes only session keys, keeps phone-specific role ────────
+  // ✅ Do NOT use localStorage.clear() — that wipes roundu_role_<phone>
+  // and forces re-selection of role on next login. Only remove session keys.
   const handleLogout = () => {
     setMenuOpen(false);
-    try { localStorage.clear(); } catch (_) { }
+    try { localStorage.removeItem("roundu_token"); } catch (_) { }
+    try { localStorage.removeItem("roundu_user"); } catch (_) { }
+    try { localStorage.removeItem("roundu_role"); } catch (_) { }
     try { sessionStorage.clear(); } catch (_) { }
     dispatch({ type: "LOGOUT" });
-    // Small delay so dispatch settles before reload
     setTimeout(() => {
       window.location.href = "/";
     }, 50);
@@ -251,14 +254,14 @@ const Home = () => {
                     }
                   }}
                   className={`w-full flex items-center gap-3.5 px-5 py-4 transition-colors text-left group ${isLogout
-                    ? "hover:bg-red-50 active:bg-red-100"
-                    : "hover:bg-slate-50 active:bg-slate-100"
+                      ? "hover:bg-red-50 active:bg-red-100"
+                      : "hover:bg-slate-50 active:bg-slate-100"
                     }`}
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${isLogout
-                      ? "bg-red-50 group-hover:bg-red-100"
-                      : "bg-[#F1F4F8] group-hover:bg-primary/10"
+                        ? "bg-red-50 group-hover:bg-red-100"
+                        : "bg-[#F1F4F8] group-hover:bg-primary/10"
                       }`}
                   >
                     <item.icon

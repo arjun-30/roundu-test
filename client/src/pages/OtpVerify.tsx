@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { API_BASE_URL } from "@/config/env";
+import { getSavedRoleForPhone, saveRoleForPhone } from "@/lib/roleStorage";
 
 const OtpVerify = () => {
   const navigate = useNavigate();
@@ -19,13 +20,11 @@ const OtpVerify = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (!phone) {
       const pendingPhone = localStorage.getItem("roundu_pending_phone");
-
       if (pendingPhone) {
         dispatch({ type: "SET_PHONE", phone: pendingPhone });
       } else {
@@ -33,79 +32,55 @@ const OtpVerify = () => {
         return;
       }
     }
-
     refs.current[0]?.focus();
   }, [phone, navigate, dispatch]);
 
   const handleChange = (i: number, v: string) => {
     const digit = v.replace(/\D/g, "").slice(-1);
-
     const next = [...otp];
     next[i] = digit;
-
     setOtp(next);
-
     if (digit && i < 5) refs.current[i + 1]?.focus();
   };
 
-  const handleKeyDown = (
-    i: number,
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) {
-      refs.current[i - 1]?.focus();
-    }
+  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
+    if (e.key === "Enter" && otp.join("").length === 6) handleVerify();
+  };
 
-    if (e.key === "Enter" && otp.join("").length === 6) {
-      handleVerify();
-    }
+  const navigateByRole = (userPhone: string, role: "customer" | "provider") => {
+    // Save so next login skips /role
+    saveRoleForPhone(userPhone, role);
+    dispatch({ type: "SET_ROLE", role });
+    localStorage.setItem("roundu_role", role);
+    navigate(role === "provider" ? "/provider" : "/home", { replace: true });
   };
 
   const handleVerify = async () => {
     const otpCode = otp.join("");
-
-    if (otpCode.length < 6) {
-      setError("Enter the 6-digit code");
-      return;
-    }
+    if (otpCode.length < 6) { setError("Enter the 6-digit code"); return; }
 
     setError("");
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/verify-otp`,
-        {
-          phone,
-          otp: otpCode,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, { phone, otp: otpCode });
 
       if (response.data.success) {
         const { token, user: apiUser } = response.data;
 
-        // Store session info
         if (token) {
+          // ✅ Only remove generic keys — NOT roundu_role_<phone> (phone-specific key stays!)
           localStorage.removeItem("roundu_token");
           localStorage.removeItem("roundu_user");
           localStorage.removeItem("roundu_role");
-
           localStorage.setItem("roundu_token", token);
           localStorage.setItem("roundu_user", JSON.stringify(apiUser));
-          localStorage.setItem(
-            "roundu_role",
-            apiUser.role || "customer"
-          );
+          localStorage.setItem("roundu_role", apiUser.role || "customer");
         }
 
-        // Update Context
         dispatch({ type: "SET_AUTH", value: true });
-
-        dispatch({
-          type: "SET_USER_ID",
-          id: apiUser.id,
-        });
-
+        dispatch({ type: "SET_USER_ID", id: apiUser.id });
         dispatch({
           type: "UPDATE_USER",
           user: {
@@ -113,14 +88,25 @@ const OtpVerify = () => {
             email: apiUser.email || "",
             address: apiUser.address || "",
             role: apiUser.role || "customer",
+            phone: phone || "",
           },
         });
 
-        // Check if onboarding is needed
-        if (apiUser.name) {
-          navigate("/role", { replace: true });
-        } else {
+        const userPhone = phone || apiUser.phone || "";
+
+        if (!apiUser.name) {
+          // Brand new user — needs name first
           navigate("/onboarding-name", { replace: true });
+          return;
+        }
+
+        // ✅ Check if this phone already has a saved role → skip /role screen
+        const savedRole = getSavedRoleForPhone(userPhone);
+        if (savedRole) {
+          navigateByRole(userPhone, savedRole);
+        } else {
+          // First time — show role selection
+          navigate("/role", { replace: true });
         }
       }
     } catch (err: any) {
@@ -132,7 +118,7 @@ const OtpVerify = () => {
 
         const mockUser = {
           id: "mock-user-" + Date.now(),
-          name: "",
+          name: "Test User",
           phone: phone || "9999999999",
           email: "",
           address: "",
@@ -142,34 +128,26 @@ const OtpVerify = () => {
         localStorage.removeItem("roundu_token");
         localStorage.removeItem("roundu_user");
         localStorage.removeItem("roundu_role");
-
         localStorage.setItem("roundu_token", "mock-token");
         localStorage.setItem("roundu_user", JSON.stringify(mockUser));
         localStorage.setItem("roundu_role", "customer");
 
         dispatch({ type: "SET_AUTH", value: true });
-
-        dispatch({
-          type: "SET_USER_ID",
-          id: mockUser.id,
-        });
-
+        dispatch({ type: "SET_USER_ID", id: mockUser.id });
         dispatch({
           type: "UPDATE_USER",
-          user: {
-            name: "",
-            email: "",
-            address: "",
-            role: "customer",
-          },
+          user: { name: mockUser.name, email: "", address: "", role: "customer" },
         });
 
-        navigate("/onboarding-name", { replace: true });
+        const userPhone = phone || "9999999999";
+        const savedRole = getSavedRoleForPhone(userPhone);
+        if (savedRole) {
+          navigateByRole(userPhone, savedRole);
+        } else {
+          navigate("/role", { replace: true });
+        }
       } else {
-        setError(
-          err.response?.data?.error ||
-          "Verification failed. Check the code."
-        );
+        setError(err.response?.data?.error || "Verification failed. Check the code.");
       }
     } finally {
       setLoading(false);
@@ -189,12 +167,9 @@ const OtpVerify = () => {
         <h1 className="text-3xl font-extrabold text-foreground leading-tight">
           Enter your verification code
         </h1>
-
         <p className="text-muted-foreground mt-3 text-sm">
           We sent a 6-digit code to{" "}
-          <span className="font-semibold text-foreground">
-            +91 {phone}
-          </span>
+          <span className="font-semibold text-foreground">+91 {phone}</span>
         </p>
       </div>
 
@@ -231,9 +206,7 @@ const OtpVerify = () => {
 
       <p className="text-center text-xs text-muted-foreground mb-6">
         Didn't get a code?{" "}
-        <button className="font-semibold text-primary">
-          Resend
-        </button>
+        <button className="font-semibold text-primary">Resend</button>
       </p>
 
       <button

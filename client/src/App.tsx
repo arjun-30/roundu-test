@@ -1,10 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
 import MobileLayout from "@/components/MobileLayout";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import NetworkStatus from "@/components/NetworkStatus";
+import { getSavedRoleForPhone } from "@/lib/roleStorage";
 
 const Splash = lazy(() => import("@/pages/Splash"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -46,7 +48,6 @@ const Notifications = lazy(() => import("@/pages/Notifications"));
 const HelpSupport = lazy(() => import("@/pages/HelpSupport"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const GetHelp = lazy(() => import("@/pages/GetHelp"));
-
 const ReportIssue = lazy(() => import("@/pages/ReportIssue"));
 const ManageSubscriptions = lazy(() => import("@/pages/ManageSubscriptions"));
 const Subscription = lazy(() => import("@/pages/Subscription"));
@@ -71,9 +72,6 @@ const Navigation = lazy(() => import("@/pages/provider/Navigation"));
 const ServiceSelection = lazy(() => import("@/pages/ServiceSelection"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
-import ErrorBoundary from "@/components/ErrorBoundary";
-import NetworkStatus from "@/components/NetworkStatus";
-
 const DbCheck = lazy(() => import("@/pages/DbCheck"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -85,16 +83,41 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+// ─── Smart Role Route ─────────────────────────────────────────────────────────
+// Checks localStorage for a previously saved role for this phone number.
+// If found → skip RoleSelect and go directly to the app.
+// If not found → show RoleSelect as normal (first time).
+const SmartRoleRoute = () => {
+  const { user, dispatch } = useApp();
+  const phone = user.phone || "";
+  const savedRole = phone ? getSavedRoleForPhone(phone) : null;
+
+  if (savedRole) {
+    dispatch({ type: "SET_ROLE", role: savedRole });
+    return savedRole === "provider"
+      ? <Navigate to="/provider" replace />
+      : <Navigate to="/home" replace />;
+  }
+
+  return <RoleSelect />;
+};
+
 const AppRoutes = () => (
   <MobileLayout>
-    <Suspense fallback={<div className="h-full w-full flex items-center justify-center p-4"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+    <Suspense
+      fallback={
+        <div className="h-full w-full flex items-center justify-center p-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
       <Routes>
         <Route path="/" element={<Splash />} />
         <Route path="/login" element={<Login />} />
         <Route path="/otp" element={<OtpVerify />} />
         <Route path="/onboarding-name" element={<RequireAuth><OnboardingName /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
-        <Route path="/role" element={<RequireAuth><RoleSelect /></RequireAuth>} />
+        <Route path="/role" element={<RequireAuth><SmartRoleRoute /></RequireAuth>} />
         <Route path="/location" element={<RequireAuth><Location /></RequireAuth>} />
 
         {/* Customer */}
@@ -159,7 +182,6 @@ const AppRoutes = () => (
 
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
-
         <Route path="/db-check" element={<DbCheck />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -171,7 +193,6 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-
         <NetworkStatus />
         <BrowserRouter>
           <AppProvider>
