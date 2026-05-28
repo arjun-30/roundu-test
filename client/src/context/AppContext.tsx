@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabase";
 import { socket } from "@/lib/socket";
 import { fetchProviderDashboard, fetchCustomerBookings, fetchProviderBookings } from "@/lib/api";
 import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
+import { getStoredMembership, setStoredMembership } from "@/lib/membership";
+import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
 
 
@@ -115,6 +117,7 @@ interface State {
   };
   chatHistories: Record<string, { id?: string, sender: "me" | "other"; text: string; time: string; audioBase64?: string | null; isSeen?: boolean }[]>;
   onlineUsers: Record<string, boolean>;
+  membership: MembershipSelection;
 }
 
 type Action =
@@ -165,6 +168,7 @@ type Action =
   | { type: "ADD_CHAT_MESSAGE"; payload: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean } }
   | { type: "MARK_MESSAGES_SEEN"; payload: { bookingId: string; seenBy: string } }
   | { type: "UPDATE_ONLINE_STATUS"; payload: { userId: string; isOnline: boolean } }
+  | { type: "SET_MEMBERSHIP"; membership: MembershipSelection }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
@@ -235,6 +239,7 @@ const initialState: State = {
   },
   chatHistories: {},
   onlineUsers: {},
+  membership: getStoredMembership(),
 };
 
 function reducer(state: State, action: Action): State {
@@ -695,6 +700,9 @@ function reducer(state: State, action: Action): State {
         }
       };
     }
+    case "SET_MEMBERSHIP":
+      setStoredMembership(action.membership);
+      return { ...state, membership: action.membership };
     case "LOGOUT":
       localStorage.removeItem("roundu_token");
       localStorage.removeItem("roundu_user");

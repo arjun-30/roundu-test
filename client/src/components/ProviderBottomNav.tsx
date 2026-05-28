@@ -1,9 +1,10 @@
-import { LayoutDashboard, Briefcase, Wallet, User } from "lucide-react";
+import { LayoutDashboard, Briefcase, Wallet, User, Star } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/provider" },
   { id: "jobs", label: "Jobs", icon: Briefcase, path: "/provider/jobs" },
+  { id: "membership", label: "Membership", icon: Star, path: "/provider/membership" },
   { id: "earnings", label: "Earnings", icon: Wallet, path: "/provider/earnings" },
   { id: "profile", label: "Profile", icon: User, path: "/provider/profile" },
 ];

@@ -13,6 +13,7 @@ import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
+import MembershipStatusCard from "@/components/provider/MembershipStatusCard";
 import { socket } from "@/lib/socket";
 import { getShortAddress } from "@/lib/utils";
 import { useCurrentLocation } from "@/hooks/useLocation";
@@ -22,7 +23,7 @@ import { useCallback } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts } = useApp() as any;
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, membership } = useApp() as any;
 
   // Sync role to provider on mount
   useEffect(() => {
@@ -627,6 +628,10 @@ const Dashboard = () => {
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Acceptance Rate</p>
             </motion.div>
           </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="px-5 mb-6">
+          <MembershipStatusCard planId={membership.planId} billingCycle={membership.billingCycle} />
         </motion.div>
 
         {/* AI Tip Card */}
