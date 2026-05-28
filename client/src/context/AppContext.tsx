@@ -263,10 +263,10 @@ function reducer(state: State, action: Action): State {
         const R = 6371;
         const dLat = (request.lat - state.currentLocation.lat) * Math.PI / 180;
         const dLng = (request.lng - state.currentLocation.lng) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(state.currentLocation.lat * Math.PI / 180) * Math.cos(request.lat * Math.PI / 180) *
-                  Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(state.currentLocation.lat * Math.PI / 180) * Math.cos(request.lat * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distance = R * c;
 
         const maxRadius = state.providerRegistrationDraft?.serviceRadius || 10;
@@ -284,13 +284,13 @@ function reducer(state: State, action: Action): State {
         : `📦 New ${request.serviceId} job request from ${request.customerName}!`;
       const notificationType = isAssigned ? "quote_accepted" : "new_job_request";
 
-      return { 
-        ...state, 
+      return {
+        ...state,
         providerRequests: [request, ...state.providerRequests],
         notifications: [
-          { 
-            id: `n-${Date.now()}`, 
-            text: notificationText, 
+          {
+            id: `n-${Date.now()}`,
+            text: notificationText,
             ts: Date.now(),
             type: notificationType,
             targetRole: "provider" as const
@@ -449,8 +449,8 @@ function reducer(state: State, action: Action): State {
         time: booking.time || time
       };
       const providerName = booking.providerDetails?.name || "Provider";
-      return { 
-        ...state, 
+      return {
+        ...state,
         bookings: [enriched, ...state.bookings],
         notifications: [
           {
@@ -518,13 +518,13 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         liveBroadcasts: [
-          enrichedBroadcast, 
+          enrichedBroadcast,
           ...state.liveBroadcasts.filter((b) => b.customerId !== action.broadcast.customerId)
         ],
         notifications: [
-          { 
-            id: `n-${Date.now()}`, 
-            text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`, 
+          {
+            id: `n-${Date.now()}`,
+            text: `🚨 Job Alert: ${action.broadcast.serviceId} requested at ${action.broadcast.address}`,
             ts: Date.now(),
             type: "incoming_broadcast",
             targetRole: "provider" as const
@@ -547,7 +547,7 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.map((r) =>
           r.id === action.id ? { ...r, status: "accepted" } : r
         ),
-        bookings: state.bookings.map((b) => 
+        bookings: state.bookings.map((b) =>
           b.id === String(action.id).replace('req-', '') ? { ...b, status: "assigned" } : b
         )
       };
@@ -562,7 +562,7 @@ function reducer(state: State, action: Action): State {
         providerRequests: state.providerRequests.map((r) =>
           r.id === action.id ? { ...r, ...action.patch } : r
         ),
-        bookings: state.bookings.map((b) => 
+        bookings: state.bookings.map((b) =>
           b.id === String(action.id).replace('req-', '') ? { ...b, ...(action.patch as any) } : b
         )
       };
@@ -573,7 +573,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         providerRequests: state.providerRequests.filter((r) => r.id !== action.id),
         completedJobs: [{ ...req, status: "completed" }, ...state.completedJobs],
-        bookings: state.bookings.map((b) => 
+        bookings: state.bookings.map((b) =>
           b.id === String(action.id).replace('req-', '') ? { ...b, status: "completed" } : b
         )
       };
@@ -621,12 +621,12 @@ function reducer(state: State, action: Action): State {
       if (state.liveBroadcasts.some(b => b.broadcastId === action.broadcast.broadcastId)) {
         return state;
       }
-      return { 
-        ...state, 
+      return {
+        ...state,
         liveBroadcasts: [
-          action.broadcast, 
+          action.broadcast,
           ...state.liveBroadcasts.filter(b => b.customerId !== action.broadcast.customerId)
-        ] 
+        ]
       };
     case "REMOVE_LIVE_BROADCAST":
       return { ...state, liveBroadcasts: state.liveBroadcasts.filter(b => b.broadcastId !== action.id) };
@@ -661,7 +661,7 @@ function reducer(state: State, action: Action): State {
       const { id, bookingId, text, senderId, time, audioBase64, is_seen } = action.payload;
       const chatRoom = state.chatHistories[bookingId] || [];
       const isMe = senderId === state.user.id;
-      
+
       const isDuplicate = chatRoom.some(m => m.id === id || (m.text === text && m.time === time && m.sender === (isMe ? "me" : "other")));
       if (isDuplicate) return state;
 
@@ -678,7 +678,7 @@ function reducer(state: State, action: Action): State {
       if (seenBy === state.user.id) return state; // Only update if the OTHER person saw our messages
 
       const chatRoom = state.chatHistories[bookingId] || [];
-      const updatedRoom = chatRoom.map(msg => 
+      const updatedRoom = chatRoom.map(msg =>
         msg.sender === "me" ? { ...msg, isSeen: true } : msg
       );
 

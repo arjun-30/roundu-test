@@ -368,11 +368,11 @@ const Dashboard = () => {
             <button
               disabled={isBusy}
               onClick={toggleOnline}
-              className={`w-[52px] h-7 rounded-full p-1 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-[36px] h-6 rounded-full p-0.5 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+              <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-[14px]' : 'translate-x-0'}`} />
             </button>
-            <span className={`text-[10px] font-black uppercase tracking-widest ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
               {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
