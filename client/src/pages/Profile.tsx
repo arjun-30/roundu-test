@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench, Repeat } from "lucide-react";
+import { ChevronRight, Edit3, History, LogOut, Bell, HelpCircle, Tag, Settings, Gift, Wrench } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useApp } from "@/context/AppContext";
 
@@ -57,18 +57,6 @@ const Profile = () => {
           <Item icon={HelpCircle} label="Help & Support" onClick={() => navigate("/support")} last />
         </div>
         
-        {user.role === "provider" && (
-          <button
-            onClick={() => {
-              dispatch({ type: "SET_ROLE", role: "provider" });
-              navigate("/provider");
-            }}
-            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-card mt-4"
-          >
-            <Repeat size={18} /> Switch as Provider
-          </button>
-        )}
-
         <button
           onClick={handleLogout}
           className="w-full py-4 rounded-2xl bg-white border border-red-100 shadow-sm text-red-500 font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-red-50 mt-2"
