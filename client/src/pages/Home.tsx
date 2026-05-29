@@ -340,7 +340,7 @@ const Home = () => {
             </h1>
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="group flex items-center gap-1.5 mt-1 cursor-pointer"
+              className="group flex items-center gap-0 mt-1 cursor-pointer"
             >
               <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
