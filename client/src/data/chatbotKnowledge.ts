@@ -21,28 +21,10 @@ export interface ChatContext {
   activeBookingsCount: number;
 }
 
-// Helper to check if user is asking about navigation
-const matchNavigation = (query: string): string | null => {
-  const routes: Record<string, string[]> = {
-    '/home': ['home', 'dashboard', 'main'],
-    '/bookings': ['booking', 'my booking', 'job', 'history', 'upcoming'],
-    '/wallet': ['wallet', 'money', 'balance', 'recharge', 'topup'],
-    '/profile': ['profile', 'account', 'me', 'details'],
-    '/settings': ['setting', 'preference', 'password', 'delete', 'language'],
-    '/support': ['support', 'help', 'contact', 'issue', 'report'],
-    '/subscriptions': ['subscription', 'plan', 'premium', 'plus', 'member'],
-    '/refer-earn': ['refer', 'earn', 'invite', 'friend'],
-    '/notifications': ['notification', 'alert', 'message'],
-  };
-
-  const normalized = query.toLowerCase();
-  for (const [route, keywords] of Object.entries(routes)) {
-    if (keywords.some(k => normalized.includes(k))) return route;
-  }
-  return null;
-};
-
-export const chatbotKnowledge: Intent[] = [
+// ---------------------------------------------------------------------------
+// CUSTOMER KNOWLEDGE BASE
+// ---------------------------------------------------------------------------
+export const customerKnowledge: Intent[] = [
   // Greeting
   {
     patterns: [/\b(hi|hello|hey|greetings)\b/i],
@@ -55,8 +37,7 @@ export const chatbotKnowledge: Intent[] = [
   // Navigation / "Take me to" / "Where is"
   {
     patterns: [/\b(go to|take me to|where is|how to find|navigate to|open)\b/i],
-    response: (ctx) => {
-      // Very basic contextual routing
+    response: () => {
       return `I can help you navigate. Use the bottom navigation bar to access Home, Bookings, Plans, and Profile. For Wallet and Settings, check your Profile menu.`;
     }
   },
@@ -107,47 +88,124 @@ export const chatbotKnowledge: Intent[] = [
     response: () => `We offer two plans:\n1. RoundU Plus (₹59/wk or ₹199/mo): 10% discount, priority booking.\n2. RoundU Premium (₹149/wk or ₹499/mo): 15% discount, highest priority, emergency support.\nGo to the 'Plans' tab to subscribe!`
   },
 
-  // Provider Specific
-  {
-    patterns: [/\b(become provider|join as provider|provider role)\b/i],
-    response: (ctx) => {
-      if (ctx.userRole === 'provider') {
-        return `You are already registered as a provider! You can switch to the provider dashboard from your Profile menu.`;
-      }
-      return `You can switch to a Provider profile by going to your Profile and selecting "Switch to Provider". You'll need to complete KYC verification via DigiLocker and upload a video portfolio.`;
-    }
-  },
-  
-  // KYC / Verification
-  {
-    patterns: [/\b(kyc|digilocker|verify|verification|background check)\b/i],
-    response: () => `All RoundU service providers undergo a strict background check and identity verification via DigiLocker (Aadhaar/PAN) before they can accept bookings.`
-  },
-
-  // Referrals
-  {
-    patterns: [/\b(refer|invite|friend|earn)\b/i],
-    response: () => `You can earn rewards by referring friends! Go to 'Refer & Earn' from the Home or Profile menu to get your unique invite link. You'll get ₹500 on their first booking.`
-  },
-
-  // Chat/Messaging rules
-  {
-    patterns: [/\b(chat|message provider|talk to provider)\b/i],
-    response: () => `Once a booking is confirmed, you can chat with the provider in-app. Note: Sharing phone numbers or negotiating prices outside the app is against our policy and messages are moderated.`
-  },
-
   // Fallback
   {
     patterns: [/.*/],
-    response: (ctx) => ({
+    response: () => ({
       text: `I'm not quite sure about that. I can help you with bookings, payments, refunds, our subscription plans, or navigating the app.`,
       options: ['How to book?', 'Cancellation policy', 'Contact Support']
     })
   }
 ];
 
+// ---------------------------------------------------------------------------
+// PROVIDER KNOWLEDGE BASE
+// ---------------------------------------------------------------------------
+export const providerKnowledge: Intent[] = [
+  // Greeting
+  {
+    patterns: [/\b(hi|hello|hey|greetings)\b/i],
+    response: (ctx) => ({
+      text: `Hi ${ctx.userName || 'Provider'}! I'm your Provider Support Manager. I can help you with jobs, earnings, visibility, profile, and membership. How can I help grow your business today?`,
+      options: ['Why am I not getting jobs?', 'How do payouts work?', 'Improve visibility']
+    })
+  },
+
+  // PROFILE & VERIFICATION
+  {
+    patterns: [/\b(complete profile|setup profile|hidden|invisible)\b/i],
+    response: () => `To complete your profile and become visible, ensure you have:\n1. Added your personal details.\n2. Completed DigiLocker KYC verification (Aadhaar/PAN).\n3. Uploaded your Video Portfolio.\n4. Set up your Service Area via GPS Consent.`
+  },
+  {
+    patterns: [/\b(verify|verified|kyc|digilocker)\b/i],
+    response: () => `Verification is done via DigiLocker. You need to provide your Aadhaar and PAN details. This ensures trust and safety on the RoundU platform. Go to Documents > DigiLocker KYC to complete it.`
+  },
+  {
+    patterns: [/\b(service area|location|gps)\b/i],
+    response: () => `Your service area is determined by your real-time GPS location. You must provide 'Always Allow' GPS consent so we can match you with nearby customers even when the app is in the background.`
+  },
+
+  // JOBS & WORKFLOW
+  {
+    patterns: [/\b(not getting jobs|no jobs|receive requests|getting jobs)\b/i],
+    response: (ctx) => {
+      if (ctx.activeBookingsCount > 0) {
+        return `You currently have an active job. RoundU's 'Active Job Lock' prevents you from receiving new direct requests until your current job is marked as 'Completed'.`;
+      }
+      return `To get more jobs, ensure:\n1. You are toggled to "Online" on your dashboard.\n2. You do not have an active ongoing job (Job Lock).\n3. Your rating is above 3.5.\n4. You respond quickly to Live Broadcasts.`;
+    }
+  },
+  {
+    patterns: [/\b(how are jobs assigned|live broadcast|direct request)\b/i],
+    response: () => `Jobs come in two ways:\n1. **Direct Requests**: A customer selects you specifically. You must Accept or Reject.\n2. **Live Broadcasts**: A customer broadcasts to all nearby providers. You must submit a Quote (Price & ETA), and the customer will select a winner.`
+  },
+  {
+    patterns: [/\b(accept|reject|complete a job|job workflow|job status)\b/i],
+    response: () => `Job Workflow:\n1. **Accepted/Assigned**: You received the job.\n2. **On the Way**: Tap this when you head to the customer.\n3. **Arrived**: Tap when you reach the location.\n4. **Start Service**: Tap when you begin work.\n5. **Complete Job**: Tap to finish and generate the invoice.`
+  },
+  {
+    patterns: [/\b(cancel|cancelled|miss a request)\b/i],
+    response: () => `If you reject or miss too many direct requests, your "Response Rate" drops. If it falls below 50%, your profile may be temporarily hidden. If a customer cancels, you will be notified immediately.`
+  },
+
+  // ONLINE STATUS
+  {
+    patterns: [/\b(online|offline|visible to customers)\b/i],
+    response: () => `The Online/Offline toggle is on your Dashboard. You must be Online to receive new direct requests and see Live Broadcasts. If you go Offline, you will be hidden from customer search results.`
+  },
+
+  // EARNINGS & PAYOUTS
+  {
+    patterns: [/\b(earnings|payouts|get paid|payment|withdraw|balance)\b/i],
+    response: (ctx) => ({
+      text: `Your current wallet balance is ₹${ctx.walletBalance}. Earnings from completed jobs are added here instantly. You can tap "Withdraw to Bank" on the Earnings page to transfer funds to your registered bank account (takes 1-2 business days).`,
+      options: ['Where can I see transactions?']
+    })
+  },
+  {
+    patterns: [/\b(transactions|history)\b/i],
+    response: () => `You can see your completed jobs and earning history by going to the 'Earnings' tab from your Dashboard.`
+  },
+
+  // MEMBERSHIP & VISIBILITY
+  {
+    patterns: [/\b(membership|benefits|upgrade|plans)\b/i],
+    response: () => `RoundU offers Provider Memberships (Plus & Premium) that provide:\n- Reduced platform commission.\n- Priority ranking in customer search results.\n- Access to premium high-value jobs.\nGo to 'Membership' to upgrade.`
+  },
+  {
+    patterns: [/\b(visibility|rank|discoverable)\b/i],
+    response: () => `To improve your ranking and visibility:\n1. Maintain a rating of 4.5+.\n2. Keep your response rate above 90%.\n3. Upload a high-quality Video Portfolio.\n4. Upgrade to a Plus or Premium membership.`
+  },
+
+  // RATINGS & PIP
+  {
+    patterns: [/\b(rating|reviews|pip|performance)\b/i],
+    response: () => `Ratings heavily affect your booking volume. If your rating falls below 3.5, or your response rate drops below 50%, your account enters a Performance Improvement Plan (PIP) and may be restricted. Always aim for 5 stars!`
+  },
+
+  // TECH ISSUES
+  {
+    patterns: [/\b(can't go online|error|bug|issue)\b/i],
+    response: () => `If you can't go online, check if you have an active job locking your status, or if you haven't granted GPS permissions. If issues persist, try restarting the app or contact Provider Tech Support.`
+  },
+
+  // Fallback
+  {
+    patterns: [/.*/],
+    response: () => ({
+      text: `I'm not quite sure about that. As your Provider Support Manager, I can help you with jobs, earnings, visibility, profile setup, and memberships.`,
+      options: ['Why am I not getting jobs?', 'How do payouts work?', 'Improve visibility']
+    })
+  }
+];
+
+// ---------------------------------------------------------------------------
+// ROUTER
+// ---------------------------------------------------------------------------
 export const getChatbotResponse = (query: string, context: ChatContext): { text: string; options?: string[] } => {
-  for (const intent of chatbotKnowledge) {
+  const knowledgeBase = context.userRole === 'provider' ? providerKnowledge : customerKnowledge;
+  
+  for (const intent of knowledgeBase) {
     if (intent.patterns.some(pattern => pattern.test(query))) {
       const res = intent.response(context);
       if (typeof res === 'string') {

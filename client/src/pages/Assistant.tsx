@@ -133,7 +133,7 @@ const Assistant = () => {
             </div>
             <div>
               <h3 className="text-white font-extrabold text-[15px] flex items-center gap-1.5">
-                RoundU Assistant <Sparkles size={12} className="text-amber-400" />
+                {role === 'provider' ? 'RoundU Provider Support' : 'RoundU Assistant'} <Sparkles size={12} className="text-amber-400" />
               </h3>
               <p className="text-white/70 text-[11px] font-medium flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Online
