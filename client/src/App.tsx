@@ -58,7 +58,6 @@ const ProviderDashboard = lazy(() => import("@/pages/provider/Dashboard"));
 const ProviderJob = lazy(() => import("@/pages/provider/Job"));
 const ServiceReport = lazy(() => import("@/pages/provider/ServiceReport"));
 const Jobs = lazy(() => import("@/pages/provider/Jobs"));
-const ProviderMembership = lazy(() => import("@/pages/provider/Membership"));
 const ProviderEarnings = lazy(() => import("@/pages/provider/Earnings"));
 const ProviderProfile = lazy(() => import("@/pages/provider/ProviderProfile"));
 const ProviderVideoPortfolio = lazy(() => import("@/pages/provider/VideoPortfolio"));
@@ -176,7 +175,6 @@ const AppRoutes = () => (
         <Route path="/provider/job/:id/report" element={<RequireAuth><ServiceReport /></RequireAuth>} />
         <Route path="/provider/navigation/:id" element={<RequireAuth><Navigation /></RequireAuth>} />
         <Route path="/provider/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
-        <Route path="/provider/membership" element={<RequireAuth><ProviderMembership /></RequireAuth>} />
         <Route path="/provider/earnings" element={<RequireAuth><ProviderEarnings /></RequireAuth>} />
         <Route path="/provider/profile" element={<RequireAuth><ProviderProfile /></RequireAuth>} />
         <Route path="/provider/portfolio" element={<RequireAuth><Portfolio /></RequireAuth>} />

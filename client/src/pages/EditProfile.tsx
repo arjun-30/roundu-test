@@ -198,11 +198,11 @@ const EditProfile = () => {
           className="relative mb-8 focus:outline-none group active:scale-95 transition-all"
           aria-label="Change profile picture"
         >
-          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-100 flex items-center justify-center relative">
+          <div className="w-14 h-14 rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-100 flex items-center justify-center relative">
             {profilePicture ? (
               <img src={profilePicture} alt="Profile Preview" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-primary flex items-center justify-center text-white text-3xl font-extrabold">
+              <div className="w-full h-full bg-primary flex items-center justify-center text-white text-xl font-extrabold">
                 {name ? name.charAt(0) : "U"}
               </div>
             )}
@@ -210,8 +210,8 @@ const EditProfile = () => {
               <Camera size={20} className="text-white" />
             </div>
           </div>
-          <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary border-2 border-white flex items-center justify-center shadow-sm active:scale-95 transition-transform group-hover:scale-105">
-            <Camera size={14} className="text-white" />
+          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary border-2 border-white flex items-center justify-center shadow-sm active:scale-95 transition-transform group-hover:scale-105">
+            <Camera size={13} className="text-white" />
           </div>
         </button>
 
