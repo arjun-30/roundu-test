@@ -310,23 +310,17 @@ const Home = () => {
               Hi {user.name.split(" ")[0]}!{" "}
               <span className="inline-block animate-waving-hand origin-bottom-right">👋</span>
             </h1>
-            <button
-              onClick={() => setIsLocationModalOpen(true)}
-              className="group flex items-center gap-1 mt-1 cursor-pointer"
-            >
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
-              </div>
-              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
-                {locating || gpsLoading ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={10} className="animate-spin text-primary" /> Detecting...
-                  </span>
-                ) : (
-                  user.address || "Set Location"
-                )}
-              </p>
-            </button>
+          <button
+            onClick={() => setIsLocationModalOpen(true)}
+            className="group flex items-center gap-1.5 mt-1.5 text-[12px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer w-fit"
+          >
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+              <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
+            </div>
+            <span className="line-clamp-1 max-w-[150px] truncate leading-none text-left">
+              {locating || gpsLoading ? "Detecting..." : (user.address || "Set Location").trim()}
+            </span>
+          </button>
           </div>
         </div>
 
