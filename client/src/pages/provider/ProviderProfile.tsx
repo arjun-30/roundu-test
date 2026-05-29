@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchCamera, MapPin, Clock, Image as ImageIcon, FileText, Settings } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-import { getMembershipBadgeLabel } from "@/lib/membership";
 import axios from "axios";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 const ProviderProfile = () => {
   const navigate = useNavigate();
-  const { user, dispatch, completedJobs, providerStats, isOnline, providerRegistrationDraft, membership } = useApp();
+  const { user, dispatch, completedJobs, providerStats, isOnline, providerRegistrationDraft } = useApp();
 
   const [isEditingRadius, setIsEditingRadius] = useState(false);
   const [serviceRadius, setServiceRadius] = useState(providerRegistrationDraft?.serviceRadius || 15);
@@ -16,6 +16,7 @@ const ProviderProfile = () => {
   const [workingHours, setWorkingHours] = useState(providerRegistrationDraft?.workingHours || "9:00 AM - 6:00 PM");
   const [notification, setNotification] = useState("");
   const [error, setError] = useState("");
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -108,16 +109,26 @@ const ProviderProfile = () => {
         {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card text-center">
-          <div className="w-20 h-20 rounded-2xl bg-primary mx-auto flex items-center justify-center text-primary-foreground text-xl font-extrabold relative">
-            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-card ${isOnline ? 'bg-success' : 'bg-muted-foreground'}`} />
-          </div>
+          <button 
+            onClick={() => setIsImagePreviewOpen(true)}
+            className="w-14 h-14 rounded-full mx-auto relative bg-slate-100 border border-border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 block"
+            aria-label="Preview profile image"
+          >
+            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+              {user.profilePicture ? (
+                <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <img 
+                  src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
+                  alt="Default Avatar" 
+                  className="w-full h-full object-cover" 
+                />
+              )}
+            </div>
+            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-card z-10 ${isOnline ? 'bg-success' : 'bg-muted-foreground'}`} />
+          </button>
           <h2 className="text-base font-bold text-foreground mt-3">{user.name}</h2>
           <p className="text-xs text-muted-foreground">+91 {user.phone || "—"}</p>
-          <span className="inline-flex items-center gap-1 mt-3 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
-            <Star size={12} className="fill-current" />
-            {getMembershipBadgeLabel(membership.planId)}
-          </span>
 
           <div className="grid grid-cols-3 divide-x divide-border mt-5 border-t border-border pt-4">
             <div>
@@ -142,7 +153,6 @@ const ProviderProfile = () => {
           <Item icon={ImageIcon} label="My Portfolio" onClick={() => navigate("/provider/portfolio", { state: { from: "profile" } })} />
           <Item icon={FileText} label="Documents & KYC" onClick={() => navigate("/provider/documents", { state: { from: "profile" } })} />
           <Item icon={Briefcase} label="My Jobs" onClick={() => navigate("/provider/jobs", { state: { from: "profile" } })} />
-          <Item icon={Star} label="Membership" onClick={() => navigate("/provider/membership", { state: { from: "profile" } })} />
           <Item icon={Wallet} label="Earnings" onClick={() => navigate("/provider/earnings", { state: { from: "profile" } })} />
           <Item icon={Settings} label="Location Settings" onClick={() => navigate("/provider/gps-monitor", { state: { from: "profile" } })} last />
         </div>
@@ -233,6 +243,13 @@ const ProviderProfile = () => {
           <LogOut size={16} /> Log out
         </button>
       </div>
+
+      <ImagePreviewModal
+        isOpen={isImagePreviewOpen}
+        imageUrl={user.profilePicture || ""}
+        alt={user.name}
+        onClose={() => setIsImagePreviewOpen(false)}
+      />
 
       <ProviderBottomNav />
     </div>

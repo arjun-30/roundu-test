@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell, Wallet, User, MapPin, Calendar, Clock, Check, X,
@@ -13,17 +13,15 @@ import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
-import MembershipStatusCard from "@/components/provider/MembershipStatusCard";
 import { socket } from "@/lib/socket";
 import { getShortAddress } from "@/lib/utils";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCallback } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, membership } = useApp() as any;
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts } = useApp() as any;
 
   // Sync role to provider on mount
   useEffect(() => {
@@ -116,10 +114,10 @@ const Dashboard = () => {
     try {
       const result = await reverseGeocode(lat, lng);
       if (result.address) {
-        const shortAddr = result.area
-          ? `${result.area}${result.city ? ", " + result.city : ""}`
-          : result.address.split(",").slice(0, 2).join(",");
-        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+        const cityCountry = getShortAddress(result.city ? `${result.city}, India` : result.address);
+        if (cityCountry) {
+          dispatch({ type: "UPDATE_USER", user: { address: cityCountry } });
+        }
       }
     } catch (err) {
       console.warn("Reverse geocode failed:", err);
@@ -340,36 +338,53 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="px-5 pt-3 pb-4 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm"
+        className="sticky top-0 z-[80] px-4 sm:px-5 pt-3 pb-3 flex items-center justify-between gap-3 bg-white shadow-sm pointer-events-auto isolate"
       >
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-bold tracking-wide uppercase">Provider Dashboard</p>
-          <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight truncate">Hi, {user.name.split(" ")[0]}</h1>
+        <div className="flex items-start gap-3 flex-1 min-w-0 pointer-events-auto">
+          {/* Profile Photo */}
+          <div className="w-14 h-14 rounded-full flex-shrink-0 bg-slate-100 border border-border overflow-hidden flex items-center justify-center mt-1">
+            {user.profilePicture ? (
+              <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              <img 
+                src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
+                alt="Default Avatar" 
+                className="w-full h-full object-cover" 
+              />
+            )}
+          </div>
+          
+          {/* Greeting and Location */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-muted-foreground font-semibold tracking-wide uppercase leading-tight">Provider Dashboard</p>
+            <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight truncate">Hi, {user.name.split(" ")[0] || "Provider"}</h1>
           <button 
             onClick={() => setIsLocationModalOpen(true)}
-            className="group flex items-center gap-1.5 mt-1 cursor-pointer"
+            className="group relative z-[82] flex max-w-full items-center gap-1.5 mt-1 cursor-pointer pointer-events-auto"
           >
             <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
               <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
             </div>
-            <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px] sm:max-w-[240px] truncate">
+            <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors max-w-[135px] sm:max-w-[240px] truncate">
               {locating || gpsLoading ? (
                 <span className="flex items-center gap-1">
-                  <span className="animate-spin text-primary">⚙️</span> Detecting...
+                  <span className="block h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" /> Detecting...
                 </span>
               ) : (
                 getShortAddress(user.address) || "Set Location"
               )}
             </p>
           </button>
+          </div>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="relative z-[82] flex shrink-0 gap-2 sm:gap-3 items-center pointer-events-auto">
           {/* Online/Offline Toggle */}
           <div className="flex flex-col items-center gap-1 mt-1">
             <button
+              type="button"
               disabled={isBusy}
               onClick={toggleOnline}
-              className={`w-[36px] h-6 rounded-full p-0.5 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`relative z-[83] w-[36px] h-6 rounded-full p-0.5 transition-all flex items-center shadow-inner pointer-events-auto ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-[14px]' : 'translate-x-0'}`} />
             </button>
@@ -379,26 +394,28 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <motion.button
+              type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/provider/profile")}
-              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm"
+              className="relative z-[83] w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm pointer-events-auto"
               title="Provider Profile"
             >
               <User size={20} className="text-primary" strokeWidth={2.5} />
             </motion.button>
             <motion.button
+              type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/notifications")}
-              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center relative transition-all shadow-sm"
+              className="relative z-[83] w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm pointer-events-auto"
               title="Notifications"
             >
               <Bell size={20} className="text-primary" strokeWidth={2.5} />
               {(pending.length > 0 || notifications.length > 0) && (
-                <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
+                <span className="pointer-events-none absolute right-2 top-2 flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-white" />
                 </span>
               )}
             </motion.button>
@@ -410,7 +427,7 @@ const Dashboard = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="flex-1 overflow-y-auto pb-6"
+        className="relative z-0 flex-1 overflow-y-auto pt-3 pb-6"
       >
         {/* Active Booking Lock Banner */}
         <AnimatePresence>
@@ -629,10 +646,6 @@ const Dashboard = () => {
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Acceptance Rate</p>
             </motion.div>
           </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="px-5 mb-6">
-          <MembershipStatusCard planId={membership.planId} billingCycle={membership.billingCycle} />
         </motion.div>
 
         {/* AI Tip Card */}

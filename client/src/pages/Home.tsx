@@ -149,13 +149,6 @@ const Home = () => {
     }, 50);
   };
 
-  const isConnected = (id: string) =>
-    bookings?.some(
-      (b: { serviceId?: string; service_id?: string; status: string }) =>
-        (b.serviceId === id || b.service_id === id) &&
-        ["assigned", "on_the_way", "arrived", "in_progress"].includes(b.status)
-    );
-
   const browseServices = services.slice(0, 8);
   const goToProviders = (id: string) => navigate(`/service-select/${id}`);
   const goToRecommendedBooking = (suggestion: SmartSuggestion) => {
@@ -189,7 +182,7 @@ const Home = () => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
-  };
+  } as any;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] pb-28 relative overflow-x-hidden">
@@ -222,8 +215,16 @@ const Home = () => {
               <X size={18} className="text-white" />
             </button>
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-14 h-14 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl font-extrabold text-white">{user.name.charAt(0)}</span>
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/30 flex items-center justify-center flex-shrink-0 bg-white/15">
+                {user.profilePicture ? (
+                  <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <img 
+                    src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
+                    alt="Default Avatar" 
+                    className="w-full h-full object-cover" 
+                  />
+                )}
               </div>
               <div className="min-w-0">
                 <h3 className="text-white font-bold text-[15px] truncate">{user.name}</h3>
@@ -306,26 +307,20 @@ const Home = () => {
             <Menu size={22} className="text-primary" strokeWidth={2.5} />
           </motion.button>
           <div>
-            <h1 className="text-[22px] font-extrabold text-foreground leading-tight tracking-tight">
+            <h1 className="text-[22px] font-bold text-foreground leading-tight tracking-tight">
               Hi {user.name.split(" ")[0]}!{" "}
               <span className="inline-block animate-waving-hand origin-bottom-right">👋</span>
             </h1>
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="group flex items-center gap-1 mt-1 cursor-pointer"
+              className="group flex items-center gap-1.5 mt-1.5 text-[12px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer w-fit"
             >
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
                 <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
               </div>
-              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
-                {locating || gpsLoading ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={10} className="animate-spin text-primary" /> Detecting...
-                  </span>
-                ) : (
-                  user.address || "Set Location"
-                )}
-              </p>
+              <span className="line-clamp-1 max-w-[150px] truncate leading-none text-left">
+                {locating || gpsLoading ? "Detecting..." : (user.address || "Set Location").trim()}
+              </span>
             </button>
           </div>
         </div>
@@ -380,7 +375,7 @@ const Home = () => {
           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/40 group-hover:text-accent transition-colors">
             <Search size={20} strokeWidth={2.5} />
           </div>
-          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC] border-2 border-transparent group-hover:border-primary/10 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-bold shadow-inner">
+          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC] border-2 border-transparent group-hover:border-primary/10 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-medium shadow-inner">
             What service do you need today?
           </div>
         </motion.button>
@@ -400,12 +395,12 @@ const Home = () => {
         <motion.div variants={itemVariants} className="px-5 pt-6 pb-2">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Browse Services</h2>
+              <h2 className="text-[20px] font-bold text-foreground tracking-tight">Browse Services</h2>
               <p className="text-[13px] text-muted-foreground mt-0.5">Explore our vetted specialists</p>
             </div>
             <button
               onClick={() => navigate("/services")}
-              className="text-[13px] font-bold text-accent flex items-center gap-0.5 hover:text-primary transition-colors bg-accent/10 px-3 py-1.5 rounded-full"
+              className="text-[13px] font-semibold text-accent flex items-center gap-0.5 hover:text-primary transition-colors bg-accent/10 px-3 py-1.5 rounded-full"
             >
               View All <ChevronRight size={14} />
             </button>
@@ -420,21 +415,11 @@ const Home = () => {
                 className="group bg-white rounded-[24px] p-5 text-left transition-all border border-transparent hover:border-primary/10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.08)] relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                {isConnected(service.id) && (
-                  <div className="absolute top-3 right-3 z-10">
-                    <span className="text-[9px] font-black tracking-[0.12em] uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                      </span>
-                      Active
-                    </span>
-                  </div>
-                )}
+
                 <div className="w-14 h-14 rounded-[18px] bg-[#F8FAFC] flex items-center justify-center mb-4 group-hover:bg-primary/5 transition-colors relative z-10">
                   <service.icon size={26} className="text-primary group-hover:scale-110 transition-transform duration-300" strokeWidth={1.8} />
                 </div>
-                <h3 className="text-[15px] font-extrabold text-foreground leading-tight group-hover:text-primary transition-colors relative z-10">
+                <h3 className="text-[15px] font-semibold text-foreground leading-tight group-hover:text-primary transition-colors relative z-10">
                   {service.label}
                 </h3>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-snug relative z-10 line-clamp-2">
@@ -448,7 +433,7 @@ const Home = () => {
         {/* ═══ QUICK FIXES ═══ */}
         <motion.div variants={itemVariants} className="pt-2 pb-2">
           <div className="px-5 mb-3">
-            <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Quick Fixes</h2>
+            <h2 className="text-[20px] font-bold text-foreground tracking-tight">Quick Fixes</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">Common issues solved instantly</p>
           </div>
           <div className="flex gap-2.5 overflow-x-auto px-5 pb-2 scrollbar-hide">
@@ -470,7 +455,7 @@ const Home = () => {
                 className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-primary/90 transition-colors flex-shrink-0 shadow-[0_4px_12px_rgba(21,46,75,0.15)] border border-primary/20"
               >
                 <fix.icon size={16} strokeWidth={2.5} />
-                <span className="text-[14px] font-bold">{fix.label}</span>
+                <span className="text-[14px] font-semibold">{fix.label}</span>
               </motion.button>
             ))}
           </div>
@@ -483,13 +468,13 @@ const Home = () => {
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Sparkles size={15} className="text-primary" />
-                  <h2 className="text-[20px] font-extrabold text-foreground tracking-tight">Recommended for You</h2>
+                  <h2 className="text-[20px] font-bold text-foreground tracking-tight">Recommended for You</h2>
                 </div>
                 <p className="text-[13px] text-muted-foreground">Personalized picks based on your activity</p>
               </div>
               <button
                 onClick={() => navigate("/bookings")}
-                className="text-[11px] font-bold text-primary uppercase tracking-wider hover:text-primary/80 transition-colors"
+                className="text-[11px] font-semibold text-primary uppercase tracking-wider hover:text-primary/80 transition-colors"
               >
                 History
               </button>
@@ -551,7 +536,7 @@ const Home = () => {
                         };
                         const s = seasonStyles[sugg.season as keyof typeof seasonStyles] || seasonStyles.all;
                         return (
-                          <div className={`flex items-center gap-2 px-3 py-[7px] rounded-full text-[10px] font-bold tracking-wide ${s.className}`}>
+                          <div className={`flex items-center gap-2 px-3 py-[7px] rounded-full text-[10px] font-semibold tracking-wide ${s.className}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                             <span className="leading-none">{s.label}</span>
                           </div>
@@ -563,7 +548,7 @@ const Home = () => {
                         <IconComponent size={20} strokeWidth={2.2} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-extrabold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        <h3 className="text-[15px] font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-1">
                           {sugg.title}
                         </h3>
                         <p className="text-[12px] text-muted-foreground mt-1 leading-normal line-clamp-2">
@@ -572,7 +557,7 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-50">
-                      <span className="text-[12px] font-bold text-primary group-hover:underline">Explore Providers</span>
+                      <span className="text-[12px] font-semibold text-primary group-hover:underline">Explore Providers</span>
                       <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
                         <ChevronRight size={14} />
                       </div>
@@ -597,8 +582,8 @@ const Home = () => {
               <Gift size={26} className="text-accent" strokeWidth={2} />
             </div>
             <div className="flex-1 text-left z-10">
-              <h3 className="text-[16px] font-extrabold text-foreground leading-tight">Refer and Earn</h3>
-              <p className="text-[12px] font-bold text-accent/80 mt-1">Invite friends and get ₹500 on their first booking</p>
+              <h3 className="text-[16px] font-semibold text-foreground leading-tight">Refer and Earn</h3>
+              <p className="text-[12px] font-medium text-accent/80 mt-1">Invite friends and get ₹500 on their first booking</p>
             </div>
             <ChevronRight size={20} className="text-accent flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
           </motion.button>
@@ -617,8 +602,8 @@ const Home = () => {
               <HelpCircle size={26} className="text-primary" strokeWidth={2} />
             </div>
             <div className="flex-1 text-left z-10">
-              <h3 className="text-[16px] font-extrabold text-foreground leading-tight">Get Help</h3>
-              <p className="text-[12px] font-bold text-primary/80 mt-1">Not sure what's wrong? Let our experts inspect it.</p>
+              <h3 className="text-[16px] font-semibold text-foreground leading-tight">Get Help</h3>
+              <p className="text-[12px] font-medium text-primary/80 mt-1">Not sure what's wrong? Let our experts inspect it.</p>
             </div>
             <ChevronRight size={20} className="text-primary flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
           </motion.button>

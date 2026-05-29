@@ -91,43 +91,50 @@ export function getAbsoluteIsoTimestamp(dateStr: string, timeStr: string): strin
 }
 
 /**
- * Formats a full address string to a clean "Area, City" format,
- * removing pincodes, countries, states, and door numbers.
+ * Formats a full address string to a privacy-safe "City, Country" label.
  */
 export const getShortAddress = (address: string): string => {
   if (!address) return "";
 
-  // Handle coordinate fallback
-  if (/^\d+\.\d+,\s*\d+\.\d+$/.test(address)) {
-    return address;
+  const trimmed = address.trim();
+  if (/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(trimmed)) {
+    return "";
   }
 
   // Split by comma or middle dot
   const separators = /,|·/;
-  const parts = address.split(separators).map(p => p.trim());
+  const parts = trimmed
+    .split(separators)
+    .map((p) => p.replace(/\b\d{5,6}\b/g, "").trim())
+    .filter(Boolean);
 
   // Filter out:
   // - empty strings
   // - Indian pincodes (6 digits)
   // - generic country/state names
   // - very short numeric parts (like door numbers: "12", "3b")
+  const countries = ["india"];
   const statesCountries = [
-    "india", "karnataka", "tamil nadu", "tamilnadu", "maharashtra", 
-    "delhi", "telangana", "andhra pradesh", "kerala"
+    ...countries,
+    "andaman and nicobar islands", "andhra pradesh", "arunachal pradesh", "assam",
+    "bihar", "chandigarh", "chhattisgarh", "dadra and nagar haveli", "daman and diu",
+    "delhi", "goa", "gujarat", "haryana", "himachal pradesh", "jammu and kashmir",
+    "jharkhand", "karnataka", "kerala", "ladakh", "lakshadweep", "madhya pradesh",
+    "maharashtra", "manipur", "meghalaya", "mizoram", "nagaland", "odisha",
+    "orissa", "puducherry", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "tamilnadu", "telangana", "tripura", "uttar pradesh", "uttarakhand",
+    "west bengal"
   ];
 
   const cleanParts = parts.filter(p => {
     if (!p) return false;
-    if (/^\d{6}$/.test(p)) return false; // Pincode
     if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Door number e.g. "12", "12a", "3"
     if (statesCountries.includes(p.toLowerCase())) return false; // State/Country
     return true;
   });
 
-  if (cleanParts.length === 0) return address;
-  if (cleanParts.length === 1) return cleanParts[0];
+  const city = cleanParts.at(-1);
+  const country = "India";
 
-  // Take the last two clean parts (corresponds to area and city)
-  const shortParts = cleanParts.slice(-2);
-  return shortParts.join(", ");
+  return city ? `${city}, ${country}` : "";
 };
