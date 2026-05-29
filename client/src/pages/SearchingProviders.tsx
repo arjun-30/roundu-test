@@ -541,8 +541,8 @@ const SearchingProviders = () => {
               {receivedQuotes
                 .filter((q) => !acceptingQuoteId || q.providerId === acceptingQuoteId)
                 .map((q) => (
+                <div key={q.providerId}>
                 <div 
-                  key={q.providerId} 
                   onClick={() => !acceptingQuoteId && navigate(`/provider/${q.providerId}`, { state: { quote: q } })}
                   className="bg-white border border-[#E1E8EF] rounded-2xl p-4 flex flex-col gap-3 text-left shadow-sm animate-badge-up cursor-pointer active:scale-[0.98] transition-transform hover:shadow-md"
                 >

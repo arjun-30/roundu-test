@@ -381,43 +381,6 @@ const Dashboard = () => {
           <div className="min-w-0">
             <h1 className="text-base font-semibold leading-tight text-slate-950 truncate">Hi, {firstName}</h1>
             <button
-<<<<<<< HEAD
-              disabled={isBusy}
-              onClick={toggleOnline}
-              className={`w-[36px] h-6 rounded-full p-0.5 transition-all flex items-center shadow-inner ${isOnline ? 'bg-success border-success/20' : 'bg-[#E2E8F0] border-transparent'} border-2 ${isBusy ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-[14px]' : 'translate-x-0'}`} />
-            </button>
-            <span className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-success' : 'text-muted-foreground'}`}>
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/provider/profile")}
-              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm"
-              title="Provider Profile"
-            >
-              <User size={20} className="text-primary" strokeWidth={2.5} />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/notifications")}
-              className="w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center relative transition-all shadow-sm"
-              title="Notifications"
-            >
-              <Bell size={20} className="text-primary" strokeWidth={2.5} />
-              {(pending.length > 0 || notifications.length > 0) && (
-                <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
-                </span>
-              )}
-            </motion.button>
-=======
               onClick={() => setIsLocationModalOpen(true)}
               className="group mt-1 inline-flex min-w-0 items-center gap-1 truncate text-xs font-medium text-slate-500 transition-colors hover:text-slate-900"
             >
@@ -426,36 +389,45 @@ const Dashboard = () => {
                 {locating || gpsLoading ? "Detecting..." : getShortAddress(user.address) || "Set Location"}
               </span>
             </button>
->>>>>>> 1274865 (Updated provider dashboard and profile improvements)
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            disabled={isBusy}
-            onClick={toggleOnline}
-            className={`inline-flex h-8 min-w-[84px] items-center justify-center gap-2 rounded-full border px-3 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors ${
-              isOnline
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-slate-200 bg-slate-100 text-slate-700"
-            } ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-success" : "bg-slate-500"}`} />
-            {isOnline ? "Online" : "Offline"}
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Compact Toggle Switch */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              disabled={isBusy}
+              onClick={toggleOnline}
+              className={`relative inline-flex h-7 w-14 items-center rounded-full border-0 transition-all flex-shrink-0 ${
+                isOnline
+                  ? "bg-emerald-500"
+                  : "bg-slate-300"
+              } ${isBusy ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-md"}`}
+              title={isBusy ? "Finish your job first" : "Toggle online status"}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform ${
+                  isOnline ? "translate-x-7" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${isOnline ? "text-emerald-600" : "text-slate-500"}`}>
+              {isOnline ? "Online" : "Offline"}
+            </span>
+          </div>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate("/notifications")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/25"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition-all hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/25"
             title="Notifications"
           >
             <Bell size={18} strokeWidth={2.2} />
             {(pending.length > 0 || notifications.length > 0) && (
-              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
               </span>
             )}
           </motion.button>

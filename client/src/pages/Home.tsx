@@ -11,7 +11,7 @@ import { useApp } from "@/context/AppContext";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import LocationModal from "@/components/LocationModal";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import AdBannerCarousel from "@/components/AdBannerCarousel";
 import api from "@/lib/api";
 
@@ -182,11 +182,11 @@ const Home = () => {
     { icon: LogOut, label: "Logout", path: "", isLogout: true },
   ];
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
   };
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
   };

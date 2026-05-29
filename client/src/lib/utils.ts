@@ -91,8 +91,8 @@ export function getAbsoluteIsoTimestamp(dateStr: string, timeStr: string): strin
 }
 
 /**
- * Formats a full address string to a clean "Area, City" format,
- * removing pincodes, countries, states, and door numbers.
+ * Formats a full address string to "City, Country" format.
+ * Examples: "Vellore, India", "Chennai, India"
  */
 export const getShortAddress = (address: string): string => {
   if (!address) return "";
@@ -106,28 +106,44 @@ export const getShortAddress = (address: string): string => {
   const separators = /,|·/;
   const parts = address.split(separators).map(p => p.trim());
 
-  // Filter out:
-  // - empty strings
-  // - Indian pincodes (6 digits)
-  // - generic country/state names
-  // - very short numeric parts (like door numbers: "12", "3b")
-  const statesCountries = [
-    "india", "karnataka", "tamil nadu", "tamilnadu", "maharashtra", 
-    "delhi", "telangana", "andhra pradesh", "kerala"
+  // Countries to include
+  const countries = ["india", "usa", "uk", "australia", "canada", "singapore"];
+  
+  // States to filter out
+  const statesToFilter = [
+    "karnataka", "tamil nadu", "tamilnadu", "maharashtra", 
+    "delhi", "telangana", "andhra pradesh", "kerala", "punjab"
   ];
 
+  // Filter parts: remove door numbers, pincodes, and states
   const cleanParts = parts.filter(p => {
     if (!p) return false;
-    if (/^\d{6}$/.test(p)) return false; // Pincode
-    if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Door number e.g. "12", "12a", "3"
-    if (statesCountries.includes(p.toLowerCase())) return false; // State/Country
+    if (/^\d{6}$/.test(p)) return false; // Pincode (6 digits)
+    if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Door number
+    if (statesToFilter.includes(p.toLowerCase())) return false; // State
     return true;
   });
 
   if (cleanParts.length === 0) return address;
-  if (cleanParts.length === 1) return cleanParts[0];
 
-  // Take the last two clean parts (corresponds to area and city)
-  const shortParts = cleanParts.slice(-2);
-  return shortParts.join(", ");
+  // Find country and city parts
+  let country = "";
+  let cityParts: string[] = [];
+
+  for (const part of cleanParts) {
+    if (countries.includes(part.toLowerCase())) {
+      country = part;
+    } else {
+      cityParts.push(part);
+    }
+  }
+
+  // Return format: "City, Country" or fallback
+  if (country && cityParts.length > 0) {
+    return `${cityParts[cityParts.length - 1]}, ${country}`;
+  } else if (cityParts.length >= 2) {
+    return cityParts.slice(-2).join(", ");
+  }
+
+  return cleanParts[cleanParts.length - 1] || address;
 };
