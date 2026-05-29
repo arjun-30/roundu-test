@@ -18,6 +18,7 @@ error_analysis.md
 caveman.md
 implementation_plan_gaps.md
 implementation_plan_updated.md
+database_schema.md
 
 # Common temporary / OS files
 .DS_Store

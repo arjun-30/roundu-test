@@ -732,15 +732,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const syncData = async () => {
       if (state.phone && state.onboardingData.serviceIds.length > 0) {
         // Exclude homeType — column doesn't exist in onboarding_responses table
-        const { homeType: _homeType, ...onboardingFields } = state.onboardingData;
+        // Serialize serviceIds as JSON string for TEXT column compatibility
+        // Use snake_case to match DB column names
         const { error } = await supabase
           .from('onboarding_responses')
           .upsert({
             phone: state.phone,
-            ...onboardingFields,
+            service_ids: JSON.stringify(state.onboardingData.serviceIds),
+            household_size: state.onboardingData.householdSize || null,
+            frequency: state.onboardingData.frequency || null,
+            budget: state.onboardingData.budget || null,
             updated_at: new Date().toISOString()
           });
-        if (error) console.error('Supabase sync error:', error);
+        if (error) console.warn('Supabase sync (non-critical):', error.message);
       }
     };
     syncData();
@@ -779,7 +783,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                   return {
                     id: b.id,
                     customerId: b.customer_id,
-                    customerName: "Customer",
+                    customerName: b.customer_name || "Customer",
+                    customerPhone: b.customer_phone || "",
                     serviceId: b.service_id,
                     date,
                     time,
@@ -801,8 +806,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               dispatch({ type: "SET_BOOKINGS", bookings: bookings.data });
             }
           }
-        } catch (err) {
-          console.error("DB Sync error:", err);
+        } catch (err: any) {
+          // 404 is expected (e.g. customer has no provider profile) — don't spam console
+          const status = err?.response?.status;
+          if (status !== 404) {
+            console.warn("DB Sync error:", err?.message || err);
+          }
         }
       }
     };
@@ -811,11 +820,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state.isAuthenticated && state.user.id && state.role) {
-      socket.emit("register", {
+      const registerPayload = {
         userId: state.user.id,
         role: state.role,
-        serviceIds: state.providerRegistrationDraft?.serviceIds || []
-      });
+        // Only send serviceIds for providers — customers must NOT join service rooms
+        serviceIds: state.role === 'provider' ? (state.providerRegistrationDraft?.serviceIds || []) : []
+      };
+      socket.emit("register", registerPayload);
+
+      // Re-register on every reconnect so the user:${id} room is always active
+      // Without this, Provider 2's quote arrives AFTER a reconnect and goes nowhere
+      const handleReconnect = () => {
+        console.log("[socket] reconnected — re-registering user:", state.user.id);
+        socket.emit("register", registerPayload);
+      };
+      socket.on("connect", handleReconnect);
+      return () => { socket.off("connect", handleReconnect); };
     }
   }, [state.isAuthenticated, state.user.id, state.role, state.providerRegistrationDraft?.serviceIds]);
 
@@ -906,16 +926,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "UPDATE_ONLINE_STATUS", payload: data });
     });
 
+    const forceLogout = (reason: string) => {
+      toast.error(`⚠️ ${reason}`, { duration: 3000, id: 'session-kicked' });
+      // Clear everything so no stale state survives
+      localStorage.removeItem('roundu_token');
+      sessionStorage.clear();
+      // Short delay so the user can read the toast before redirect
+      setTimeout(() => {
+        dispatch({ type: "LOGOUT" });
+        window.location.href = "/auth";
+      }, 2000);
+    };
+
     socket.on("session_expired", (data: { reason: string }) => {
-      alert("Session Expired: " + data.reason);
-      dispatch({ type: "LOGOUT" });
-      window.location.href = "/";
+      forceLogout(data.reason || "You've been logged out. Another device signed in.");
     });
 
     const handleWindowSessionExpired = (e: any) => {
-      alert("Session Expired: " + (e.detail?.reason || "Logged in from another device."));
-      dispatch({ type: "LOGOUT" });
-      window.location.href = "/";
+      forceLogout(e.detail?.reason || "Your session has expired. Please log in again.");
     };
     window.addEventListener("session_expired", handleWindowSessionExpired);
 

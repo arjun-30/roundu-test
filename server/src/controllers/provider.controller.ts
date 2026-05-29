@@ -6,16 +6,28 @@ import { isProviderBusy } from '../utils/bookingHelper';
 
 export const getProviderDashboard = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query; // In real app, this comes from JWT
+    const { userId } = req.query;
     if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
 
     const provider = await ProviderModel.findByUserId(userId as string);
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
-    const stats = await ProviderModel.getStats(provider.id);
-    
-    const walletModel = new WalletModel(getPool());
-    const wallet = await walletModel.findOrCreate(userId as string);
+    // Stats and wallet are non-fatal — return zeros on failure
+    let stats = { earningsToday: 0, completedJobs: 0, total_jobs: 0, rating: provider.rating || 0 };
+    try {
+      stats = await ProviderModel.getStats(provider.id);
+    } catch (statsErr) {
+      console.warn('Provider stats query failed (non-fatal):', statsErr);
+    }
+
+    let walletBalance = 0;
+    try {
+      const walletModel = new WalletModel(getPool());
+      const wallet = await walletModel.findOrCreate(userId as string);
+      walletBalance = wallet.balance / 100;
+    } catch (walletErr) {
+      console.warn('Wallet query failed (non-fatal):', walletErr);
+    }
 
     res.json({
       success: true,
@@ -23,8 +35,8 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
         provider,
         stats,
         wallet: {
-          balance: wallet.balance / 100, // Convert paise to rupees
-          currency: wallet.currency
+          balance: walletBalance,
+          currency: 'INR'
         }
       }
     });

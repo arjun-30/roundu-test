@@ -35,18 +35,48 @@ export const ProviderModel = {
   },
 
   async getStats(providerId: string): Promise<any> {
-    const earningsRes = await getPool().query(
-      "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
-      [providerId]
-    );
-    const jobsRes = await getPool().query(
-      "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'",
-      [providerId]
-    );
-    return {
-      earningsToday: parseFloat(earningsRes.rows[0]?.total || '0'),
-      completedJobs: parseInt(jobsRes.rows[0]?.count || '0')
-    };
+    let earningsToday = 0;
+    let completedJobs = 0;
+    let totalJobs = 0;
+    let rating = 0;
+
+    try {
+      const earningsRes = await getPool().query(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM wallet_transactions
+         WHERE user_id = (SELECT user_id FROM providers WHERE id = $1)
+           AND type = 'credit'
+           AND created_at >= CURRENT_DATE`,
+        [providerId]
+      );
+      earningsToday = parseFloat(earningsRes.rows[0]?.total || '0');
+    } catch (_) { /* wallet_transactions may not exist yet */ }
+
+    try {
+      const jobsRes = await getPool().query(
+        `SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'`,
+        [providerId]
+      );
+      completedJobs = parseInt(jobsRes.rows[0]?.count || '0');
+    } catch (_) { /* bookings query failed */ }
+
+    try {
+      const totalRes = await getPool().query(
+        `SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1`,
+        [providerId]
+      );
+      totalJobs = parseInt(totalRes.rows[0]?.count || '0');
+    } catch (_) { /* ignore */ }
+
+    try {
+      const ratingRes = await getPool().query(
+        `SELECT COALESCE(AVG(rating), 0) as avg_rating FROM ratings WHERE provider_id = $1`,
+        [providerId]
+      );
+      rating = parseFloat(ratingRes.rows[0]?.avg_rating || '0');
+    } catch (_) { /* ratings table may not exist */ }
+
+    return { earningsToday, completedJobs, total_jobs: totalJobs, rating };
   },
 
   async findByServiceId(serviceId: string): Promise<any[]> {

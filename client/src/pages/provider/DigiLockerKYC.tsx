@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Loader2, Landmark } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL as API_URL } from '@/config/env';
 
 const DigiLockerKYC = () => {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ const DigiLockerKYC = () => {
           const res = await axios.post(`${API_URL}/kyc/aadhaar/verify`, { requestId: pendingReqId }, {
             headers: { Authorization: `Bearer ${getToken()}` }
           });
-          
+
           if (res.data.success && res.data.data?.verified) {
             dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true } });
             showNotification('Aadhaar Verified Successfully');
@@ -80,7 +80,7 @@ const DigiLockerKYC = () => {
       }, {
         headers: { Authorization: `Bearer ${getToken()}` }
       });
-      
+
       if (res.data.success && res.data.data) {
         const { id, url } = res.data.data;
         localStorage.setItem('cf_aadhaar_verification_id', id);
@@ -98,13 +98,13 @@ const DigiLockerKYC = () => {
       return;
     }
     setIsVerifyingBank(true);
-    
+
     try {
       // 1. Verify PAN
       const panRes = await axios.post(`${API_URL}/kyc/pan/verify`, { pan }, {
         headers: { Authorization: `Bearer ${getToken()}` }
       });
-      
+
       if (!panRes.data.success || !panRes.data.data?.verified) {
         showError(panRes.data.data?.message || panRes.data.message || 'PAN Verification Failed');
         setIsVerifyingBank(false);
@@ -118,16 +118,16 @@ const DigiLockerKYC = () => {
       dispatch({ type: 'UPDATE_KYC', patch: { panVerified: true } });
 
       // 2. Verify Bank
-      const bankInitRes = await axios.post(`${API_URL}/kyc/bav/init`, { 
-        accountNumber: accNum, 
-        ifsc 
+      const bankInitRes = await axios.post(`${API_URL}/kyc/bav/init`, {
+        accountNumber: accNum,
+        ifsc
       }, {
         headers: { Authorization: `Bearer ${getToken()}` }
       });
 
       if (bankInitRes.data.success && bankInitRes.data.data?.requestId) {
         const reqId = bankInitRes.data.data.requestId;
-        
+
         // Check Status
         const bankStatusRes = await axios.get(`${API_URL}/kyc/bav/${reqId}`, {
           headers: { Authorization: `Bearer ${getToken()}` }
@@ -140,14 +140,14 @@ const DigiLockerKYC = () => {
           showError(bankStatusRes.data.data?.message || bankStatusRes.data.message || 'Bank verification failed');
         }
       } else if (bankInitRes.data.queued) {
-         showNotification(bankInitRes.data.message || 'Bank verification queued.');
-         dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true } }); 
+        showNotification(bankInitRes.data.message || 'Bank verification queued.');
+        dispatch({ type: 'UPDATE_KYC', patch: { bankVerified: true } });
       }
     } catch (err: any) {
       const status = err.response?.status;
       const msg = err.response?.data?.message || 'Verification failed. Please try again.';
       showError(msg);
-      
+
       if (status === 429 || status === 403) {
         // Handle 429 locks and 403 fraud flags naturally
       }
@@ -161,6 +161,13 @@ const DigiLockerKYC = () => {
   const handleNext = () => {
     navigate('/provider/video-portfolio');
   };
+
+  // ── DEV ONLY: delete this block before go-live ──────────────────────────────
+  const devAutoFill = () => {
+    dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, panVerified: true, bankVerified: true } });
+    navigate('/provider/video-portfolio');
+  };
+  // ────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -195,7 +202,7 @@ const DigiLockerKYC = () => {
                   <CheckCircle2 size={18} /> Verified
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={handleConnectDigiLocker}
                   disabled={isConnecting || isVerifyingAadhaar}
                   className="mt-2 w-full py-3 bg-white text-[#003876] font-extrabold text-sm rounded-xl hover:bg-gray-100 transition-colors shadow-lg active:scale-95 disabled:opacity-75 flex items-center justify-center gap-2"
@@ -261,9 +268,9 @@ const DigiLockerKYC = () => {
                 <p className="text-xs text-muted-foreground mb-3">Where should we send your earnings?</p>
 
                 <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Account Holder Name *"
+                  <input
+                    type="text"
+                    placeholder="Account Holder Name *"
                     value={accName}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -340,6 +347,17 @@ const DigiLockerKYC = () => {
 
       {/* Footer / Continue button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex flex-col gap-2">
+
+        {/* DEV ONLY: delete this block before go-live */}
+        {devAutoFill && (
+          <button
+            onClick={devAutoFill}
+            className="w-full py-2 rounded-xl border border-dashed border-yellow-400 text-yellow-500 text-xs font-bold tracking-wide hover:bg-yellow-400/10 transition-colors"
+          >
+            ⚡ Auto Fill (Demo Only)
+          </button>
+        )}
+        {/* /DEV ONLY */}
 
         <button
           onClick={handleNext}

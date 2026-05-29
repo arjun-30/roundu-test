@@ -15,6 +15,8 @@ async function main() {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
+    // Single-session enforcement: session_version invalidates old JWTs on new login
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER DEFAULT 1;');
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
@@ -55,10 +57,10 @@ async function main() {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
 
-      // Join user-specific room
+      // Join user-specific room (always, for all roles)
       if (data.userId) {
         socket.join(`user:${data.userId}`);
-        console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
+        console.log(`[socket] user ${data.userId} (${data.role}) joined room: user:${data.userId}`);
 
         // Track online status
         let userSockets = onlineUserConnections.get(data.userId);
@@ -68,6 +70,18 @@ async function main() {
           broadcastStatus(data.userId, true); // First connection
         }
         userSockets.add(socket.id);
+      }
+
+      // If customer: ensure they are NOT in any provider/service rooms (stale from previous session)
+      if (data.role === 'customer') {
+        socket.leave('providers');
+        // Leave any service rooms they may have joined previously
+        const rooms = Array.from(socket.rooms);
+        rooms.forEach(room => {
+          if (room.startsWith('service:')) socket.leave(room);
+        });
+        console.log(`[socket] customer ${data.userId} cleaned from provider/service rooms`);
+        return;
       }
 
       if (data.role === 'provider') {
@@ -260,53 +274,69 @@ async function main() {
       console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
 
       try {
-        const provider = await ProviderModel.findByUserId(data.providerId);
-        const providerId = provider ? provider.id : data.providerId;
+        // Resolve provider DB id — fall back to raw userId if not found or DB error
+        let providerId = data.providerId;
+        try {
+          const provider = await ProviderModel.findByUserId(data.providerId);
+          if (provider) providerId = provider.id;
+        } catch (dbErr) {
+          console.warn('[socket] submit_quote: provider DB lookup failed, using raw userId:', dbErr);
+        }
 
-        // Check if provider is currently busy on an active job
-        const isBusy = await isProviderBusy(providerId);
-        if (isBusy) {
-          socket.emit('quote_error', {
-            message: 'You are currently busy on an active job.'
-          });
+        // Resolve customerId early — needed even if conflict checks fail
+        const broadcast = activeBroadcasts.get(data.broadcastId);
+        const customerId = data.customerId || broadcast?.customerId;
+
+        if (!customerId) {
+          console.warn(`[socket] submit_quote: no customerId for broadcast ${data.broadcastId} — quote dropped`);
+          socket.emit('quote_error', { message: 'Could not identify customer. Please try again.' });
           return;
         }
 
-        // Check if provider has schedule conflict for the broadcast slot
-        const broadcast = activeBroadcasts.get(data.broadcastId);
-        if (broadcast) {
-          const proposedStart = parseDateTime(broadcast.date, broadcast.time);
-          const proposedDuration = broadcast.duration || 2;
-          const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
-          if (conflictCheck.conflict) {
-            socket.emit('quote_error', {
-              message: conflictCheck.message || 'Schedule conflict: You have another booking that overlaps with this request.'
-            });
+        // Check if provider is currently busy on an active job
+        try {
+          const isBusy = await isProviderBusy(providerId);
+          if (isBusy) {
+            socket.emit('quote_error', { message: 'You are currently busy on an active job.' });
             return;
+          }
+        } catch (busyErr) {
+          console.warn('[socket] submit_quote: isProviderBusy check failed (non-fatal), continuing:', busyErr);
+        }
+
+        // Check schedule conflict
+        if (broadcast) {
+          try {
+            const proposedStart = parseDateTime(broadcast.date, broadcast.time);
+            const proposedDuration = broadcast.duration || 2;
+            const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
+            if (conflictCheck.conflict) {
+              socket.emit('quote_error', {
+                message: conflictCheck.message || 'Schedule conflict: You have another booking at this time.'
+              });
+              return;
+            }
+          } catch (conflictErr) {
+            console.warn('[socket] submit_quote: conflict check failed (non-fatal), continuing:', conflictErr);
           }
         }
 
-        const customerId = data.customerId || broadcast?.customerId;
-
-        if (customerId) {
-          io.to(`user:${customerId}`).emit('new_quote_received', {
-            broadcastId: data.broadcastId,
-            serviceId: broadcast?.serviceId || data.serviceId,
-            providerId: data.providerId,
-            providerName: data.providerName,
-            providerAvatar: data.providerAvatar,
-            providerPhone: data.providerPhone,
-            price: data.price,
-            rating: data.rating,
-            distanceKm: data.distanceKm,
-            etaMin: data.etaMin,
-            reviews: data.reviews,
-            submittedAt: Date.now()
-          });
-          console.log(`[socket] new_quote_received sent to customer user:${customerId}`);
-        } else {
-          console.warn(`[socket] submit_quote: no customerId found for broadcast ${data.broadcastId}`);
-        }
+        // Send quote to customer
+        io.to(`user:${customerId}`).emit('new_quote_received', {
+          broadcastId: data.broadcastId,
+          serviceId: broadcast?.serviceId || data.serviceId,
+          providerId: data.providerId,
+          providerName: data.providerName,
+          providerAvatar: data.providerAvatar,
+          providerPhone: data.providerPhone,
+          price: data.price,
+          rating: data.rating,
+          distanceKm: data.distanceKm,
+          etaMin: data.etaMin,
+          reviews: data.reviews,
+          submittedAt: Date.now()
+        });
+        console.log(`[socket] new_quote_received sent to customer user:${customerId} from provider ${data.providerId}`);
 
         socket.emit('quote_sent_confirmation', {
           broadcastId: data.broadcastId,
@@ -316,9 +346,7 @@ async function main() {
         });
       } catch (err) {
         console.error('[socket] error handling submit_quote:', err);
-        socket.emit('quote_error', {
-          message: 'An error occurred while processing your quote.'
-        });
+        socket.emit('quote_error', { message: 'An error occurred while processing your quote.' });
       }
     });
 

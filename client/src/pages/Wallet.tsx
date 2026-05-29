@@ -56,21 +56,8 @@ const Wallet = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex justify-center animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-4 w-full max-w-[200px] justify-center">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <TrendingUp size={18} className="text-green-500" />
-            </div>
-            <div className="text-left">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total Income</p>
-              <p className="text-sm font-extrabold text-foreground">₹2,450</p>
-            </div>
-          </div>
-        </div>
-
         {/* Transactions list */}
-        <div className="space-y-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+        <div className="space-y-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
               <History size={18} className="text-primary" /> Recent Transactions
