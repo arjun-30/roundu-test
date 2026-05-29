@@ -7,8 +7,10 @@ import MobileLayout from "@/components/MobileLayout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
+import SupportChatbot from "@/components/SupportChatbot";
 
 const Splash = lazy(() => import("@/pages/Splash"));
+const Assistant = lazy(() => import("@/pages/Assistant"));
 const Login = lazy(() => import("@/pages/Login"));
 const OtpVerify = lazy(() => import("@/pages/OtpVerify"));
 const OnboardingName = lazy(() => import("@/pages/OnboardingName"));
@@ -160,6 +162,7 @@ const AppRoutes = () => (
         <Route path="/subscriptions" element={<RequireAuth><Subscription /></RequireAuth>} />
         <Route path="/subscriptions/manage" element={<RequireAuth><ManageSubscriptions /></RequireAuth>} />
         <Route path="/cancellation" element={<RequireAuth><Cancellation /></RequireAuth>} />
+        <Route path="/assistant" element={<RequireAuth><Assistant /></RequireAuth>} />
 
         {/* Provider */}
         <Route path="/provider" element={<RequireAuth><ProviderDashboard /></RequireAuth>} />
@@ -197,6 +200,7 @@ const App = () => (
         <BrowserRouter>
           <AppProvider>
             <AppRoutes />
+            <SupportChatbot />
           </AppProvider>
         </BrowserRouter>
       </TooltipProvider>
