@@ -7,6 +7,7 @@ import MobileLayout from "@/components/MobileLayout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
+import SupportChatbot from "@/components/SupportChatbot";
 
 const Splash = lazy(() => import("@/pages/Splash"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -197,6 +198,7 @@ const App = () => (
         <BrowserRouter>
           <AppProvider>
             <AppRoutes />
+            <SupportChatbot />
           </AppProvider>
         </BrowserRouter>
       </TooltipProvider>
