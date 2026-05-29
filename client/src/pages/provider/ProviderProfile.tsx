@@ -4,6 +4,7 @@ import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchC
 import { useApp } from "@/context/AppContext";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import axios from "axios";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 const ProviderProfile = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const ProviderProfile = () => {
   const [workingHours, setWorkingHours] = useState(providerRegistrationDraft?.workingHours || "9:00 AM - 6:00 PM");
   const [notification, setNotification] = useState("");
   const [error, setError] = useState("");
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -107,7 +109,11 @@ const ProviderProfile = () => {
         {notification && <div className="bg-secondary/10 text-blue-700 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card text-center">
-          <div className="w-14 h-14 rounded-full mx-auto relative bg-slate-100 border border-border">
+          <button 
+            onClick={() => setIsImagePreviewOpen(true)}
+            className="w-14 h-14 rounded-full mx-auto relative bg-slate-100 border border-border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 block"
+            aria-label="Preview profile image"
+          >
             <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
               {user.profilePicture ? (
                 <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
@@ -120,7 +126,7 @@ const ProviderProfile = () => {
               )}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-card z-10 ${isOnline ? 'bg-success' : 'bg-muted-foreground'}`} />
-          </div>
+          </button>
           <h2 className="text-base font-bold text-foreground mt-3">{user.name}</h2>
           <p className="text-xs text-muted-foreground">+91 {user.phone || "—"}</p>
 
@@ -237,6 +243,13 @@ const ProviderProfile = () => {
           <LogOut size={16} /> Log out
         </button>
       </div>
+
+      <ImagePreviewModal
+        isOpen={isImagePreviewOpen}
+        imageUrl={user.profilePicture || ""}
+        alt={user.name}
+        onClose={() => setIsImagePreviewOpen(false)}
+      />
 
       <ProviderBottomNav />
     </div>
