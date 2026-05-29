@@ -54,6 +54,7 @@ interface UserProfile {
   address: string;
   role?: "customer" | "provider";
   savedAddresses?: SavedAddress[];
+  profilePicture?: string;
 }
 
 export interface SavedAddress {
@@ -175,7 +176,7 @@ const token = localStorage.getItem("roundu_token");
 const savedUser = localStorage.getItem("roundu_user");
 const savedRole = localStorage.getItem("roundu_role");
 
-let parsedUser = { id: "", name: "", phone: "", email: "", address: "" };
+let parsedUser = { id: "", name: "", phone: "", email: "", address: "", profilePicture: "" };
 if (savedUser) {
   try {
     parsedUser = JSON.parse(savedUser);
@@ -194,6 +195,7 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
+    profilePicture: parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },

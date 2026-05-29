@@ -215,8 +215,16 @@ const Home = () => {
               <X size={18} className="text-white" />
             </button>
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-14 h-14 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl font-extrabold text-white">{user.name.charAt(0)}</span>
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/30 flex items-center justify-center flex-shrink-0 bg-white/15">
+                {user.profilePicture ? (
+                  <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <img 
+                    src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
+                    alt="Default Avatar" 
+                    className="w-full h-full object-cover" 
+                  />
+                )}
               </div>
               <div className="min-w-0">
                 <h3 className="text-white font-bold text-[15px] truncate">{user.name}</h3>
@@ -305,20 +313,14 @@ const Home = () => {
             </h1>
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="group flex items-center gap-1 mt-1 cursor-pointer"
+              className="group flex items-center gap-1.5 mt-1.5 text-[12px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer w-fit"
             >
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
                 <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
               </div>
-              <p className="text-[12px] font-semibold text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[150px]">
-                {locating || gpsLoading ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={10} className="animate-spin text-primary" /> Detecting...
-                  </span>
-                ) : (
-                  (user.address || "Set Location").trim()
-                )}
-              </p>
+              <span className="line-clamp-1 max-w-[150px] truncate leading-none text-left">
+                {locating || gpsLoading ? "Detecting..." : (user.address || "Set Location").trim()}
+              </span>
             </button>
           </div>
         </div>
