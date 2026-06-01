@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
 import MobileLayout from "@/components/MobileLayout";
@@ -9,6 +9,17 @@ import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
 import SupportChatbot from "@/components/SupportChatbot";
 
+// Admin Imports
+import AdminLogin from "@/pages/admin/AdminLogin";
+import { AdminLayout } from "@/pages/admin/AdminDashboard";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminProviders from "@/pages/admin/AdminProviders";
+import AdminBookings from "@/pages/admin/AdminBookings";
+import AdminEarnings from "@/pages/admin/AdminEarnings";
+import AdminReports from "@/pages/admin/AdminReports";
+
+// Lazy Loaded Pages
 const Splash = lazy(() => import("@/pages/Splash"));
 const Assistant = lazy(() => import("@/pages/Assistant"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -78,16 +89,30 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+// Auth Guard for Customers/Providers
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated } = useApp();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 };
 
-// ─── Smart Role Route ─────────────────────────────────────────────────────────
-// Checks localStorage for a previously saved role for this phone number.
-// If found → skip RoleSelect and go directly to the app.
-// If not found → show RoleSelect as normal (first time).
+// Admin Route Guard
+function RequireAdmin() {
+  const token = localStorage.getItem("roundu_admin_token");
+  if (token !== "rdu-admin-2025") {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <Outlet />;
+}
+
+// Layout wrapper component to enforce Mobile Viewport constraints selectively
+const MobileRoutesLayout = () => (
+  <MobileLayout>
+    <Outlet />
+  </MobileLayout>
+);
+
+// Smart Role Routing Logic
 const SmartRoleRoute = () => {
   const { user, dispatch } = useApp();
   const phone = user.phone || "";
@@ -104,15 +129,16 @@ const SmartRoleRoute = () => {
 };
 
 const AppRoutes = () => (
-  <MobileLayout>
-    <Suspense
-      fallback={
-        <div className="h-full w-full flex items-center justify-center p-4">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <Routes>
+  <Suspense
+    fallback={
+      <div className="h-full w-full flex items-center justify-center p-4 min-h-screen bg-[#F8FAFC]">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }
+  >
+    <Routes>
+      {/* 📱 SELECTIVE MOBILE APPS CONTAINER WRAPPER */}
+      <Route element={<MobileRoutesLayout />}>
         <Route path="/" element={<Splash />} />
         <Route path="/login" element={<Login />} />
         <Route path="/otp" element={<OtpVerify />} />
@@ -121,7 +147,7 @@ const AppRoutes = () => (
         <Route path="/role" element={<RequireAuth><SmartRoleRoute /></RequireAuth>} />
         <Route path="/location" element={<RequireAuth><Location /></RequireAuth>} />
 
-        {/* Customer */}
+        {/* Customer Routes */}
         <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
         <Route path="/services" element={<RequireAuth><ServicesPage /></RequireAuth>} />
@@ -163,7 +189,7 @@ const AppRoutes = () => (
         <Route path="/cancellation" element={<RequireAuth><Cancellation /></RequireAuth>} />
         <Route path="/assistant" element={<RequireAuth><Assistant /></RequireAuth>} />
 
-        {/* Provider */}
+        {/* Provider Routes */}
         <Route path="/provider" element={<RequireAuth><ProviderDashboard /></RequireAuth>} />
         <Route path="/provider/select-service" element={<RequireAuth><SelectService /></RequireAuth>} />
         <Route path="/provider/personal-details" element={<RequireAuth><PersonalDetails /></RequireAuth>} />
@@ -184,10 +210,24 @@ const AppRoutes = () => (
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/db-check" element={<DbCheck />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
-  </MobileLayout>
+      </Route>
+
+      {/* 🖥️ DESKTOP UNBOUND ADMIN CONTAINER ROUTES */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route element={<RequireAdmin />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/providers" element={<AdminProviders />} />
+          <Route path="/admin/bookings" element={<AdminBookings />} />
+          <Route path="/admin/earnings" element={<AdminEarnings />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </Suspense>
 );
 
 const App = () => (
@@ -207,3 +247,4 @@ const App = () => (
 );
 
 export default App;
+export { RequireAdmin };
