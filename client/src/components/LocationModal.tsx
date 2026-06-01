@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Search, MapPin, Navigation, X, Loader2, Home, Briefcase, MapPin as MapPinIcon, AlertTriangle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getSuggestions, reverseGeocode } from "@/lib/mapProvider";
+import { Geolocation } from "@capacitor/geolocation";
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -52,36 +53,56 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const detectCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser.");
-      return;
-    }
-
+  const detectCurrentLocation = async () => {
     setIsDetecting(true);
     setError("");
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
+    try {
+      let perm;
+      try {
+        perm = await Geolocation.checkPermissions();
+      } catch (e) {
+        perm = { location: "prompt" };
+      }
+
+      if (perm.location !== "granted") {
         try {
-          const result = await reverseGeocode(lat, lng);
-          handleSelectLocation(lat, lng, result.address);
-        } catch (err) {
-          setError("Failed to resolve address. Please enter manually.");
-          setIsDetecting(false);
+          perm = await Geolocation.requestPermissions();
+        } catch (e) {
+          perm = { location: "denied" };
         }
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setError("Unable to access current location. Please grant permission.");
-        } else {
-          setError("Failed to get your location.");
-        }
+      }
+
+      if (perm.location !== "granted") {
+        setError("Unable to access current location. Please grant permission.");
         setIsDetecting(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        return;
+      }
+
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      
+      try {
+        const result = await reverseGeocode(lat, lng);
+        handleSelectLocation(lat, lng, result.address);
+      } catch (err) {
+        setError("Failed to resolve address. Please enter manually.");
+        setIsDetecting(false);
+      }
+    } catch (err: any) {
+      console.warn("Location detection error:", err);
+      let msg = "Failed to get your location.";
+      if (err.message?.includes("denied")) {
+        msg = "Unable to access current location. Please grant permission.";
+      }
+      setError(msg);
+      setIsDetecting(false);
+    }
   };
 
   // Reset states and conditionally auto-detect location when modal opens

@@ -119,14 +119,18 @@ const Home = () => {
     try {
       const result = await reverseGeocode(lat, lng);
       if (result.address) {
-        const shortAddr = result.area
-          ? `${result.area}${result.city ? ", " + result.city : ""}`
-          : result.address.split(",").slice(0, 2).join(",");
-        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+        dispatch({ type: "UPDATE_USER", user: { address: result.address } });
+        localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address }));
       }
     } catch (err) {
       console.warn("Reverse geocode failed:", err);
-      dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
+      try {
+        const cached = localStorage.getItem("roundu_last_location");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          dispatch({ type: "UPDATE_USER", user: { address: parsed.address } });
+        }
+      } catch (_) {}
     } finally {
       setLocating(false);
     }
@@ -169,9 +173,6 @@ const Home = () => {
     { icon: Smartphone, label: "Refer & Earn", path: "/refer-earn", isLogout: false },
     { icon: Settings, label: "Settings", path: "/settings", isLogout: false },
     { icon: HelpCircle, label: "Help & Support", path: "/support", isLogout: false },
-    ...(user.role === "provider"
-      ? [{ icon: Wrench, label: "Switch to Provider", path: "/provider", isLogout: false }]
-      : []),
     { icon: LogOut, label: "Logout", path: "", isLogout: true },
   ];
 
@@ -326,17 +327,6 @@ const Home = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {user.role === "provider" && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/provider")}
-              className="w-11 h-11 rounded-[16px] bg-accent/10 border-2 border-accent/20 flex items-center justify-center transition-all shadow-sm"
-              title="Switch to Provider"
-            >
-              <Wrench size={18} className="text-accent" strokeWidth={2.5} />
-            </motion.button>
-          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
