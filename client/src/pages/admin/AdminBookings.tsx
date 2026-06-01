@@ -221,6 +221,37 @@ export default function AdminBookings() {
                     <h1 className="text-2xl font-extrabold text-slate-800">Bookings</h1>
                     <p className="text-slate-500 text-sm mt-0.5">{bookings.length} total bookings</p>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 mb-6">
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+                        <p className="text-xs text-slate-500">Pending</p>
+                        <h2 className="text-2xl font-bold text-amber-600">
+                            {bookings.filter(b => b.status === "pending").length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+                        <p className="text-xs text-slate-500">Completed</p>
+                        <h2 className="text-2xl font-bold text-green-600">
+                            {bookings.filter(b => b.status === "completed").length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+                        <p className="text-xs text-slate-500">Cancelled</p>
+                        <h2 className="text-2xl font-bold text-red-600">
+                            {bookings.filter(b => b.status === "cancelled").length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+                        <p className="text-xs text-slate-500">Revenue</p>
+                        <h2 className="text-2xl font-bold text-[#17375E]">
+                            ₹{bookings.reduce((a, b) => a + (b.price || 0), 0)}
+                        </h2>
+                    </div>
+
+                </div>
                 <div className="flex items-center gap-2">
                     <button onClick={fetchBookings} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50">
                         <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -253,7 +284,27 @@ export default function AdminBookings() {
                     className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none" />
             </div>
 
-            {error && <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>}
+            {error && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-semibold text-red-700">
+                                Unable to load bookings
+                            </h4>
+                            <p className="text-sm text-red-500">
+                                Please check your backend connection.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={fetchBookings}
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
                 <table className="w-full text-sm min-w-[900px]">
@@ -272,7 +323,43 @@ export default function AdminBookings() {
                                 ))}</tr>
                             ))
                             : paginated.length === 0
-                                ? <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">No bookings found.</td></tr>
+                                ? (
+                                    <tr>
+                                        <td colSpan={8} className="px-4 py-16">
+                                            <div className="flex flex-col items-center justify-center">
+
+                                                <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                                                    <span className="text-4xl">📅</span>
+                                                </div>
+
+                                                <h3 className="text-lg font-bold text-slate-700">
+                                                    No Bookings Yet
+                                                </h3>
+
+                                                <p className="text-sm text-slate-400 mt-1">
+                                                    Customer bookings will appear here
+                                                </p>
+
+                                                <div className="mt-4 flex gap-2">
+                                                    <button
+                                                        className="px-4 py-2 rounded-xl bg-[#17375E] text-white text-sm font-medium"
+                                                        onClick={() => alert("Create Booking")}
+                                                    >
+                                                        + Create Booking
+                                                    </button>
+
+                                                    <button
+                                                        className="px-4 py-2 rounded-xl border border-slate-200 text-sm"
+                                                        onClick={fetchBookings}
+                                                    >
+                                                        Refresh
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
                                 : paginated.map((b, i) => (
                                     <tr key={b.id}
                                         onClick={() => setSelected(b)}
