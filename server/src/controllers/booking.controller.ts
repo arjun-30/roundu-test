@@ -50,14 +50,14 @@ export const createBooking = async (req: Request, res: Response) => {
       bookingData.provider_id = providerId;
 
       // 1. Check if provider is currently busy
-      const isBusy = await isProviderBusy(providerId);
-      if (isBusy) {
-        return res.status(400).json({
-          success: false,
-          message: 'Provider is currently busy on an active job.'
-        });
-      }
-
+      /* const isBusy = await isProviderBusy(providerId);
+       if (isBusy) {
+         return res.status(400).json({
+           success: false,
+           message: 'Provider is currently busy on an active job.'
+         });
+       }
+ */
       // 2. Check if provider has a schedule conflict
       if (bookingData.scheduled_at) {
         const proposedStart = new Date(bookingData.scheduled_at);
@@ -102,17 +102,8 @@ export const createBooking = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: booking });
   } catch (error: any) {
-    console.error("================================");
-    console.error("CREATE BOOKING FAILED");
-    console.error("MESSAGE:", error?.message);
-    console.error("STACK:", error?.stack);
-    console.error("FULL ERROR:", error);
-    console.error("================================");
-
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error"
-    });
+    console.error('Create booking error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message, stack: error.stack });
   }
 };
 

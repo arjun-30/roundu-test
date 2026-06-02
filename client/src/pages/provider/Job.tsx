@@ -97,8 +97,14 @@ const Job = () => {
 
   const job = providerRequests.find((r) => r.id === id);
 
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [notification, setNotification] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+
+    const saved = localStorage.getItem(
+      `job_timer_${job?.id}`
+    );
+
+    return saved ? Number(saved) : 0;
+  }); const [notification, setNotification] = useState("");
   const [notifType, setNotifType] = useState<"info" | "success">("info");
 
   const showNotification = (msg: string, type: "info" | "success" = "info") => {
@@ -106,14 +112,34 @@ const Job = () => {
     setNotifType(type);
     setTimeout(() => setNotification(""), 3000);
   };
-
   useEffect(() => {
-    let timer: NodeJS.Timeout | number;
-    if (job?.status === "in_progress") {
-      timer = setInterval(() => { setElapsedSeconds((prev) => prev + 1); }, 1000);
+
+    let interval: NodeJS.Timeout;
+
+    if (job.status === "in_progress") {
+
+      interval = setInterval(() => {
+
+        setElapsedSeconds(prev => {
+
+          const next = prev + 1;
+
+          localStorage.setItem(
+            `job_timer_${job.id}`,
+            String(next)
+          );
+
+          return next;
+        });
+
+      }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [job?.status]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+
+  }, [job.status, job.id]);
 
   const [notFoundTimer, setNotFoundTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -154,6 +180,10 @@ const Job = () => {
   const markOnTheWay = () => { emitStatus("on_the_way"); showNotification("🚗 Customer notified — you're on the way!", "info"); };
   const markArrived = () => { emitStatus("arrived"); showNotification("📍 Customer notified — you've arrived!", "info"); };
   const startService = () => { emitStatus("in_progress"); showNotification("🔧 Service started! Customer notified.", "success"); };
+  localStorage.setItem(
+    `job_start_${job.id}`,
+    new Date().toISOString()
+  );
   const completeJob = () => {
     emitStatus("payment_pending");
 
