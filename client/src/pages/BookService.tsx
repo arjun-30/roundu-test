@@ -108,35 +108,28 @@ const BookService = () => {
             );
 
           if (result.address) {
-            const shortAddr =
-              result.area
-                ? `${result.area}${
-                    result.city
-                      ? ", " +
-                        result.city
-                      : ""
-                  }`
-                : result.address
-                    .split(",")
-                    .slice(0, 2)
-                    .join(",");
-
             dispatch({
               type: "UPDATE_USER",
               user: {
-                address: shortAddr,
+                address: result.address,
               },
             });
+            localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address }));
           }
         } catch (err) {
-          dispatch({
-            type: "UPDATE_USER",
-            user: {
-              address: `${lat.toFixed(
-                4
-              )}, ${lng.toFixed(4)}`,
-            },
-          });
+          console.warn("Reverse geocode failed:", err);
+          try {
+            const cached = localStorage.getItem("roundu_last_location");
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              dispatch({
+                type: "UPDATE_USER",
+                user: {
+                  address: parsed.address,
+                },
+              });
+            }
+          } catch (_) {}
         } finally {
           setLocating(false);
         }

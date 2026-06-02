@@ -218,10 +218,13 @@ export default function AdminDashboard() {
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-extrabold text-slate-800">Dashboard</h1>
-                    <p className="text-slate-500 text-sm mt-0.5">Overview of your platform</p>
-                </div>
+                <h1 className="text-3xl font-black text-slate-800">
+                    Admin Dashboard
+                </h1>
+
+                <p className="text-slate-500 text-sm mt-1">
+                    Monitor users, providers, bookings and platform performance
+                </p>
                 <button
                     onClick={fetchAll}
                     disabled={loading}
@@ -244,6 +247,83 @@ export default function AdminDashboard() {
                     ? Array.from({ length: 8 }).map((_, i) => <StatCard key={i} title="" value="" icon={<div />} loading />)
                     : statCards.map(s => <StatCard key={s.title} {...s} />)
                 }
+            </div>
+
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <h3 className="font-bold mb-4">System Status</h3>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between">
+                            <span>Database</span>
+                            <span className="text-green-500 font-semibold">Online</span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span>API Server</span>
+                            <span className="text-green-500 font-semibold">Running</span>
+                        </div>
+
+
+                        <div className="flex justify-between">
+                            <span>Payments</span>
+                            <span className="text-green-500 font-semibold">Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <h3 className="font-bold mb-4">Pending Tasks</h3>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between">
+                            <span>Provider Verifications</span>
+                            <span className="font-bold text-orange-500">
+                                {stats?.pendingVerifications ?? 0}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span>Refund Requests</span>
+                            <span className="font-bold text-red-500">0</span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span>Support Tickets</span>
+                            <span className="font-bold text-blue-500">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <h3 className="font-bold mb-4">Today's Snapshot</h3>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between">
+                            <span>Revenue</span>
+                            <span className="font-semibold">
+                                ₹{stats?.todayRevenue ?? 0}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span>Bookings</span>
+                            <span className="font-semibold">
+                                {stats?.activeBookings ?? 0}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span>Users</span>
+                            <span className="font-semibold">
+                                {stats?.totalUsers ?? 0}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {/* Charts row 1 */}
@@ -326,6 +406,36 @@ export default function AdminDashboard() {
                             </BarChart>
                         </ResponsiveContainer>
                     )}
+                </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
+                <h2 className="text-sm font-extrabold text-slate-700 mb-4">
+                    Recent Activity
+                </h2>
+
+                <div className="space-y-3">
+
+                    <div className="flex justify-between">
+                        <span>New provider registered</span>
+                        <span className="text-slate-400">
+                            2 mins ago
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <span>Booking completed</span>
+                        <span className="text-slate-400">
+                            10 mins ago
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <span>New user signup</span>
+                        <span className="text-slate-400">
+                            25 mins ago
+                        </span>
+                    </div>
+
                 </div>
             </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Geolocation } from '@capacitor/geolocation';
 
 export interface LocationCoords {
   lat: number;
@@ -18,46 +19,120 @@ export interface LocationState {
  * @param onUpdate  Optional callback called with (lat, lng) each time location is obtained.
  */
 export const useCurrentLocation = (onUpdate?: (lat: number, lng: number) => void) => {
-  const [state, setState] = useState<LocationState>({
-    coords: null,
-    address: '',
-    error: null,
-    loading: false,
+  const [state, setState] = useState<LocationState>(() => {
+    // Load cached location instantly on init to prevent layout shifts/flickering
+    try {
+      const cached = localStorage.getItem('roundu_last_location');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+          return {
+            coords: { lat: parsed.lat, lng: parsed.lng },
+            address: parsed.address || '',
+            error: null,
+            loading: false,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached location', e);
+    }
+    return {
+      coords: null,
+      address: '',
+      error: null,
+      loading: false,
+    };
   });
 
-  const fetch = useCallback(() => {
-    if (!navigator.geolocation) {
-      setState(s => ({ ...s, error: 'Geolocation is not supported by your browser.' }));
-      return;
-    }
-
+  const fetch = useCallback(async (forcePrompt = false) => {
     setState(s => ({ ...s, loading: true, error: null }));
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: LocationCoords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        setState(s => ({ ...s, coords, loading: false }));
-        onUpdate?.(coords.lat, coords.lng);
-      },
-      (err) => {
-        let message = 'Failed to get location.';
-        if (err.code === err.PERMISSION_DENIED) message = 'Location permission denied.';
-        else if (err.code === err.TIMEOUT) message = 'Location request timed out.';
-        setState(s => ({ ...s, error: message, loading: false }));
-        console.warn('[useCurrentLocation]', err.message);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-    );
+    try {
+      let perm;
+      try {
+        perm = await Geolocation.checkPermissions();
+      } catch (e) {
+        perm = { location: 'prompt' };
+      }
+
+      if (perm.location !== 'granted') {
+        if (perm.location === 'denied' && !forcePrompt) {
+          setState(s => ({ ...s, error: 'Location permission denied.', loading: false }));
+          return;
+        }
+        try {
+          perm = await Geolocation.requestPermissions();
+        } catch (e) {
+          perm = { location: 'denied' };
+        }
+      }
+
+      if (perm.location !== 'granted') {
+        setState(s => ({ ...s, error: 'Location permission denied.', loading: false }));
+        return;
+      }
+
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000
+      });
+
+      const coords: LocationCoords = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      };
+
+      setState(s => ({ ...s, coords, error: null, loading: false }));
+      if (onUpdate) {
+        onUpdate(coords.lat, coords.lng);
+      }
+    } catch (err: any) {
+      console.warn('[useCurrentLocation] Error:', err);
+      let message = 'Failed to get location.';
+      if (err.message?.includes('denied') || err.code === 1) {
+        message = 'Location permission denied.';
+      } else if (err.message?.includes('timeout') || err.code === 3) {
+        message = 'Location request timed out.';
+      }
+
+      // Fallback to cached location if GPS fails
+      try {
+        const cached = localStorage.getItem('roundu_last_location');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            setState(s => ({
+              ...s,
+              coords: { lat: parsed.lat, lng: parsed.lng },
+              address: parsed.address || '',
+              error: null,
+              loading: false,
+            }));
+            if (onUpdate) {
+              onUpdate(parsed.lat, parsed.lng);
+            }
+            return;
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Cache recovery failed:', cacheErr);
+      }
+
+      setState(s => ({ ...s, error: message, loading: false }));
+    }
   }, [onUpdate]);
 
   useEffect(() => {
+    // If we have cached coords, trigger callback immediately
+    if (state.coords && onUpdate) {
+      onUpdate(state.coords.lat, state.coords.lng);
+    }
     fetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { ...state, refetch: fetch };
+  return { ...state, refetch: () => fetch(true) };
 };
 
 /**
@@ -75,28 +150,52 @@ export const useWatchLocation = (
 
   useEffect(() => {
     if (!enabled) return;
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      return;
-    }
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setError(null);
-        onUpdate(pos.coords.latitude, pos.coords.longitude);
-      },
-      (err) => {
-        let message = 'GPS tracking error.';
-        if (err.code === err.PERMISSION_DENIED) message = 'Location permission denied.';
-        else if (err.code === err.TIMEOUT) message = 'GPS timed out.';
-        setError(message);
-        console.warn('[useWatchLocation]', err.message);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    let watchId: string | null = null;
+    let active = true;
+
+    const startWatch = async () => {
+      try {
+        let perm = await Geolocation.checkPermissions();
+        if (perm.location !== 'granted') {
+          perm = await Geolocation.requestPermissions();
+        }
+        if (!active) return;
+
+        if (perm.location !== 'granted') {
+          setError('Location permission denied.');
+          return;
+        }
+
+        watchId = await Geolocation.watchPosition(
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+          (pos, err) => {
+            if (err) {
+              console.warn('[useWatchLocation] callback error:', err);
+              setError(err.message || 'GPS tracking error.');
+              return;
+            }
+            if (pos) {
+              setError(null);
+              onUpdate(pos.coords.latitude, pos.coords.longitude);
+            }
+          }
+        );
+      } catch (err: any) {
+        console.warn('[useWatchLocation] setup error:', err);
+        setError(err.message || 'GPS tracking error.');
+      }
+    };
+
+    startWatch();
 
     return () => {
-      navigator.geolocation.clearWatch(watchId);
+      active = false;
+      if (watchId) {
+        Geolocation.clearWatch({ id: watchId }).catch(err => {
+          console.warn('Error clearing watch:', err);
+        });
+      }
     };
   }, [enabled, onUpdate]);
 

@@ -174,10 +174,42 @@ export default function AdminProviders() {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <div>
-                    <h1 className="text-2xl font-extrabold text-slate-800">Providers</h1>
-                    <p className="text-slate-500 text-sm mt-0.5">{providers.length} total service providers</p>
+                <h1 className="text-3xl font-black text-slate-800">
+                    Provider Management
+                </h1>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+                        <p className="text-slate-500 text-sm">Providers</p>
+                        <h2 className="text-3xl font-bold">{providers.length}</h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+                        <p className="text-slate-500 text-sm">Verified</p>
+                        <h2 className="text-3xl font-bold text-green-500">
+                            {providers.filter(p => p.verified).length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+                        <p className="text-slate-500 text-sm">Pending</p>
+                        <h2 className="text-3xl font-bold text-orange-500">
+                            {providers.filter(p => !p.verified).length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+                        <p className="text-slate-500 text-sm">Online</p>
+                        <h2 className="text-3xl font-bold text-blue-500">
+                            {providers.filter(p => p.is_online).length}
+                        </h2>
+                    </div>
+
                 </div>
+
+                <p className="text-slate-500 text-sm mt-1">
+                    Manage service providers, verification and earnings
+                </p>
                 <button onClick={fetchProviders} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50">
                     <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                 </button>
@@ -224,7 +256,21 @@ export default function AdminProviders() {
                                 ))}</tr>
                             ))
                             : paginated.length === 0
-                                ? <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-400">No providers found.</td></tr>
+                                ? <tr><td colSpan={9} className="px-4 py-12">
+
+                                    <div className="text-center">
+                                        <div className="text-6xl mb-3">🛠️</div>
+
+                                        <h3 className="font-semibold text-slate-700 text-lg">
+                                            No Providers Found
+                                        </h3>
+
+                                        <p className="text-slate-400 text-sm">
+                                            Service providers will appear here
+                                        </p>
+                                    </div>
+
+                                </td></tr>
                                 : paginated.map(p => <ProviderRow key={p.id} provider={p} onVerify={handleVerify} />)
                         }
                     </tbody>

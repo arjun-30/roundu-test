@@ -5,6 +5,19 @@ import { BrowserRouter } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { reverseGeocode } from "@/lib/mapProvider";
 
+// Mock Geolocation plugin
+const mockCheckPermissions = vi.fn().mockResolvedValue({ location: "granted" });
+const mockRequestPermissions = vi.fn().mockResolvedValue({ location: "granted" });
+const mockGetCurrentPosition = vi.fn();
+
+vi.mock("@capacitor/geolocation", () => ({
+  Geolocation: {
+    checkPermissions: () => mockCheckPermissions(),
+    requestPermissions: () => mockRequestPermissions(),
+    getCurrentPosition: () => mockGetCurrentPosition(),
+  },
+}));
+
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -41,6 +54,9 @@ describe("PersonalDetails location auto-detection", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCheckPermissions.mockResolvedValue({ location: "granted" });
+    mockRequestPermissions.mockResolvedValue({ location: "granted" });
+    mockGetCurrentPosition.mockReset();
     (useApp as any).mockReturnValue({
       user: mockUser,
       providerRegistrationDraft: mockDraft,
@@ -49,18 +65,12 @@ describe("PersonalDetails location auto-detection", () => {
   });
 
   it("should detect location and autofill address, city, and pincode fields successfully", async () => {
-    // Mock navigator.geolocation
-    const mockGeolocation = {
-      getCurrentPosition: vi.fn().mockImplementation((success) =>
-        success({
-          coords: {
-            latitude: 10.0,
-            longitude: 20.0,
-          },
-        })
-      ),
-    };
-    (global as any).navigator.geolocation = mockGeolocation;
+    mockGetCurrentPosition.mockResolvedValue({
+      coords: {
+        latitude: 10.0,
+        longitude: 20.0,
+      },
+    });
 
     // Mock reverseGeocode success
     (reverseGeocode as any).mockResolvedValue({
@@ -98,15 +108,9 @@ describe("PersonalDetails location auto-detection", () => {
   });
 
   it("should show error message if geolocation permission is denied", async () => {
-    const mockGeolocation = {
-      getCurrentPosition: vi.fn().mockImplementation((success, error) =>
-        error({
-          code: 1, // PERMISSION_DENIED
-          PERMISSION_DENIED: 1,
-        })
-      ),
-    };
-    (global as any).navigator.geolocation = mockGeolocation;
+    mockCheckPermissions.mockResolvedValue({ location: "denied" });
+    mockRequestPermissions.mockResolvedValue({ location: "denied" });
+    mockGetCurrentPosition.mockRejectedValue(new Error("Location permission denied."));
 
     render(
       <BrowserRouter>

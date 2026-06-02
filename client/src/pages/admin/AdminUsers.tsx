@@ -64,6 +64,19 @@ function UserRow({ user }: { user: User }) {
                 className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors"
             >
                 <td className="px-4 py-3">
+                    <div className="flex gap-2">
+
+                        <button className="px-3 py-1 rounded-lg bg-blue-100 text-blue-600 text-xs font-medium">
+                            View
+                        </button>
+
+                        <button className="px-3 py-1 rounded-lg bg-red-100 text-red-600 text-xs font-medium">
+                            Block
+                        </button>
+
+                    </div>
+                </td>
+                <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-[#17375E] text-white flex items-center justify-center text-xs font-bold shrink-0">
                             {initials}
@@ -116,8 +129,8 @@ function UserRow({ user }: { user: User }) {
                                                         <td className="py-1 capitalize text-slate-600">{b.service_type}</td>
                                                         <td className="py-1">
                                                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" :
-                                                                    b.status === "cancelled" ? "bg-red-100 text-red-600" :
-                                                                        "bg-blue-100 text-blue-700"
+                                                                b.status === "cancelled" ? "bg-red-100 text-red-600" :
+                                                                    "bg-blue-100 text-blue-700"
                                                                 }`}>{b.status}</span>
                                                         </td>
                                                         <td className="py-1 font-semibold text-slate-700">₹{b.price}</td>
@@ -169,18 +182,49 @@ export default function AdminUsers() {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <div>
-                    <h1 className="text-2xl font-extrabold text-slate-800">Users</h1>
-                    <p className="text-slate-500 text-sm mt-0.5">{users.length} total registered users</p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                        <p className="text-slate-500 text-sm">Total Users</p>
+                        <h2 className="text-3xl font-bold text-slate-800">
+                            {users.length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                        <p className="text-slate-500 text-sm">Active Users</p>
+                        <h2 className="text-3xl font-bold text-green-500">
+                            {users.length}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                        <p className="text-slate-500 text-sm">Wallet Balance</p>
+                        <h2 className="text-3xl font-bold text-blue-500">
+                            ₹{users.reduce((a, b) => a + (b.wallet_balance || 0), 0).toLocaleString()}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                        <p className="text-slate-500 text-sm">Search Results</p>
+                        <h2 className="text-3xl font-bold text-purple-500">
+                            {filtered.length}
+                        </h2>
+                    </div>
+
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={fetchUsers} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50">
-                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                    </button>
-                    <button onClick={() => exportCSV(filtered)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#17375E] text-white text-sm font-semibold hover:bg-[#1e4a7a] transition-colors">
-                        <Download className="w-4 h-4" /> Export CSV
-                    </button>
-                </div>
+            </div>
+            <div>
+                <h1 className="text-2xl font-extrabold text-slate-800">Users</h1>
+                <p className="text-slate-500 text-sm mt-0.5">{users.length} total registered users</p>
+            </div>
+            <div className="flex items-center gap-2">
+                <button onClick={fetchUsers} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50">
+                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                </button>
+                <button onClick={() => exportCSV(filtered)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#17375E] text-white text-sm font-semibold hover:bg-[#1e4a7a] transition-colors">
+                    <Download className="w-4 h-4" /> Export CSV
+                </button>
             </div>
 
             {/* Search */}
@@ -227,17 +271,19 @@ export default function AdminUsers() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-slate-500">
-                        {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-                    </p>
-                    <div className="flex gap-1">
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40 hover:bg-slate-50">Prev</button>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40 hover:bg-slate-50">Next</button>
+            {
+                totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                        <p className="text-sm text-slate-500">
+                            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                        </p>
+                        <div className="flex gap-1">
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40 hover:bg-slate-50">Prev</button>
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40 hover:bg-slate-50">Next</button>
+                        </div>
                     </div>
-                </div>
-            )}
-        </motion.div>
+                )
+            }
+        </motion.div >
     );
 }

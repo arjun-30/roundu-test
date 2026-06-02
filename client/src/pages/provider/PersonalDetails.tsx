@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Camera, MapPin, Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { reverseGeocode } from '@/lib/mapProvider';
+import { Geolocation } from '@capacitor/geolocation';
 
 const EXPERIENCE_LEVELS = ["0-1", "1-3", "3-5", "5-10", "10+"];
 const RADIUS_OPTIONS = [2, 5, 10, 15, 25, 50];
@@ -37,41 +38,58 @@ const PersonalDetails = () => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState("");
 
-  const handleAutoDetect = () => {
-    if (!navigator.geolocation) {
-      setDetectError("Geolocation is not supported by your browser.");
-      return;
-    }
-
+  const handleAutoDetect = async () => {
     setIsDetecting(true);
     setDetectError("");
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
+    try {
+      let permResult;
+      try {
+        permResult = await Geolocation.checkPermissions();
+      } catch (e) {
+        permResult = { location: 'prompt' };
+      }
+
+      if (permResult.location !== 'granted') {
         try {
-          const result = await reverseGeocode(latitude, longitude);
-          if (result.address) setAddress(result.address);
-          if (result.city) setCity(result.city);
-          if (result.pincode) setPincode(result.pincode);
-        } catch (err) {
-          console.error("Reverse geocoding error:", err);
-          setDetectError("Failed to resolve address. Please enter manually.");
-        } finally {
-          setIsDetecting(false);
+          permResult = await Geolocation.requestPermissions();
+        } catch (e) {
+          permResult = { location: 'denied' };
         }
-      },
-      (err) => {
-        console.error("Geolocation error:", err);
-        if (err.code === err.PERMISSION_DENIED) {
-          setDetectError("Location access denied. Please enable permission.");
-        } else {
-          setDetectError("Failed to detect location. Please check settings.");
-        }
+      }
+
+      if (permResult.location !== 'granted') {
+        setDetectError("Location access denied. Please enable permission.");
         setIsDetecting(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        return;
+      }
+
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+
+      const { latitude, longitude } = pos.coords;
+      try {
+        const result = await reverseGeocode(latitude, longitude);
+        if (result.address) setAddress(result.address);
+        if (result.city) setCity(result.city);
+        if (result.pincode) setPincode(result.pincode);
+      } catch (err) {
+        console.error("Reverse geocoding error:", err);
+        setDetectError("Failed to resolve address. Please enter manually.");
+      } finally {
+        setIsDetecting(false);
+      }
+    } catch (err: any) {
+      console.error("Geolocation error:", err);
+      let msg = "Failed to detect location. Please check settings.";
+      if (err.message?.includes("denied")) {
+        msg = "Location access denied. Please enable permission.";
+      }
+      setDetectError(msg);
+      setIsDetecting(false);
+    }
   };
 
   const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

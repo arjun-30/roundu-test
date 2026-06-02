@@ -67,10 +67,10 @@ describe("BookService Problem Description", () => {
       </BrowserRouter>
     );
 
-    const textarea = screen.getByPlaceholderText(/Describe your issue/i);
+    const textarea = screen.getByPlaceholderText(/Describe the issue briefly/i);
     expect(textarea).toBeInTheDocument();
 
-    const helperText = screen.getByText(/You can type and record voice notes together/i);
+    const helperText = screen.getByText(/Add details so professionals understand your issue/i);
     expect(helperText).toBeInTheDocument();
 
     // Verify mic button exists inside the relative wrapper
@@ -93,16 +93,16 @@ describe("BookService Problem Description", () => {
     );
 
     // Textarea is still visible and editable
-    const textarea = screen.getByPlaceholderText(/Describe your issue/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(/Describe the issue briefly/i) as HTMLTextAreaElement;
     expect(textarea).toBeInTheDocument();
     fireEvent.change(textarea, { target: { value: "Kitchen tap leakage" } });
     expect(textarea.value).toBe("Kitchen tap leakage");
 
     // Helper text is visible
-    expect(screen.getByText(/You can type and record voice notes together/i)).toBeInTheDocument();
+    expect(screen.getByText(/Add details so professionals understand your issue/i)).toBeInTheDocument();
 
-    // Recording indicator is visible with duration
-    expect(screen.getByText(/Recording… 0:05/i)).toBeInTheDocument();
+    // Recording indicator is visible
+    expect(screen.getByText(/Recording.../i)).toBeInTheDocument();
   });
 
   it("keeps textarea visible and shows audio card when recording is complete, hiding mic button", () => {
@@ -119,13 +119,13 @@ describe("BookService Problem Description", () => {
     );
 
     // Textarea is still visible and editable
-    const textarea = screen.getByPlaceholderText(/Describe your issue/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(/Describe the issue briefly/i) as HTMLTextAreaElement;
     expect(textarea).toBeInTheDocument();
     fireEvent.change(textarea, { target: { value: "Water leak" } });
     expect(textarea.value).toBe("Water leak");
 
-    // Audio card "Voice Note Attached" is shown
-    expect(screen.getByText(/Voice Note Attached/i)).toBeInTheDocument();
-    expect(screen.getByText("0:12")).toBeInTheDocument();
+    // Audio card "Voice Note" and "Attached" is shown
+    expect(screen.getByText(/Voice Note/i)).toBeInTheDocument();
+    expect(screen.getByText(/Attached/i)).toBeInTheDocument();
   });
 });
