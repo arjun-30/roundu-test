@@ -55,6 +55,7 @@ interface UserProfile {
   role?: "customer" | "provider";
   savedAddresses?: SavedAddress[];
   profilePicture?: string;
+  avatar_url?: string;
 }
 
 export interface SavedAddress {
@@ -176,7 +177,7 @@ const token = localStorage.getItem("roundu_token");
 const savedUser = localStorage.getItem("roundu_user");
 const savedRole = localStorage.getItem("roundu_role");
 
-let parsedUser = { id: "", name: "", phone: "", email: "", address: "", profilePicture: "" };
+let parsedUser = { id: "", name: "", phone: "", email: "", address: "", profilePicture: "", avatar_url: "" };
 if (savedUser) {
   try {
     parsedUser = JSON.parse(savedUser);
@@ -195,7 +196,8 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
-    profilePicture: parsedUser.profilePicture || "",
+    profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
+    avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
@@ -405,6 +407,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, role: action.role };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
+      if (action.user.profilePicture && !action.user.avatar_url) {
+        newUser.avatar_url = action.user.profilePicture;
+      }
+      if (action.user.avatar_url && !action.user.profilePicture) {
+        newUser.profilePicture = action.user.avatar_url;
+      }
       // Persist user to localStorage for session restoration
       try {
         localStorage.setItem("roundu_user", JSON.stringify(newUser));

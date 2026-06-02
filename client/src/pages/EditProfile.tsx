@@ -2,6 +2,7 @@ import { ArrowLeft, Camera, User, Mail, Phone, Briefcase, Image as ImageIcon, Tr
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
+import { updateUser } from "@/lib/api";
 import { toast } from "sonner";
 
 import { services } from "@/data/mockData";
@@ -146,22 +147,38 @@ const EditProfile = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(email)) {
       setEmailError('Please enter a valid email address');
       return;
     }
     setEmailError('');
-    dispatch({ type: "UPDATE_USER", user: { name, email, phone, profilePicture } });
-    if (user.role === "provider" && providerRegistrationDraft) {
-      dispatch({ 
-        type: "UPDATE_REGISTRATION_DRAFT", 
-        patch: { serviceIds: [serviceId] } 
+
+    try {
+      await updateUser(user.id, { avatar_url: profilePicture });
+      dispatch({
+        type: "UPDATE_USER",
+        user: {
+          name,
+          email,
+          phone,
+          profilePicture,
+          avatar_url: profilePicture,
+        },
       });
+      if (user.role === "provider" && providerRegistrationDraft) {
+        dispatch({ 
+          type: "UPDATE_REGISTRATION_DRAFT", 
+          patch: { serviceIds: [serviceId] } 
+        });
+      }
+      toast.success("Profile saved successfully!");
+      navigate(-1);
+    } catch (err) {
+      console.error("Failed to save profile", err);
+      toast.error("Unable to save profile. Try again.");
     }
-    toast.success("Profile saved successfully!");
-    navigate(-1);
   };
 
   return (
