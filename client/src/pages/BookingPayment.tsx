@@ -164,33 +164,36 @@ const BookingPayment = () => {
       }
     } else {
       // 2. Creating a new booking (standard checkout)
-      if (method === "cash") {
-        try {
-          const bookingData = {
-            customer_id: user.id,
-            provider_id: provider?.id || selectedProvider?.id,
-            service_id: serviceId,
-            scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
-            address: user.address || "Client Address",
-            price: total,
-            notes: bookingNotes,
-            voice_note: bookingVoiceNote,
-            voice_note_url: bookingVoiceNoteUrl || null,
-            payment_id: "cash_payment",
-            paid: false,
-          };
+        if (method === "cash") {
+          try {
+            const bookingData = {
+              customer_id: user.id,
+              provider_id: provider?.id || selectedProvider?.id,
+              service_id: serviceId,
+              scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
+              address: user.address || "Client Address",
+              price: total,
+              notes: bookingNotes,
+              voice_note: bookingVoiceNote,
+              voice_note_url: bookingVoiceNoteUrl || null,
+              payment_id: "cash_payment",
+              paid: false,
+            };
 
-          const bookingRes = await createBooking(bookingData);
-          if (bookingRes.success) {
-            addBooking(bookingRes.data);
-            dispatch({ type: "RESET_BOOKING_DRAFT" });
-            navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+            const bookingRes = await createBooking(bookingData);
+            if (bookingRes.success) {
+              addBooking(bookingRes.data);
+              // Mark booking as completed and navigate to rating page
+              dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+              dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
+              dispatch({ type: "RESET_BOOKING_DRAFT" });
+              navigate(`/rating/${bookingRes.data.id}`, { replace: true });
+            }
+          } catch (err) {
+            setError("Failed to complete booking with Cash option");
+          } finally {
+            setLoading(false);
           }
-        } catch (err) {
-          setError("Failed to complete booking with Cash option");
-        } finally {
-          setLoading(false);
-        }
       } else if (method === "wallet") {
         try {
           dispatch({ type: "UPDATE_WALLET", amount: -total });
@@ -278,10 +281,13 @@ const BookingPayment = () => {
 
                 const bookingRes = await createBooking(bookingData);
                 if (bookingRes.success) {
-                  const enrichedData = { ...bookingRes.data, paid: true };
-                  addBooking(enrichedData);
-                  dispatch({ type: "RESET_BOOKING_DRAFT" });
-                  navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+                const enrichedData = { ...bookingRes.data, paid: true };
+                addBooking(enrichedData);
+                // Mark booking as completed and navigate to rating page
+                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+                dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
+                dispatch({ type: "RESET_BOOKING_DRAFT" });
+                navigate(`/rating/${bookingRes.data.id}`, { replace: true });
                 }
               } catch (err) {
                 console.error("Verification/Booking error:", err);
