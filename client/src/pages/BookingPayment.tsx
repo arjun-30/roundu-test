@@ -39,7 +39,7 @@ const BookingPayment = () => {
     }
   }, [bookingId, selectedProvider, selectedServiceId, navigate]);
 
-  if (!bookingId && (!selectedProvider || !selectedServiceId)) return null;
+  if (!bookingId) return null;
 
   const provider = existingBooking
     ? ((existingBooking as any).providerDetails || getProviderById(existingBooking.providerId) || {

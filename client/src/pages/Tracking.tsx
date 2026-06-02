@@ -128,7 +128,7 @@ const Tracking = () => {
       else if (data.status === "in_progress") showNotification("🔧", "Service has started!");
       else if (data.status === "completed") {
         showNotification("✅", "Service completed!");
-        setTimeout(() => navigate("/booking/payment", { state: { bookingId: id } }), 2000);
+        setTimeout(() => navigate(`/booking/payment`, { state: { bookingId: id }, replace: true }), 2000);
       }
     };
 

@@ -354,7 +354,9 @@ const SearchingProviders = () => {
       console.log("BOOKING RESPONSE", res);
 
       if (res?.success && res?.data?.id) {
-        navigate(`/chat/${res.data.id}`);
+        // Add booking to context and navigate to tracking page
+        dispatch({ type: "ADD_BOOKING", booking: res.data });
+        navigate(`/tracking/${res.data.id}`);
         return;
       }
 

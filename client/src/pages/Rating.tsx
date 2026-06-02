@@ -25,7 +25,7 @@ const Rating = () => {
     }
     setError("");
     dispatch({ type: "UPDATE_BOOKING", id: booking.id, patch: { rating: stars, review } });
-    navigate("/bookings", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   return (
