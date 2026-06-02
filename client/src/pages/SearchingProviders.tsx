@@ -320,18 +320,56 @@ const SearchingProviders = () => {
   const handleAcceptQuote = async (quote: ProviderQuote) => {
     if (acceptingQuoteId) return;
 
-    if (!user || !user.id) {
-      setError("Please login");
+    try {
+      setError("");
+      setAcceptingQuoteId(quote.providerId);
 
-      setTimeout(() => {
-        navigate("/auth", { replace: true });
-      }, 1500);
+      const bookingData = {
+        customer_id: String(user?.id || ""),
+        provider_id: String(quote.providerId || ""),
+        service_id: String(serviceId || ""),
+        status: "assigned",
 
-      return;
+        scheduled_at: new Date().toISOString(),
+
+        address:
+          user?.address ||
+            currentLocation
+            ? `${currentLocation?.lat},${currentLocation?.lng}`
+            : "Customer Location",
+
+        price: Number(quote.price || 0),
+
+        notes: bookingNotes || "",
+
+        voice_note: bookingVoiceNote || false,
+        voice_note_url: bookingVoiceNoteUrl || null,
+        paid: false,
+      };
+
+      console.log("BOOKING PAYLOAD", bookingData);
+
+      const res = await createBooking(bookingData);
+
+      console.log("BOOKING RESPONSE", res);
+
+      if (res?.success && res?.data?.id) {
+        navigate(`/chat/${res.data.id}`);
+        return;
+      }
+
+      throw new Error(res?.message || "Booking creation failed");
+    } catch (error: any) {
+      console.error("ACCEPT QUOTE ERROR", error);
+
+      setError(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to confirm booking"
+      );
+    } finally {
+      setAcceptingQuoteId(null);
     }
-
-    setAcceptingQuoteId(quote.providerId);
-
     const bookingData = {
       customer_id: user.id,
       provider_id: quote.providerId,
@@ -423,15 +461,15 @@ const SearchingProviders = () => {
             <div className="relative">
               <div
                 className={`w-3 h-3 rounded-full ${foundCount > 0
-                    ? "bg-emerald-500"
-                    : "bg-amber-400"
+                  ? "bg-emerald-500"
+                  : "bg-amber-400"
                   }`}
               />
 
               <div
                 className={`absolute inset-0 rounded-full animate-ping ${foundCount > 0
-                    ? "bg-emerald-400"
-                    : "bg-amber-300"
+                  ? "bg-emerald-400"
+                  : "bg-amber-300"
                   }`}
               />
             </div>
@@ -601,8 +639,8 @@ const SearchingProviders = () => {
                 <div
                   key={i}
                   className={`transition-all duration-300 rounded-full ${i === activeDotIndex
-                      ? "w-3 h-3 bg-amber-400 scale-125"
-                      : "w-2 h-2 bg-slate-300"
+                    ? "w-3 h-3 bg-amber-400 scale-125"
+                    : "w-2 h-2 bg-slate-300"
                     }`}
                 />
               ))}

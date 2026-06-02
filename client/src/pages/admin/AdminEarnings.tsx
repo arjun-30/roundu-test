@@ -90,9 +90,42 @@ export default function AdminEarnings() {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <div>
-                    <h1 className="text-2xl font-extrabold text-slate-800">Earnings</h1>
-                    <p className="text-slate-500 text-sm mt-0.5">Platform revenue overview</p>
+
+                <h1 className="text-3xl font-black text-slate-800">
+                    Revenue Analytics
+                </h1>
+
+                <p className="text-slate-500 text-sm mt-1">
+                    Monitor platform revenue, growth trends and provider performance
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+                    <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-5 text-white shadow-lg">
+                        <p className="text-xs opacity-80">Revenue Growth</p>
+                        <h2 className="text-3xl font-bold">+12%</h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                        <p className="text-xs text-slate-500">Total Revenue</p>
+                        <h2 className="text-3xl font-bold text-slate-800">
+                            ₹{totalRevenue.toLocaleString()}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                        <p className="text-xs text-slate-500">Completed Jobs</p>
+                        <h2 className="text-3xl font-bold text-blue-600">
+                            {completedCount}
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                        <p className="text-xs text-slate-500">Average Ticket</p>
+                        <h2 className="text-3xl font-bold text-orange-500">
+                            ₹{avgBookingValue.toLocaleString()}
+                        </h2>
+                    </div>
+
                 </div>
                 <div className="flex items-center gap-2">
                     <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
@@ -106,8 +139,28 @@ export default function AdminEarnings() {
                 </div>
             </div>
 
-            {error && <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>}
+            {error && (
+                <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center justify-between">
 
+                    <div>
+                        <h4 className="font-semibold text-red-700">
+                            Revenue Data Unavailable
+                        </h4>
+
+                        <p className="text-sm text-red-500">
+                            Unable to fetch earnings data.
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={fetchEarnings}
+                        className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium"
+                    >
+                        Retry
+                    </button>
+
+                </div>
+            )}
             {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <StatCard title="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={<DollarSign size={18} />} color="green" loading={loading} />
@@ -122,7 +175,15 @@ export default function AdminEarnings() {
                     {loading ? (
                         <div className="h-44 bg-slate-100 rounded-xl animate-pulse" />
                     ) : dailyData.length === 0 ? (
-                        <div className="h-44 flex items-center justify-center text-slate-400 text-sm">No data for selected range</div>
+                        <div className="text-center">
+                            <div className="text-5xl mb-3"></div>
+                            <p className="font-semibold text-slate-600">
+                                No Service Revenue
+                            </p>
+                            <p className="text-xs text-slate-400">
+                                Service performance will appear here
+                            </p>
+                        </div>
                     ) : (
                         <ResponsiveContainer width="100%" height={180}>
                             <LineChart data={dailyData}>
@@ -141,8 +202,15 @@ export default function AdminEarnings() {
                     {loading ? (
                         <div className="h-44 bg-slate-100 rounded-xl animate-pulse" />
                     ) : serviceData.length === 0 ? (
-                        <div className="h-44 flex items-center justify-center text-slate-400 text-sm">No data</div>
-                    ) : (
+                        <div className="text-center">
+                            <div className="text-5xl mb-3">📊</div>
+                            <p className="font-semibold text-slate-600">
+                                No Service Revenue
+                            </p>
+                            <p className="text-xs text-slate-400">
+                                Service performance will appear here
+                            </p>
+                        </div>) : (
                         <ResponsiveContainer width="100%" height={180}>
                             <BarChart data={serviceData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
