@@ -136,3 +136,36 @@ export const checkProviderExists = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+export const getProviderProfile = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'Provider ID required' });
+
+    const provider = await ProviderModel.findById(id);
+    if (!provider) return res.status(404).json({ success: false, message: 'Provider not found' });
+
+    const stats = await ProviderModel.getStats(provider.id);
+
+    res.json({
+      success: true,
+      data: {
+        provider: {
+          id: provider.id,
+          name: provider.name,
+          phone: provider.phone,
+          avatar: provider.avatar_url,
+          bio: provider.bio,
+          experience_years: provider.experience_years,
+          is_online: provider.is_online,
+          rating: parseFloat(provider.rating || '5.0'),
+          serviceId: provider.service_id,
+        },
+        stats
+      }
+    });
+  } catch (error) {
+    console.error('Get provider profile error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

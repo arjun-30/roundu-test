@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Booking, Provider, ProviderRequest,
   initialProviderRequests, initialCompletedJobs,
@@ -670,9 +671,9 @@ function reducer(state: State, action: Action): State {
       };
     }
     case "ADD_CHAT_MESSAGE": {
-      const { id, bookingId, text, senderId, time, audioBase64, is_seen } = action.payload;
+      const { id, bookingId, text, senderId, senderRole, time, audioBase64, is_seen } = action.payload;
       const chatRoom = state.chatHistories[bookingId] || [];
-      const isMe = senderId === state.user.id;
+      const isMe = senderRole === state.role || (!senderRole && senderId === state.user.id);
 
       const isDuplicate = chatRoom.some(m => m.id === id || (m.text === text && m.time === time && m.sender === (isMe ? "me" : "other")));
       if (isDuplicate) return state;
@@ -736,8 +737,35 @@ interface Ctx extends State {
 
 const AppContext = createContext<Ctx | null>(null);
 
+// Helper: read role override from URL and apply it (useful for testing two separate roles in the same browser)
+const getRoleFromUrl = () => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get('role');
+    if (role === 'customer' || role === 'provider') {
+      return role as Role;
+    }
+  }
+  return null;
+};
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const navigate = useNavigate();
+
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Apply role override after initial load (once)
+  useEffect(() => {
+    const urlRole = getRoleFromUrl();
+    if (urlRole && state.role !== urlRole) {
+      dispatch({ type: "SET_ROLE", role: urlRole });
+      localStorage.setItem("roundu_role", urlRole);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -841,27 +869,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     socket.on("provider_location_update", (data: any) => {
       // data may be { id, lat, lng, name } or { bookingId, lat, lng } depending on server path
       try {
-        if (data && data.id) {
-          dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
-        } else if (data && data.bookingId) {
+        const currentState = stateRef.current;
+        if (!data) return;
+
+        let providerId: string | null = null;
+        let lat: number | null = null;
+        let lng: number | null = null;
+        let name: string = '';
+
+        if (data.id) {
+          providerId = data.id;
+          lat = Number(data.lat);
+          lng = Number(data.lng);
+          name = data.name || '';
+          dispatch({ type: "UPDATE_NEARBY_PROVIDER", id: providerId, lat, lng, name });
+        } else if (data.bookingId) {
+          lat = Number(data.lat);
+          lng = Number(data.lng);
           // Map booking -> providerId if available
-          const booking = state.bookings.find(b => String(b.id) === String(data.bookingId));
+          const booking = currentState.bookings.find(b => String(b.id) === String(data.bookingId));
           if (booking) {
-            const providerId = (booking as any).provider_id || (booking as any).providerId || null;
+            providerId = (booking as any).provider_id || (booking as any).providerId || null;
+            name = (booking as any).providerName || '';
+            dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: lat, providerLng: lng } });
             if (providerId) {
-              dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: data.lat, providerLng: data.lng } });
-              dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat: data.lat, lng: data.lng, name: (booking as any).providerName || '' } as any);
+              dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat, lng, name });
             }
           }
         }
 
-        // Auto-update status to 'arrived' when provider is within 100m of customer (best-effort)
-        if (state.role === "customer" && state.currentLocation && data && (data.lat != null) && (data.lng != null)) {
-          state.bookings.forEach((b) => {
-            const providerId = (b as any).provider_id || b.providerId;
-            const match = (data.id && providerId === data.id) || (data.bookingId && String(b.id) === String(data.bookingId));
+        // Auto-update status to 'arrived' when provider is within 100m of customer
+        if (currentState.role === "customer" && currentState.currentLocation && lat != null && !isNaN(lat) && lng != null && !isNaN(lng)) {
+          currentState.bookings.forEach((b) => {
+            const pId = (b as any).provider_id || b.providerId;
+            const match = (providerId && pId === providerId) || (data.bookingId && String(b.id) === String(data.bookingId));
             if (match && b.status === "on_the_way") {
-              const dist = getDistance(state.currentLocation!, { lat: Number(data.lat), lng: Number(data.lng) });
+              const dist = getDistance(currentState.currentLocation!, { lat, lng });
               if (dist < 0.1) { // 100 metres
                 socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
               }
@@ -928,6 +971,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("job_status_updated", (data: { bookingId: string; status: string }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
+      const currentState = stateRef.current;
+      if (currentState.role === "customer" && data.status === "completed") {
+        const targetBookingId = String(data.bookingId).replace("req-", "");
+        navigate("/booking/payment", { state: { bookingId: targetBookingId } });
+      }
     });
 
     socket.on("chat_message_received", (data: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean }) => {

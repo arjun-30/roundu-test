@@ -18,6 +18,17 @@ export const ProviderModel = {
     return res.rows[0] || null;
   },
 
+  async findById(providerId: string): Promise<any | null> {
+    const res = await getPool().query(
+      `SELECT p.*, u.name, u.phone, u.avatar_url, u.email 
+       FROM providers p 
+       JOIN users u ON p.user_id = u.id 
+       WHERE p.id = $1`,
+      [providerId]
+    );
+    return res.rows[0] || null;
+  },
+
   async updateServiceRadiusByUserId(userId: string, radius: number): Promise<boolean> {
     const res = await getPool().query(
       'UPDATE providers SET service_radius = $1 WHERE user_id = $2',

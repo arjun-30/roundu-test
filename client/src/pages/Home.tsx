@@ -184,6 +184,22 @@ const Home = () => {
     fetchRealProviders();
   }, []);
 
+  useEffect(() => {
+    const fetchLatestBookings = async () => {
+      if (user?.id) {
+        try {
+          const res = await api.get(`/bookings/customer/${user.id}`);
+          if (res.data?.success) {
+            dispatch({ type: "SET_BOOKINGS", bookings: res.data.data });
+          }
+        } catch (err) {
+          console.error("Failed to fetch customer bookings on home mount:", err);
+        }
+      }
+    };
+    fetchLatestBookings();
+  }, [user?.id, dispatch]);
+
   const currentSeason: SmartSuggestion["season"] = useMemo(() => {
     const m = new Date().getMonth();
     if (m >= 2 && m <= 5) return "summer";
@@ -215,6 +231,13 @@ const Home = () => {
     }
     return deduped;
   }, [bookings, currentSeason]);
+
+  const activeBooking = useMemo(() => {
+    return (bookings || []).find((b: any) =>
+      ["pending", "accepted", "assigned", "on_the_way", "arrived", "in_progress"].includes(b.status) ||
+      (b.status === "completed" && !b.paid)
+    );
+  }, [bookings]);
 
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
     dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
@@ -481,6 +504,46 @@ const Home = () => {
         animate="visible"
         className="flex-1 overflow-y-auto"
       >
+        {/* ═══ ACTIVE BOOKING BANNER ═══ */}
+        {activeBooking && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-5 pt-4 pb-2"
+          >
+            <div
+              onClick={() => navigate(`/tracking/${activeBooking.id}`)}
+              className="w-full flex items-center justify-between p-4 rounded-[20px] bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 text-white shadow-lg cursor-pointer hover:from-orange-600 hover:to-amber-700 transition-all active:scale-[0.99] group border border-amber-400/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center animate-pulse">
+                  <span className="text-xl">
+                    {activeBooking.status === "on_the_way" ? "🛵" :
+                     activeBooking.status === "arrived" ? "📍" :
+                     activeBooking.status === "in_progress" ? "🔧" :
+                     activeBooking.status === "completed" && !activeBooking.paid ? "💳" : "👤"}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm leading-tight text-white">
+                    {activeBooking.status === "on_the_way" ? "Provider is on the way" :
+                     activeBooking.status === "arrived" ? "Provider has arrived!" :
+                     activeBooking.status === "in_progress" ? "Service in progress..." :
+                     activeBooking.status === "completed" && !activeBooking.paid ? "Payment Pending: Click to Pay" :
+                     "Active Booking Tracking"}
+                  </h4>
+                  <p className="text-[11px] text-white/90 mt-0.5 font-medium">
+                    {activeBooking.status === "completed" && !activeBooking.paid ? "Tap to view and complete your payment" : "Tap to track live location & status"}
+                  </p>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                <ChevronRight size={16} className="text-white" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ═══ AD BANNERS ═══ */}
         <AdBannerCarousel />
 

@@ -391,6 +391,10 @@ const SearchingProviders = () => {
       const res = await createBooking(bookingData);
 
       if (res.success) {
+        dispatch({
+          type: "ADD_BOOKING",
+          booking: res.data,
+        });
         navigate(`/tracking/${res.data.id}`);
       }
     } catch (err) {

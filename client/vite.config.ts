@@ -45,6 +45,9 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+  optimizeDeps: {
+    include: ['leaflet'],
+  },
     chunkSizeWarningLimit: 1000,
   },
 }));

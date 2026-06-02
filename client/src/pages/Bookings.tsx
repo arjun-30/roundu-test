@@ -1,17 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import BottomNav from "@/components/BottomNav";
 import BookingCard from "@/components/BookingCard";
 import EmptyState from "@/components/EmptyState";
+import api from "@/lib/api";
 
 const tabs = ["Upcoming", "Active", "Completed"];
 
 const Bookings = () => {
   const navigate = useNavigate();
-  const { bookings } = useApp();
+  const { bookings, user, role, dispatch } = useApp();
   const [tab, setTab] = useState(0);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (user?.id && role === "customer") {
+        try {
+          const res = await api.get(`/bookings/customer/${user.id}`);
+          if (res.data?.success) {
+            dispatch({ type: "SET_BOOKINGS", bookings: res.data.data });
+          }
+        } catch (err) {
+          console.error("Failed to fetch customer bookings on page mount:", err);
+        }
+      }
+    };
+    fetchLatest();
+  }, [user?.id, role, dispatch]);
 
   const filtered = bookings.filter((b) => {
     if (tab === 0) return ["pending", "accepted", "assigned"].includes(b.status);
