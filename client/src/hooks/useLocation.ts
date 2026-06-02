@@ -45,6 +45,8 @@ export const useCurrentLocation = (onUpdate?: (lat: number, lng: number) => void
     };
   });
 
+  const MAX_CACHE_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
   const fetch = useCallback(async (forcePrompt = false) => {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
@@ -96,23 +98,28 @@ export const useCurrentLocation = (onUpdate?: (lat: number, lng: number) => void
         message = 'Location request timed out.';
       }
 
-      // Fallback to cached location if GPS fails
+      // Fallback to cached location if GPS fails and cache is recent
       try {
         const cached = localStorage.getItem('roundu_last_location');
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-            setState(s => ({
-              ...s,
-              coords: { lat: parsed.lat, lng: parsed.lng },
-              address: parsed.address || '',
-              error: null,
-              loading: false,
-            }));
-            if (onUpdate) {
-              onUpdate(parsed.lat, parsed.lng);
+            const age = parsed.ts ? (Date.now() - parsed.ts) : Infinity;
+            if (age <= MAX_CACHE_AGE_MS) {
+              setState(s => ({
+                ...s,
+                coords: { lat: parsed.lat, lng: parsed.lng },
+                address: parsed.address || '',
+                error: null,
+                loading: false,
+              }));
+              if (onUpdate) {
+                onUpdate(parsed.lat, parsed.lng);
+              }
+              return;
+            } else {
+              console.warn('[useCurrentLocation] cached location too old — ignoring');
             }
-            return;
           }
         }
       } catch (cacheErr) {

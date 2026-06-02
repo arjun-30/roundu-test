@@ -4,6 +4,7 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
 import { API_BASE_URL } from "@/config/env";
 import { getSavedRoleForPhone, saveRoleForPhone } from "@/lib/roleStorage";
 
@@ -52,7 +53,7 @@ const OtpVerify = () => {
     // Save so next login skips /role
     saveRoleForPhone(userPhone, role);
     dispatch({ type: "SET_ROLE", role });
-    localStorage.setItem("roundu_role", role);
+    safeSetItem("roundu_role", role);
     navigate(role === "provider" ? "/provider" : "/home", { replace: true });
   };
 
@@ -79,9 +80,9 @@ const OtpVerify = () => {
             profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
             avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
           };
-          localStorage.setItem("roundu_token", token);
-          localStorage.setItem("roundu_user", JSON.stringify(persistedUser));
-          localStorage.setItem("roundu_role", apiUser.role || "customer");
+          safeSetItem("roundu_token", token);
+          saveUserToLocalStorage(persistedUser);
+          safeSetItem("roundu_role", apiUser.role || "customer");
         }
 
         dispatch({ type: "SET_AUTH", value: true });
@@ -132,9 +133,9 @@ const OtpVerify = () => {
         localStorage.removeItem("roundu_token");
         localStorage.removeItem("roundu_user");
         localStorage.removeItem("roundu_role");
-        localStorage.setItem("roundu_token", "mock-token");
-        localStorage.setItem("roundu_user", JSON.stringify(mockUser));
-        localStorage.setItem("roundu_role", "customer");
+        safeSetItem("roundu_token", "mock-token");
+        saveUserToLocalStorage(mockUser);
+        safeSetItem("roundu_role", "customer");
 
         dispatch({ type: "SET_AUTH", value: true });
         dispatch({ type: "SET_USER_ID", id: mockUser.id });

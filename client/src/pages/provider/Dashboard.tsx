@@ -14,14 +14,14 @@ import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
 import { socket } from "@/lib/socket";
-import { getShortAddress } from "@/lib/utils";
+import { getShortAddress, getDistance } from "@/lib/utils";
 import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts } = useApp() as any;
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, currentLocation } = useApp() as any;
 
   // Sync role to provider on mount
   useEffect(() => {
@@ -308,6 +308,19 @@ const Dashboard = () => {
   const handleSubmitQuote = () => {
     if (!quotingBroadcast || !quotePrice) return;
 
+    let distanceKm = 0;
+    if (quotingBroadcast && quotingBroadcast.lat != null && quotingBroadcast.lng != null && currentLocation) {
+      const qlat = Number(quotingBroadcast.lat);
+      const qlng = Number(quotingBroadcast.lng);
+      if (!isNaN(qlat) && !isNaN(qlng)) {
+        try {
+          distanceKm = Math.round(getDistance(currentLocation, { lat: qlat, lng: qlng }) * 10) / 10;
+        } catch (e) {
+          distanceKm = 0;
+        }
+      }
+    }
+
     socket.emit("submit_quote", {
       broadcastId: quotingBroadcast.broadcastId,
       customerId: quotingBroadcast.customerId,
@@ -317,7 +330,7 @@ const Dashboard = () => {
       providerPhone: user.phone || "9999999992",
       price: Number(quotePrice),
       rating: providerStats.rating || 0,
-      distanceKm: 0,
+      distanceKm,
       etaMin: Number(quoteEta),
       reviews: 0
     });

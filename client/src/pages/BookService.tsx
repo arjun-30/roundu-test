@@ -114,7 +114,7 @@ const BookService = () => {
                 address: result.address,
               },
             });
-            localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address }));
+            localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address, ts: Date.now() }));
           }
         } catch (err) {
           console.warn("Reverse geocode failed:", err);

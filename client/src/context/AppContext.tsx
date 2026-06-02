@@ -12,6 +12,7 @@ import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
 import { getStoredMembership, setStoredMembership } from "@/lib/membership";
 import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
+import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
 
 
 type Role = "customer" | "provider" | null;
@@ -402,8 +403,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, isAuthenticated: action.value };
     case "SET_ROLE":
       if (action.role) {
-        localStorage.setItem("roundu_role", action.role);
-      }
+          safeSetItem("roundu_role", action.role);
+        }
       return { ...state, role: action.role };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
@@ -414,8 +415,9 @@ function reducer(state: State, action: Action): State {
         newUser.profilePicture = action.user.avatar_url;
       }
       // Persist user to localStorage for session restoration
+      // Persist a compact user payload to localStorage
       try {
-        localStorage.setItem("roundu_user", JSON.stringify(newUser));
+        saveUserToLocalStorage(newUser);
       } catch (e) {
         console.error("Failed to persist user to localStorage", e);
       }
@@ -836,26 +838,62 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
     });
 
-    socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
-      dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
-
-      // Auto-update status to 'arrived' when provider is within 100m of customer
-      if (state.role === "customer" && state.currentLocation) {
-        state.bookings.forEach((b) => {
-          const providerId = (b as any).provider_id || b.providerId;
-          if (providerId === data.id && b.status === "on_the_way") {
-            const dist = getDistance(state.currentLocation!, { lat: data.lat, lng: data.lng });
-            if (dist < 0.1) { // 100 metres
-              socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
+    socket.on("provider_location_update", (data: any) => {
+      // data may be { id, lat, lng, name } or { bookingId, lat, lng } depending on server path
+      try {
+        if (data && data.id) {
+          dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
+        } else if (data && data.bookingId) {
+          // Map booking -> providerId if available
+          const booking = state.bookings.find(b => String(b.id) === String(data.bookingId));
+          if (booking) {
+            const providerId = (booking as any).provider_id || (booking as any).providerId || null;
+            if (providerId) {
+              dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: data.lat, providerLng: data.lng } });
+              dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat: data.lat, lng: data.lng, name: (booking as any).providerName || '' } as any);
             }
           }
-        });
+        }
+
+        // Auto-update status to 'arrived' when provider is within 100m of customer (best-effort)
+        if (state.role === "customer" && state.currentLocation && data && (data.lat != null) && (data.lng != null)) {
+          state.bookings.forEach((b) => {
+            const providerId = (b as any).provider_id || b.providerId;
+            const match = (data.id && providerId === data.id) || (data.bookingId && String(b.id) === String(data.bookingId));
+            if (match && b.status === "on_the_way") {
+              const dist = getDistance(state.currentLocation!, { lat: Number(data.lat), lng: Number(data.lng) });
+              if (dist < 0.1) { // 100 metres
+                socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[socket] provider_location_update handler error', err);
       }
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
       console.log("[socket] ✅ incoming_broadcast received:", broadcast);
       dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
+    });
+
+    // Server-side tracking emits this event to booking rooms: { bookingId, lat, lng }
+    socket.on('provider:location_updated', (data: { bookingId: string; lat: number; lng: number }) => {
+      try {
+        // Update booking's provider coords if we have the booking in state
+        const booking = state.bookings.find(b => b.id === String(data.bookingId));
+        if (booking) {
+          const providerId = (booking as any).provider_id || (booking as any).providerId || null;
+          if (providerId) {
+            dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: data.lat, providerLng: data.lng } });
+            // Also update nearbyProviders map so UI can access quickly
+            dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat: data.lat, lng: data.lng, name: (booking as any).providerName || '' } as any);
+          }
+        }
+      } catch (err) {
+        console.warn('[socket] provider:location_updated handler error', err);
+      }
     });
 
     socket.on("new_quote_received", (quote: ProviderQuote) => {
@@ -1020,7 +1058,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     : null;
 
   useEffect(() => {
-    localStorage.setItem("roundu_user", JSON.stringify(state.user));
+    // Save a compact representation of the current user to localStorage
+    saveUserToLocalStorage(state.user);
   }, [state.user]);
 
   return (

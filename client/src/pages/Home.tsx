@@ -223,7 +223,7 @@ const Home = () => {
       const result = await reverseGeocode(lat, lng);
       if (result.address) {
         dispatch({ type: "UPDATE_USER", user: { address: result.address } });
-        localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address }));
+        localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address, ts: Date.now() }));
       }
     } catch (err) {
       console.warn("Reverse geocode failed:", err);
