@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Phone, MessageCircle, CheckCircle2, XCircle,
+  Phone, MessageCircle, CheckCircle2, XCircle,
   IndianRupee, Navigation2, MapPin, Wrench, Flag, MessageSquare
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
-import { getProviderById } from "@/data/mockData";
+import { getProviderById, getServiceById } from "@/data/mockData";
 
 // 4 stages matching the provider side
 const CUSTOMER_STAGES = [
@@ -68,7 +68,7 @@ const getStageReached = (status: string): number => {
 const Tracking = () => {
   const navigate = useNavigate();
   const { id = "" } = useParams();
-  const { bookings, dispatch } = useApp();
+  const { user, bookings, dispatch } = useApp();
   const booking = bookings.find((b) => b.id === id);
 
   const [eta, setEta] = useState(15);
@@ -165,18 +165,24 @@ const Tracking = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-32 font-['DM_Sans',sans-serif]">
 
-      {/* Header */}
+      {/* Header — customer profile top-left, no back button */}
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
         <button
           onClick={() => navigate("/home")}
-          className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95"
+          className="flex items-center gap-2.5 active:opacity-70 transition-opacity"
         >
-          <ArrowLeft size={20} />
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm shadow-md overflow-hidden flex-shrink-0">
+            {user?.profilePicture ? (
+              <img src={user.profilePicture} className="w-10 h-10 rounded-full object-cover" alt={user?.name} />
+            ) : (
+              <span>{(user?.name?.charAt(0) || "C").toUpperCase()}</span>
+            )}
+          </div>
+          <div className="text-left">
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Customer</p>
+            <p className="text-[13px] font-bold text-foreground leading-tight">{user?.name || "You"}</p>
+          </div>
         </button>
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Live Tracking</h1>
-          <p className="text-[11px] text-muted-foreground">{headerText}</p>
-        </div>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span className="text-xs text-green-600 font-semibold">Live</span>
@@ -232,25 +238,33 @@ const Tracking = () => {
           <p className="text-[11px] text-muted-foreground">{(booking as any).address || "Your location"}</p>
         </div>
 
-        {/* ── Provider card ─────────────────────────────────────────────── */}
+        {/* ── Provider card (clickable profile) ────────────────────────── */}
         {provider && (
           <div className="bg-card border border-border rounded-2xl p-4 shadow-card flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-              {typeof provider.avatar === "string" && provider.avatar.startsWith("http")
-                ? <img src={provider.avatar} className="w-12 h-12 rounded-xl object-cover" alt={provider.name} />
-                : (provider.avatar || provider.name?.[0] || "P")}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground">{provider.name}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {provider.rating === 0 ? (
-                  <span className="bg-yellow-100 text-yellow-700 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mr-1">New</span>
-                ) : (
-                  `${provider.rating} ★ · `
-                )}
-                {provider.experienceYrs} yrs experience
-              </p>
-            </div>
+            {/* Left section: tap to view provider profile */}
+            <button
+              onClick={() => navigate(`/provider/${booking.providerId}`, {
+                state: { provider: { ...provider, id: booking.providerId } }
+              })}
+              className="flex items-center gap-3 flex-1 min-w-0 active:opacity-70 transition-opacity text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
+                {typeof provider.avatar === "string" && provider.avatar.startsWith("http")
+                  ? <img src={provider.avatar} className="w-12 h-12 rounded-xl object-cover" alt={provider.name} />
+                  : (provider.avatar || provider.name?.[0] || "P")}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground">{provider.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {provider.rating === 0 ? (
+                    <span className="bg-yellow-100 text-yellow-700 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mr-1">New</span>
+                  ) : (
+                    `${provider.rating} ★ · `
+                  )}
+                  {provider.experienceYrs} yrs experience
+                </p>
+              </div>
+            </button>
             <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
               <Phone size={16} className="text-primary" />
             </button>
@@ -360,16 +374,36 @@ const Tracking = () => {
             })}
           </div>
         </div>
-      </div>
 
-      {/* ── Floating Chat Button ───────────────────────────────────────────── */}
-      <button
-        onClick={() => navigate(`/chat/${booking.id}`)}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-primary shadow-xl flex items-center justify-center active:scale-95 transition-transform z-20"
-        aria-label="Open chat"
-      >
-        <MessageSquare size={22} className="text-white" />
-      </button>
+        {/* ── Booking Details (no Estimated Price) ────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl shadow-card overflow-hidden">
+          <DetailRow
+            label="Service"
+            value={getServiceById(booking.serviceId)?.label || booking.serviceId || "Service"}
+          />
+          <DetailRow
+            label="Booking ID"
+            value={`#${String(booking.id).slice(0, 8).toUpperCase()}`}
+          />
+          <DetailRow
+            label="Scheduled Time"
+            value={`${booking.date || "Today"}, ${booking.time || ""}`}
+          />
+          <DetailRow
+            label="Payment Mode"
+            value="Cash after service"
+          />
+        </div>
+
+        {/* ── Start Conversation ──────────────────────────────────────────── */}
+        <button
+          onClick={() => navigate(`/chat/${booking.id}`)}
+          className="w-full py-4 rounded-2xl bg-card border border-border text-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-card"
+        >
+          <MessageSquare size={18} className="text-primary" />
+          Start Conversation
+        </button>
+      </div>
 
       {/* ── Complete & Pay CTA ─────────────────────────────────────────────── */}
       {currentStatus === "completed" && (
@@ -407,5 +441,12 @@ const Tracking = () => {
     </div>
   );
 };
+
+const DetailRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-center justify-between px-4 py-3.5 border-b border-border last:border-b-0">
+    <span className="text-[12px] text-muted-foreground font-semibold">{label}</span>
+    <span className="text-[13px] font-bold text-foreground text-right max-w-[55%] truncate">{value}</span>
+  </div>
+);
 
 export default Tracking;

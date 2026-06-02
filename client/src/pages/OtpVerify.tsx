@@ -74,8 +74,13 @@ const OtpVerify = () => {
           localStorage.removeItem("roundu_token");
           localStorage.removeItem("roundu_user");
           localStorage.removeItem("roundu_role");
+          const persistedUser = {
+            ...apiUser,
+            profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
+            avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
+          };
           localStorage.setItem("roundu_token", token);
-          localStorage.setItem("roundu_user", JSON.stringify(apiUser));
+          localStorage.setItem("roundu_user", JSON.stringify(persistedUser));
           localStorage.setItem("roundu_role", apiUser.role || "customer");
         }
 
@@ -84,11 +89,10 @@ const OtpVerify = () => {
         dispatch({
           type: "UPDATE_USER",
           user: {
-            name: apiUser.name || "",
-            email: apiUser.email || "",
-            address: apiUser.address || "",
-            role: apiUser.role || "customer",
-            phone: phone || "",
+            ...apiUser,
+            profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
+            avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
+            phone: phone || apiUser.phone || "",
           },
         });
 

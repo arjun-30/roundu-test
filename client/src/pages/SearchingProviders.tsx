@@ -391,7 +391,7 @@ const SearchingProviders = () => {
       const res = await createBooking(bookingData);
 
       if (res.success) {
-        navigate(`/chat/${res.data.id}`);
+        navigate(`/tracking/${res.data.id}`);
       }
     } catch (err) {
       console.error(err);
