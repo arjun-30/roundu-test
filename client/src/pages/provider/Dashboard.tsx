@@ -28,6 +28,44 @@ const Dashboard = () => {
     dispatch({ type: "SET_ROLE", role: "provider" });
   }, [dispatch]);
   const [showWarning, setShowWarning] = useState(true);
+  const [walletBalance] = useState(2500);
+  const [commissionDue] = useState(0);
+  const [unpaidCOD] = useState(0);
+
+  const isFrozen =
+    commissionDue > 500 ||
+    unpaidCOD >= 3;
+
+  const hasPaymentPendingJob = providerRequests.some(
+    (r: any) => r.status === "payment_pending"
+
+  );
+  const canAcceptScheduledJob = (job: any) => {
+    const activeJob = providerRequests.find((r: any) =>
+      [
+        "accepted",
+        "assigned",
+        "on_the_way",
+        "arrived",
+        "in_progress",
+        "payment_pending"
+      ].includes(r.status)
+    );
+
+    if (!activeJob) return true;
+
+    const now = new Date();
+
+    const scheduledTime = new Date(
+      `${job.date} ${job.time}`
+    );
+
+    const diffHours =
+      (scheduledTime.getTime() - now.getTime()) /
+      (1000 * 60 * 60);
+
+    return diffHours >= 6;
+  };
   const [selectedJob, setSelectedJob] = useState<ProviderRequest | null>(null);
   const [simulatedRequest, setSimulatedRequest] = useState<ProviderRequest | null>(null);
 
@@ -66,13 +104,20 @@ const Dashboard = () => {
         }
       }
     }
-    
+
     if (start && !isNaN(start.getTime())) {
       const ageHours = (new Date().getTime() - start.getTime()) / (1000 * 60 * 60);
       if (ageHours > 24) return false; // Ignore stale jobs
     }
 
-    if (["in_progress", "on_the_way", "arrived"].includes(r.status)) {
+    if (
+      [
+        "in_progress",
+        "on_the_way",
+        "arrived",
+        "payment_pending"
+      ].includes(r.status)
+    ) {
       return true;
     }
     if (["assigned", "accepted"].includes(r.status)) {
@@ -323,17 +368,51 @@ const Dashboard = () => {
         <IncomingRequestPopup
           request={activeBroadcast}
           isBroadcast={true}
-          onAccept={() => setQuotingBroadcast(activeBroadcast)}
+          onAccept={() => {
+
+            const req = activeBroadcast;
+
+            if (isFrozen) {
+              alert("Account frozen. Clear dues first.");
+              return;
+            }
+
+            if (
+              req?.jobType === "quick_fix" &&
+              hasPaymentPendingJob
+            ) {
+              alert(
+                "Complete payment collection before accepting another Quick Fix."
+              );
+              return;
+            }
+
+            if (
+              req?.jobType === "scheduled" &&
+              !canAcceptScheduledJob(req)
+            ) {
+              alert(
+                "Scheduled jobs must be at least 6 hours away."
+              );
+              return;
+            }
+
+            setQuotingBroadcast(activeBroadcast);
+          }}
+
           onReject={() => {
-            // Remove from both local state AND liveBroadcasts context
-            dispatch({ type: "REMOVE_LIVE_BROADCAST", id: activeBroadcast.broadcastId });
+            dispatch({
+              type: "REMOVE_LIVE_BROADCAST",
+              id: activeBroadcast.broadcastId
+            });
+
             setActiveBroadcast(null);
           }}
         />
       )}
 
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -345,35 +424,35 @@ const Dashboard = () => {
             {user.profilePicture ? (
               <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <img 
-                src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
-                alt="Default Avatar" 
-                className="w-full h-full object-cover" 
+              <img
+                src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`}
+                alt="Default Avatar"
+                className="w-full h-full object-cover"
               />
             )}
           </div>
-          
+
           {/* Greeting and Location */}
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-muted-foreground font-semibold tracking-wide uppercase leading-tight">Provider Dashboard</p>
             <h1 className="text-[22px] font-extrabold text-foreground mt-0.5 tracking-tight truncate">Hi, {user.name.split(" ")[0] || "Provider"}</h1>
-          <button 
-            onClick={() => setIsLocationModalOpen(true)}
-            className="group relative z-[82] flex max-w-full items-center gap-1.5 mt-1 cursor-pointer pointer-events-auto"
-          >
-            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
-              <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
-            </div>
-            <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors max-w-[135px] sm:max-w-[240px] truncate">
-              {locating || gpsLoading ? (
-                <span className="flex items-center gap-1">
-                  <span className="block h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" /> Detecting...
-                </span>
-              ) : (
-                getShortAddress(user.address) || "Set Location"
-              )}
-            </p>
-          </button>
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="group relative z-[82] flex max-w-full items-center gap-1.5 mt-1 cursor-pointer pointer-events-auto"
+            >
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
+                <MapPin size={10} className="text-primary group-hover:text-accent transition-colors" />
+              </div>
+              <p className="text-[12px] font-bold text-muted-foreground group-hover:text-primary transition-colors max-w-[135px] sm:max-w-[240px] truncate">
+                {locating || gpsLoading ? (
+                  <span className="flex items-center gap-1">
+                    <span className="block h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" /> Detecting...
+                  </span>
+                ) : (
+                  getShortAddress(user.address) || "Set Location"
+                )}
+              </p>
+            </button>
           </div>
         </div>
         <div className="relative z-[82] flex shrink-0 gap-2 sm:gap-3 items-center pointer-events-auto">
@@ -422,16 +501,30 @@ const Dashboard = () => {
         </div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
         className="relative z-0 flex-1 overflow-y-auto pt-3 pb-6"
       >
+        {isFrozen && (
+          <div className="mx-5 mt-4 mb-4">
+            <div className="bg-red-50 border border-red-300 rounded-2xl p-4">
+              <p className="font-bold text-red-700">
+                🚫 Account Frozen
+              </p>
+
+              <p className="text-sm text-red-600 mt-1">
+                Outstanding commission dues detected.
+                Clear dues to receive new jobs.
+              </p>
+            </div>
+          </div>
+        )}
         {/* Active Booking Lock Banner */}
         <AnimatePresence>
           {isBusy && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -497,7 +590,7 @@ const Dashboard = () => {
             if (!warning || !showWarning) return null;
 
             return (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -532,10 +625,10 @@ const Dashboard = () => {
                 const service = getServiceById(b.serviceId);
                 const isQuoted = b.status === "waiting_for_customer" || (quotedBroadcasts && quotedBroadcasts.includes(b.broadcastId));
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    key={b.broadcastId} 
+                    key={b.broadcastId}
                     className="bg-[#FFFBEB] border-2 border-[#FDE68A] rounded-[24px] p-5 shadow-[0_8px_30px_rgba(245,158,11,0.06)] relative overflow-hidden"
                   >
                     <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-accent/10 rounded-full blur-[40px] pointer-events-none" />
@@ -583,9 +676,8 @@ const Dashboard = () => {
                                 whileTap={{ scale: 0.98 }}
                                 disabled={isBusy}
                                 onClick={() => setQuotingBroadcast(b)}
-                                className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold shadow-md ${
-                                  isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-accent text-white shadow-accent/20'
-                                }`}
+                                className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold shadow-md ${isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-accent text-white shadow-accent/20'
+                                  }`}
                               >
                                 Provide Quote
                               </motion.button>
@@ -608,7 +700,72 @@ const Dashboard = () => {
             </div>
           </motion.div>
         )}
+        {/* Provider Wallet & Compliance */}
+        <motion.div variants={itemVariants} className="px-5 mb-6">
+          <div
+            className={`rounded-[24px] p-5 shadow-lg ${isFrozen
+              ? "bg-gradient-to-r from-red-600 to-red-700"
+              : unpaidCOD > 0
+                ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                : "bg-gradient-to-r from-[#0F172A] to-[#1E293B]"
+              } text-white`}
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs uppercase tracking-widest opacity-80">
+                  Provider Wallet
+                </p>
 
+                <h2 className="text-3xl font-black mt-2">
+                  ₹{walletBalance}
+                </h2>
+              </div>
+
+              <Wallet size={28} />
+            </div>
+
+            <div className="mt-5 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Commission Due</span>
+                <span className="font-bold">₹{commissionDue}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>COD Pending Jobs</span>
+                <span className="font-bold">{unpaidCOD}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Platform Share</span>
+                <span className="font-bold">15%</span>
+              </div>
+            </div>
+
+            {hasPaymentPendingJob && (
+              <div className="mt-4 bg-white/20 rounded-xl p-3">
+                <p className="font-bold text-sm">
+                  Quick Fix Locked
+                </p>
+
+                <p className="text-xs opacity-90 mt-1">
+                  Complete payment collection before accepting another Quick Fix job.
+                </p>
+              </div>
+            )}
+
+            {isFrozen && (
+              <div className="mt-4 bg-white/20 rounded-xl p-3">
+                <p className="font-bold">
+                  Account Frozen
+                </p>
+
+                <p className="text-xs mt-1">
+                  Clear outstanding commission dues to receive new bookings.
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
         {/* Stats Row */}
         <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
           <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar -mx-5 px-5">
@@ -755,10 +912,10 @@ const Dashboard = () => {
               {pending.map((r) => {
                 const service = getServiceById(r.serviceId);
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={r.id} 
+                    key={r.id}
                     className="bg-white border-2 border-transparent hover:border-primary/10 rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors"
                   >
                     <div className="flex items-start gap-4">
@@ -781,13 +938,74 @@ const Dashboard = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
-                          socket.emit("update_job_status", { jobId: r.id, status: "accepted" });
-                          dispatch({ type: "ACCEPT_REQUEST", id: r.id });
+
+                          // Account Frozen Check
+                          if (isFrozen) {
+                            alert(
+                              "Account Frozen. Clear outstanding commission dues before accepting new jobs."
+                            );
+                            return;
+                          }
+
+                          // Quick Fix Lock Check
+                          // Quick Fix Lock Check
+                          if (hasPaymentPendingJob) {
+
+                            if (r.jobType === "scheduled") {
+
+                              const now = new Date();
+
+                              const scheduledTime = new Date(
+                                `${r.date} ${r.time}`
+                              );
+
+                              const hoursDiff =
+                                (scheduledTime.getTime() - now.getTime()) /
+                                (1000 * 60 * 60);
+
+                              if (hoursDiff < 6) {
+                                alert(
+                                  "Scheduled jobs must be at least 6 hours away from your current active job."
+                                );
+                                return;
+                              }
+
+                            } else {
+
+                              alert(
+                                "Complete payment collection for your current Quick Fix job before accepting another one."
+                              );
+                              return;
+                            }
+                          }
+
+                          // Accept Job
+                          socket.emit("update_job_status", {
+                            jobId: r.id,
+                            status: "accepted"
+                          });
+
+                          dispatch({
+                            type: "ACCEPT_REQUEST",
+                            id: r.id
+                          });
+
                           navigate(`/provider/job/${r.id}`);
                         }}
-                        className="flex-1 py-3 rounded-[16px] bg-primary text-white text-[13px] font-bold flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+                        disabled={isFrozen || hasPaymentPendingJob}
+                        className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold flex items-center justify-center gap-2 shadow-md transition-all
+    ${isFrozen || hasPaymentPendingJob
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-primary text-white shadow-primary/20"
+                          }
+  `}
                       >
-                        <Check size={16} strokeWidth={2.5} /> Accept
+                        <Check size={16} strokeWidth={2.5} />
+                        {isFrozen
+                          ? "Account Frozen"
+                          : hasPaymentPendingJob
+                            ? "Payment Pending"
+                            : "Accept"}
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -1002,13 +1220,44 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => {
-                  socket.emit("update_job_status", { jobId: selectedJob.id, status: "accepted" });
-                  dispatch({ type: "ACCEPT_REQUEST", id: selectedJob.id });
+
+                  if (isFrozen) {
+                    alert("Account frozen. Clear dues first.");
+                    return;
+                  }
+
+                  if (hasPaymentPendingJob) {
+                    alert(
+                      "Complete pending payment before accepting another Quick Fix."
+                    );
+                    return;
+                  }
+
+                  socket.emit("update_job_status", {
+                    jobId: selectedJob.id,
+                    status: "accepted"
+                  });
+
+                  dispatch({
+                    type: "ACCEPT_REQUEST",
+                    id: selectedJob.id
+                  });
+
                   navigate(`/provider/job/${selectedJob.id}`);
                 }}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform shadow-md"
+                disabled={isFrozen || hasPaymentPendingJob}
+                className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-transform
+    ${isFrozen || hasPaymentPendingJob
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-primary text-primary-foreground shadow-md"
+                  }
+  `}
               >
-                Accept Job
+                {isFrozen
+                  ? "Account Frozen"
+                  : hasPaymentPendingJob
+                    ? "Payment Pending"
+                    : "Accept Job"}
               </button>
             </div>
           </div>
@@ -1090,9 +1339,9 @@ const Dashboard = () => {
         </div>
       )}
       {/* Location Modal */}
-      <LocationModal 
-        isOpen={isLocationModalOpen} 
-        onClose={() => setIsLocationModalOpen(false)} 
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
       />
     </div>
   );

@@ -40,7 +40,15 @@ export interface Booking {
   date: string; // ISO date
   time: string;
   notes: string;
-  status: "pending" | "assigned" | "on_the_way" | "arrived" | "in_progress" | "completed" | "cancelled";
+  status:
+  | "pending"
+  | "assigned"
+  | "on_the_way"
+  | "arrived"
+  | "in_progress"
+  | "completed"
+  | "payment_pending"
+  | "paid";
   createdAt: number;
   price: number;
   rating?: number;
@@ -58,7 +66,17 @@ export interface ProviderRequest {
   date: string;
   time: string;
   price: number;
-  status: "pending" | "accepted" | "rejected" | "assigned" | "on_the_way" | "arrived" | "in_progress" | "completed" | "cancelled";
+  status:
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "assigned"
+  | "on_the_way"
+  | "arrived"
+  | "in_progress"
+  | "completed"
+  | "payment_pending"
+  | "paid";
   notes?: string;
   voiceNote?: boolean;
   voiceNoteUrl?: string;
@@ -73,49 +91,49 @@ export interface ProviderRequest {
 }
 
 export const services: Service[] = [
-  { 
-    id: "plumber", 
-    label: "Plumber", 
-    icon: Droplets, 
+  {
+    id: "plumber",
+    label: "Plumber",
+    icon: Droplets,
     desc: "Pipes & drainage",
     commonProblems: ["Leaking pipes", "Tap repair", "Washbasin clog", "Water tanker", "Bathroom fittings"],
     relatedServiceIds: ["housekeeping", "electrician"]
   },
-  { 
-    id: "electrician", 
-    label: "Electrician", 
-    icon: Zap, 
+  {
+    id: "electrician",
+    label: "Electrician",
+    icon: Zap,
     desc: "Wiring & fixtures",
     commonProblems: ["Fan repair", "Short circuit", "Switchboard issues", "New wiring", "MCB tripping"],
     relatedServiceIds: ["housekeeping", "plumber"]
   },
-  { 
-    id: "carwash", 
-    label: "Car Wash", 
-    icon: Car, 
-    desc: "At your doorstep", 
+  {
+    id: "carwash",
+    label: "Car Wash",
+    icon: Car,
+    desc: "At your doorstep",
     commonProblems: ["Exterior wash", "Interior detailing", "Full car spa"],
     relatedServiceIds: ["drivers", "housekeeping"]
   },
-  { 
-    id: "drivers", 
-    label: "Acting Drivers", 
-    icon: User, 
-    desc: "Expert chauffeurs", 
+  {
+    id: "drivers",
+    label: "Acting Drivers",
+    icon: User,
+    desc: "Expert chauffeurs",
     commonProblems: ["City driving", "Outstation trip", "Pick & drop", "Monthly driver"],
     relatedServiceIds: ["carwash"]
   },
-  { 
-    id: "housekeeping", 
-    label: "House Keeping", 
+  {
+    id: "housekeeping",
+    label: "House Keeping",
     icon: SprayCan,
     desc: "Deep & regular",
     commonProblems: ["Kitchen cleaning", "Bathroom deep clean", "Full home clean", "Sofa cleaning"],
     relatedServiceIds: ["plumber", "electrician", "carwash"]
   },
-  { 
-    id: "srv-d7orcli8qa3s738r9qe0", 
-    label: "Expert Services", 
+  {
+    id: "srv-d7orcli8qa3s738r9qe0",
+    label: "Expert Services",
     icon: Sparkles,
     desc: "Premium customized services",
     commonProblems: ["Custom requirement", "Technical fix", "General maintenance"],
