@@ -652,26 +652,7 @@ const BookService = () => {
           </div>
         </div>
 
-        {/* PRICE */}
-        {!((routerLocation.state as any)?.recommendedSuggestionId) && (
-          <div className="bg-white rounded-[28px] border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
-            <p className="text-[13px] font-semibold text-slate-500">
-              Estimated Price
-            </p>
-
-            <div className="flex items-end justify-between mt-2">
-
-              <h3 className="text-[30px] font-extrabold text-[#0F172A]">
-                ₹299 – ₹599
-              </h3>
-
-              <span className="text-[13px] text-slate-500">
-                After inspection
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* LOCATION MODAL */}

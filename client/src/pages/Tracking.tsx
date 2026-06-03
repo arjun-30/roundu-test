@@ -342,7 +342,7 @@ const Tracking = () => {
           <DetailRow icon={<Wrench size={15} />}      label="Service"        value={service?.label || booking.serviceId || "Service"} />
           <DetailRow icon={<Key size={15} />}          label="Booking ID"     value={`KA${String(booking.id).slice(-6).toUpperCase()}`} />
           <DetailRow icon={<Calendar size={15} />}     label="Scheduled Time" value={`${booking.date || "Today"}, ${booking.time || "Now"}`} />
-          <DetailRow icon={<IndianRupee size={15} />}  label="Estimated Price" value={booking.price ? `₹${booking.price}` : "₹299 – ₹599"} />
+          <DetailRow icon={<IndianRupee size={15} />}  label="Price"           value={booking.price ? `₹${booking.price}` : "After inspection"} />
           <DetailRow icon={<CreditCard size={15} />}   label="Payment Mode"   value="Cash after service" />
         </div>
 

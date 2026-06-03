@@ -615,7 +615,7 @@ const SearchingProviders = () => {
                   </div>
 
                   <div className="text-right">
-                    <div className="text-[20px] font-black text-blue-600">
+                    <div className="text-[20px] font-black text-[#152E4B]">
                       ₹{q.price}
                     </div>
 
@@ -628,7 +628,7 @@ const SearchingProviders = () => {
                 <button
                   disabled={acceptingQuoteId === q.providerId}
                   onClick={() => handleAcceptQuote(q)}
-                  className="w-full mt-4 bg-blue-600 text-white py-3 rounded-2xl font-bold active:scale-95 transition"
+                  className="w-full mt-4 bg-[#152E4B] text-white py-3 rounded-2xl font-bold active:scale-95 transition"
                 >
                   {acceptingQuoteId === q.providerId
                     ? "Confirming..."
