@@ -10,8 +10,12 @@ import axios from "axios";
 const Earnings = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useApp();
-  
+  const {
+    user,
+    walletBalance = 0,
+    commissionDue = 0,
+    codPendingCount = 0
+  } = useApp() as any;
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,9 +35,9 @@ const Earnings = () => {
         const dashboardRes = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
         if (dashboardRes.data.success) {
           setBalance(dashboardRes.data.data.wallet?.balance || 0);
-          
+
           const providerId = dashboardRes.data.data.provider.id;
-          
+
           const bookingsRes = await axios.get(`/api/v1/bookings/provider/${providerId}`);
           if (bookingsRes.data.success) {
             const completed = bookingsRes.data.data.filter((b: any) => b.status === 'completed');
@@ -58,8 +62,13 @@ const Earnings = () => {
     if (timeframe === "This Week") return now - jobDate < 7 * 86400000;
     return now - jobDate < 30 * 86400000;
   });
-  
+
   const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
+  const withdrawableAmount =
+    Math.max(
+      0,
+      walletBalance - commissionDue
+    );
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
@@ -68,18 +77,50 @@ const Earnings = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">Earnings</h1>
-      </div>
+        <div className="px-5 space-y-4">
+        </div>
 
-      <div className="px-5 space-y-4">
-        <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-colors" />
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Available Balance</p>
-          <div className="flex items-end gap-2 mt-2">
-            <p className="text-4xl font-extrabold text-white">₹{balance.toLocaleString('en-IN')}</p>
+        <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden">
+
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">
+            Withdrawable Balance
+          </p>
+
+          <p className="text-4xl font-extrabold text-white mt-2">
+            ₹{withdrawableAmount.toLocaleString("en-IN")}
+          </p>
+
+          <div className="mt-5 space-y-2 text-sm text-white">
+
+            <div className="flex justify-between">
+              <span>Wallet Balance</span>
+              <span className="font-bold">
+                ₹{walletBalance}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Commission Due</span>
+              <span className="font-bold text-red-300">
+                ₹{commissionDue}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>COD Pending Jobs</span>
+              <span className="font-bold">
+                {codPendingCount}
+              </span>
+            </div>
+
           </div>
-          <button className="w-full mt-6 py-4 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+
+          <button
+            className="w-full mt-6 py-4 rounded-2xl bg-primary text-white font-extrabold"
+          >
             Withdraw to Bank
           </button>
+
         </div>
 
         <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
@@ -87,11 +128,10 @@ const Earnings = () => {
             <button
               key={label}
               onClick={() => setTimeframe(label as any)}
-              className={`px-5 py-2.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all ${
-                timeframe === label 
-                  ? "bg-primary border-primary text-primary-foreground shadow-md" 
-                  : "bg-white border-border text-muted-foreground"
-              }`}
+              className={`px-5 py-2.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all ${timeframe === label
+                ? "bg-primary border-primary text-primary-foreground shadow-md"
+                : "bg-white border-border text-muted-foreground"
+                }`}
             >
               {label}
             </button>
@@ -99,8 +139,29 @@ const Earnings = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Stat label="Jobs Done" value={String(filteredJobs.length)} color="text-secondary" />
-          <Stat label="Earned" value={`₹${timeframeTotal}`} color="text-emerald-600" />
+          <Stat
+            label="Jobs Done"
+            value={String(filteredJobs.length)}
+            color="text-secondary"
+          />
+
+          <Stat
+            label="Earned"
+            value={`₹${timeframeTotal}`}
+            color="text-emerald-600"
+          />
+
+          <Stat
+            label="Commission"
+            value={`₹${commissionDue}`}
+            color="text-red-500"
+          />
+
+          <Stat
+            label="COD Jobs"
+            value={String(codPendingCount)}
+            color="text-orange-500"
+          />
         </div>
       </div>
 

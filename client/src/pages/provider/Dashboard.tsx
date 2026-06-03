@@ -28,13 +28,12 @@ const Dashboard = () => {
     dispatch({ type: "SET_ROLE", role: "provider" });
   }, [dispatch]);
   const [showWarning, setShowWarning] = useState(true);
-  const [walletBalance] = useState(2500);
-  const [commissionDue] = useState(0);
-  const [unpaidCOD] = useState(0);
-
-  const isFrozen =
-    commissionDue > 500 ||
-    unpaidCOD >= 3;
+  const {
+    walletBalance = 0,
+    commissionDue = 0,
+    codPendingCount = 0,
+    isFrozen = false
+  } = useApp() as any;
 
   const hasPaymentPendingJob = providerRequests.some(
     (r: any) => r.status === "payment_pending"
@@ -718,7 +717,7 @@ const Dashboard = () => {
           <div
             className={`rounded-[24px] p-5 shadow-lg ${isFrozen
               ? "bg-gradient-to-r from-red-600 to-red-700"
-              : unpaidCOD > 0
+              : codPendingCount > 0
                 ? "bg-gradient-to-r from-amber-500 to-orange-500"
                 : "bg-gradient-to-r from-[#0F172A] to-[#1E293B]"
               } text-white`}
@@ -745,7 +744,7 @@ const Dashboard = () => {
 
               <div className="flex justify-between">
                 <span>COD Pending Jobs</span>
-                <span className="font-bold">{unpaidCOD}</span>
+                <span className="font-bold">{codPendingCount}</span>
               </div>
 
               <div className="flex justify-between">
@@ -1005,20 +1004,31 @@ const Dashboard = () => {
 
                           navigate(`/provider/job/${r.id}`);
                         }}
-                        disabled={isFrozen || hasPaymentPendingJob}
-                        className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold flex items-center justify-center gap-2 shadow-md transition-all
-    ${isFrozen || hasPaymentPendingJob
+                        disabled={
+                          isFrozen ||
+                          (
+                            hasPaymentPendingJob &&
+                            r.jobType !== "scheduled"
+                          )
+                        } className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold flex items-center justify-center gap-2 shadow-md transition-all
+    ${isFrozen ||
+                            (
+                              hasPaymentPendingJob &&
+                              r.jobType !== "scheduled"
+                            )
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-primary text-white shadow-primary/20"
                           }
   `}
                       >
                         <Check size={16} strokeWidth={2.5} />
-                        {isFrozen
-                          ? "Account Frozen"
-                          : hasPaymentPendingJob
-                            ? "Payment Pending"
-                            : "Accept"}
+                        {
+                          isFrozen
+                            ? "Account Frozen"
+                            : hasPaymentPendingJob && r.jobType !== "scheduled"
+                              ? "Payment Pending"
+                              : "Accept"
+                        }
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -1258,8 +1268,7 @@ const Dashboard = () => {
 
                   navigate(`/provider/job/${selectedJob.id}`);
                 }}
-                disabled={isFrozen || hasPaymentPendingJob}
-                className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-transform
+                disabled={isFrozen} className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-transform
     ${isFrozen || hasPaymentPendingJob
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-primary text-primary-foreground shadow-md"
