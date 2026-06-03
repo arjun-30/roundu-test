@@ -156,7 +156,12 @@ const EditProfile = () => {
     setEmailError('');
 
     try {
-      await updateUser(user.id, { avatar_url: profilePicture });
+      await updateUser(user.id, { 
+        name,
+        email,
+        phone,
+        avatar_url: profilePicture 
+      });
       dispatch({
         type: "UPDATE_USER",
         user: {

@@ -67,6 +67,16 @@ const modernSuggestionCardConfigs: Record<string, {
     accentRing: "bg-amber-200/40",
     label: "Fan Service",
   },
+  "sug-elec-2": {
+    title: "Switchboard maintenance due",
+    caption: "Loose connections are a fire risk.",
+    icon: Zap,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "LOW VOLTAGE",
+  },
   "sug-plumb-4": {
     title: "Drainage Cleaning",
     caption: "Prevent water blockage",
@@ -98,14 +108,14 @@ const modernSuggestionCardConfigs: Record<string, {
     label: "Festival Ready",
   },
   "sug-exp-2": {
-    title: "Festival home prep",
+    title: "Festival home preparation",
     caption: "Get your home ready for celebrations.",
-    icon: Sparkles,
+    icon: Gift,
     iconBg: "bg-white text-[#92400E]",
     cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
     textColor: "text-slate-900",
     accentRing: "bg-amber-200/40",
-    label: "Expert Services",
+    label: "Customisation",
   },
 };
 
@@ -229,6 +239,12 @@ const Home = () => {
       }
       if (deduped.length >= 5) break;
     }
+
+    const festivalSuggestion = scored.find((s) => s.id === "sug-exp-2");
+    if (festivalSuggestion && !deduped.some((s) => s.id === "sug-exp-2")) {
+      deduped.push(festivalSuggestion);
+    }
+
     return deduped;
   }, [bookings, currentSeason]);
 
@@ -635,7 +651,7 @@ const Home = () => {
                 History
               </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto px-5 pb-5 scrollbar-hide snap-x snap-mandatory">
+            <div className="flex gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
               {rankedSuggestions.map((sugg) => {
                 const cardConfig = getModernSuggestionConfig(sugg);
                 const IconComponent = cardConfig.icon;
@@ -643,30 +659,27 @@ const Home = () => {
                   <button
                     key={sugg.id}
                     onClick={() => goToRecommendedBooking(sugg)}
-                    className={`w-[280px] flex-shrink-0 rounded-[28px] p-5 snap-start text-left group relative overflow-hidden transition-all duration-500 hover:-translate-y-1 active:scale-[0.98] ${cardConfig.cardBg}`}
+                    className={`w-[260px] flex-shrink-0 rounded-[28px] p-4 snap-start text-left group relative overflow-hidden transition-all duration-500 hover:-translate-y-1 active:scale-[0.98] ${cardConfig.cardBg}`}
                   >
-                    <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full opacity-40" style={{ backgroundColor: cardConfig.accentRing }} />
+                    <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-40" style={{ backgroundColor: cardConfig.accentRing }} />
                     <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-3">
                         <span className={`text-[10px] font-black tracking-[0.18em] uppercase ${cardConfig.textColor}`}>{sugg.category}</span>
                         {cardConfig.label ? (
                           <span className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${cardConfig.textColor}`}>{cardConfig.label}</span>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-[24px] flex items-center justify-center ${cardConfig.iconBg} shadow-[0_10px_30px_rgba(15,23,42,0.08)]`}>
-                          <IconComponent size={24} />
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-[24px] flex items-center justify-center ${cardConfig.iconBg} shadow-[0_10px_20px_rgba(15,23,42,0.08)]`}>
+                          <IconComponent size={22} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className={`text-[17px] font-semibold leading-tight ${cardConfig.textColor} line-clamp-2`}>
+                          <h3 className={`text-[16px] font-semibold leading-tight ${cardConfig.textColor} line-clamp-2`}>
                             {cardConfig.title}
                           </h3>
                         </div>
                       </div>
-                      <p className={`text-[13px] mt-3 leading-normal ${cardConfig.textColor === "text-white" ? "text-slate-200" : "text-slate-500"} line-clamp-2`}>
-                        {cardConfig.caption}
-                      </p>
-                      <div className="mt-6 flex items-end justify-end">
+                      <div className="mt-4 flex items-end justify-end">
                         <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white shadow-sm">
                           Book Now <ChevronRight size={14} />
                         </span>

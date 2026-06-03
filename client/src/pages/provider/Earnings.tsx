@@ -15,7 +15,7 @@ const Earnings = () => {
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("This Week");
+  const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("Today");
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
