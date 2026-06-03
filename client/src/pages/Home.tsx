@@ -250,7 +250,7 @@ const Home = () => {
 
   const activeBooking = useMemo(() => {
     return (bookings || []).find((b: any) =>
-      ["pending", "accepted", "assigned", "on_the_way", "arrived", "in_progress"].includes(b.status) ||
+      ["pending", "accepted", "assigned", "on_the_way", "arrived", "in_progress", "payment_pending"].includes(b.status) ||
       (b.status === "completed" && !b.paid)
     );
   }, [bookings]);
@@ -537,7 +537,7 @@ const Home = () => {
                     {activeBooking.status === "on_the_way" ? "🛵" :
                      activeBooking.status === "arrived" ? "📍" :
                      activeBooking.status === "in_progress" ? "🔧" :
-                     activeBooking.status === "completed" && !activeBooking.paid ? "💳" : "👤"}
+                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "💳" : "👤"}
                   </span>
                 </div>
                 <div>
@@ -545,11 +545,11 @@ const Home = () => {
                     {activeBooking.status === "on_the_way" ? "Provider is on the way" :
                      activeBooking.status === "arrived" ? "Provider has arrived!" :
                      activeBooking.status === "in_progress" ? "Service in progress..." :
-                     activeBooking.status === "completed" && !activeBooking.paid ? "Payment Pending: Click to Pay" :
+                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Payment Pending: Click to Pay" :
                      "Active Booking Tracking"}
                   </h4>
                   <p className="text-[11px] text-white/90 mt-0.5 font-medium">
-                    {activeBooking.status === "completed" && !activeBooking.paid ? "Tap to view and complete your payment" : "Tap to track live location & status"}
+                    {(activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Tap to view and complete your payment" : "Tap to track live location & status"}
                   </p>
                 </div>
               </div>

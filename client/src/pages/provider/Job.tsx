@@ -112,7 +112,7 @@ const Job = () => {
 
   // ── Stage helpers ────────────────────────────────────────────────────────
   const visualStatus =
-    job.status === "paid"
+    (job.status === "paid" || job.paid)
       ? "paid"
       : ["completed", "payment_pending"].includes(job.status)
         ? "completed"
@@ -187,7 +187,14 @@ const Job = () => {
 
   // ── CTA per status ───────────────────────────────────────────────────────
   const renderActionBar = () => {
-    switch (job.status) {
+    const actionStatus =
+      (job.status === "paid" || job.paid)
+        ? "paid"
+        : ["completed", "payment_pending"].includes(job.status)
+          ? "completed"
+          : job.status;
+
+    switch (actionStatus) {
       case "accepted":
       case "assigned":
       case "on_the_way":
@@ -235,7 +242,7 @@ const Job = () => {
           </div>
         );
 
-      case "payment_pending":
+      case "completed":
         return (
           <div className="space-y-4">
 

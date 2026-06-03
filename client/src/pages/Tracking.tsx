@@ -22,7 +22,8 @@ const STAGES = [
 const STATUS_ORDER = ["assigned", "on_the_way", "arrived", "in_progress", "completed"];
 
 const stageIndex = (status: string) => {
-  const i = STATUS_ORDER.indexOf(status);
+  const mappedStatus = status === "payment_pending" ? "completed" : status;
+  const i = STATUS_ORDER.indexOf(mappedStatus);
   return Math.max(i - 1, -1); // -1 = not started, 0 = on_the_way, etc.
 };
 
@@ -126,7 +127,7 @@ const Tracking = () => {
       } else if (data.status === "on_the_way") showNotification("🛵", "Provider is on the way!");
       else if (data.status === "arrived")    showNotification("📍", "Provider has arrived!");
       else if (data.status === "in_progress") showNotification("🔧", "Service has started!");
-      else if (data.status === "completed") {
+      else if (data.status === "completed" || data.status === "payment_pending") {
         showNotification("✅", "Service completed!");
         setTimeout(() => navigate(`/booking/payment`, { state: { bookingId: id }, replace: true }), 2000);
       }
@@ -145,6 +146,19 @@ const Tracking = () => {
       return () => clearTimeout(t);
     }
   }, [booking, bookings, id, navigate]);
+
+  // ── Redirect if completed & unpaid ────────────────────────────────────────
+  useEffect(() => {
+    if (booking && (booking.status === "completed" || booking.status === "payment_pending") && !(booking as any).paid) {
+      showNotification("✅", "Service completed!");
+      const t = setTimeout(() => {
+        dispatch({ type: "SELECT_PROVIDER", id: booking.providerId });
+        dispatch({ type: "SELECT_SERVICE", id: booking.serviceId });
+        navigate("/booking/payment", { state: { bookingId: booking.id }, replace: true });
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [booking?.status, (booking as any)?.paid, navigate, dispatch]);
 
   if (!booking) return null;
 
@@ -261,7 +275,7 @@ const Tracking = () => {
             {currentStatus === "on_the_way" ? "Provider is on the way" :
              currentStatus === "arrived"     ? "Provider has arrived" :
              currentStatus === "in_progress" ? "Service in progress" :
-             currentStatus === "completed"   ? "Service completed" :
+             (currentStatus === "completed" || currentStatus === "payment_pending")   ? "Service completed" :
              "Provider assigned"}
           </h2>
           {(currentStatus === "on_the_way" || currentStatus === "arrived") && (
@@ -340,7 +354,7 @@ const Tracking = () => {
         </button>
 
         {/* Complete & Pay */}
-        {currentStatus === "completed" && (
+        {(currentStatus === "completed" || currentStatus === "payment_pending") && (
           <button
             className="tracking-pay-btn"
             onClick={() => {

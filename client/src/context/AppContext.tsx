@@ -177,7 +177,7 @@ type Action =
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
-  | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
+  | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string; paid?: boolean } }
   | { type: "SET_CHAT_HISTORY"; payload: { bookingId: string; messages: any[] } }
   | { type: "ADD_CHAT_MESSAGE"; payload: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean } }
   | { type: "MARK_MESSAGES_SEEN"; payload: { bookingId: string; seenBy: string } }
@@ -401,7 +401,7 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           providerRequests: state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any } : r
+            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
           ),
           notifications: newNotifications,
         };
@@ -1019,7 +1019,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_ACCEPTED", booking });
     });
 
-    socket.on("job_status_updated", (data: { bookingId: string; status: string }) => {
+    socket.on("job_status_updated", (data: { bookingId: string; status: string; paid?: boolean }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
       const currentState = stateRef.current;
       if (currentState.role === "customer" && data.status === "completed") {

@@ -10,11 +10,11 @@ import api, { createBooking, loadRazorpay } from "@/lib/api";
 
 const BookingPayment = () => {
   const navigate = useNavigate();
-  const { 
-    selectedProvider, 
-    selectedServiceId, 
-    selectedDate = new Date().toISOString().slice(0, 10), 
-    selectedTime = "10:00 AM", 
+  const {
+    selectedProvider,
+    selectedServiceId,
+    selectedDate = new Date().toISOString().slice(0, 10),
+    selectedTime = "10:00 AM",
     bookingNotes,
     bookingVoiceNote,
     bookingVoiceNoteUrl,
@@ -23,7 +23,7 @@ const BookingPayment = () => {
     dispatch,
     addBooking
   } = useApp();
-  
+
   const location = useLocation();
   const bookingId = location.state?.bookingId;
   const existingBooking = bookings.find((b) => b.id === bookingId);
@@ -43,10 +43,10 @@ const BookingPayment = () => {
 
   const provider = existingBooking
     ? ((existingBooking as any).providerDetails || getProviderById(existingBooking.providerId) || {
-        id: existingBooking.providerId,
-        name: "Service Provider",
-        pricePerHr: existingBooking.price,
-      })
+      id: existingBooking.providerId,
+      name: "Service Provider",
+      pricePerHr: existingBooking.price,
+    })
     : selectedProvider;
 
   const serviceId = existingBooking ? existingBooking.serviceId : selectedServiceId;
@@ -164,36 +164,36 @@ const BookingPayment = () => {
       }
     } else {
       // 2. Creating a new booking (standard checkout)
-        if (method === "cash") {
-          try {
-            const bookingData = {
-              customer_id: user.id,
-              provider_id: provider?.id || selectedProvider?.id,
-              service_id: serviceId,
-              scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
-              address: user.address || "Client Address",
-              price: total,
-              notes: bookingNotes,
-              voice_note: bookingVoiceNote,
-              voice_note_url: bookingVoiceNoteUrl || null,
-              payment_id: "cash_payment",
-              paid: false,
-            };
+      if (method === "cash") {
+        try {
+          const bookingData = {
+            customer_id: user.id,
+            provider_id: provider?.id || selectedProvider?.id,
+            service_id: serviceId,
+            scheduled_at: getAbsoluteIsoTimestamp(selectedDate, selectedTime),
+            address: user.address || "Client Address",
+            price: total,
+            notes: bookingNotes,
+            voice_note: bookingVoiceNote,
+            voice_note_url: bookingVoiceNoteUrl || null,
+            payment_id: "cash_payment",
+            paid: false,
+          };
 
-            const bookingRes = await createBooking(bookingData);
-            if (bookingRes.success) {
-              addBooking(bookingRes.data);
-              // Mark booking as completed and navigate to rating page
-              dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
-              dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
-              dispatch({ type: "RESET_BOOKING_DRAFT" });
-              navigate(`/rating/${bookingRes.data.id}`, { replace: true });
-            }
-          } catch (err) {
-            setError("Failed to complete booking with Cash option");
-          } finally {
-            setLoading(false);
+          const bookingRes = await createBooking(bookingData);
+          if (bookingRes.success) {
+            addBooking(bookingRes.data);
+            // Mark booking as completed and navigate to rating page
+            dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+            dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
+            dispatch({ type: "RESET_BOOKING_DRAFT" });
+            navigate(`/rating/${bookingRes.data.id}`, { replace: true });
           }
+        } catch (err) {
+          setError("Failed to complete booking with Cash option");
+        } finally {
+          setLoading(false);
+        }
       } else if (method === "wallet") {
         try {
           dispatch({ type: "UPDATE_WALLET", amount: -total });
@@ -281,13 +281,13 @@ const BookingPayment = () => {
 
                 const bookingRes = await createBooking(bookingData);
                 if (bookingRes.success) {
-                const enrichedData = { ...bookingRes.data, paid: true };
-                addBooking(enrichedData);
-                // Mark booking as completed and navigate to rating page
-                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
-                dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
-                dispatch({ type: "RESET_BOOKING_DRAFT" });
-                navigate(`/rating/${bookingRes.data.id}`, { replace: true });
+                  const enrichedData = { ...bookingRes.data, paid: true };
+                  addBooking(enrichedData);
+                  // Mark booking as completed and navigate to rating page
+                  dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+                  dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
+                  dispatch({ type: "RESET_BOOKING_DRAFT" });
+                  navigate(`/rating/${bookingRes.data.id}`, { replace: true });
                 }
               } catch (err) {
                 console.error("Verification/Booking error:", err);
@@ -396,9 +396,8 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
 const PaymentOption = ({ active, onClick, icon: Icon, title, subtitle }: any) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-[0.98] ${
-      active ? "bg-primary/5 border-primary" : "bg-card border-border"
-    }`}
+    className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-[0.98] ${active ? "bg-primary/5 border-primary" : "bg-card border-border"
+      }`}
   >
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${active ? "bg-primary text-primary-foreground" : "bg-input text-primary"}`}>
       <Icon size={18} />
