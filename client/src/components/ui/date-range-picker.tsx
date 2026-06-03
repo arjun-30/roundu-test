@@ -15,18 +15,39 @@ interface DatePickerWithRangeProps {
   className?: string;
   date: DateRange | undefined;
   onDateChange: (date: DateRange | undefined) => void;
+  disabledBefore?: Date;
+  disabledAfter?: Date;
+  theme?: "blue" | "amber";
 }
 
 export function DatePickerWithRange({
   className,
   date,
   onDateChange,
+  disabledBefore,
+  disabledAfter,
+  theme = "blue",
 }: DatePickerWithRangeProps) {
+  const themeStyles = {
+    blue: {
+      trigger: "bg-blue-50 border-blue-200 text-blue-700",
+      icon: "text-blue-700",
+      badge: "text-blue-600",
+    },
+    amber: {
+      trigger: "bg-amber-50 border-amber-200 text-amber-700",
+      icon: "text-amber-700",
+      badge: "text-amber-600",
+    },
+  };
+
+  const styles = themeStyles[theme];
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
-          <div className="bg-input rounded-xl border border-border p-3 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
+          <div className={`bg-input rounded-xl border border-border p-3 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-transform`}>
             <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarIcon size={16} />
               <span className="text-sm font-semibold">
@@ -56,6 +77,11 @@ export function DatePickerWithRange({
             selected={date}
             onSelect={onDateChange}
             numberOfMonths={1}
+            disabled={(date) => {
+              if (disabledBefore && date < disabledBefore) return true;
+              if (disabledAfter && date > disabledAfter) return true;
+              return false;
+            }}
           />
         </PopoverContent>
       </Popover>
