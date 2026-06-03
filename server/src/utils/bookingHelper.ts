@@ -19,25 +19,15 @@ export async function getProviderActiveBookings(providerId: string): Promise<any
   });
 }
 
-export async function isProviderBusy(providerId: string): Promise<boolean> {
-  const activeBookings = await getProviderActiveBookings(providerId);
-  const now = new Date();
+export async function isProviderBusy(
+  providerId: string
+): Promise<boolean> {
 
-  for (const booking of activeBookings) {
-    if (['on_the_way', 'arrived', 'in_progress'].includes(booking.status)) {
-      return true;
-    }
-    if (['assigned', 'accepted'].includes(booking.status)) {
-      const start = new Date(booking.scheduled_at);
-      if (isNaN(start.getTime())) continue;
-      const durationHours = booking.duration || 2;
-      const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
-      if (now >= start && now <= end) {
-        return true;
-      }
-    }
-  }
+  // Allow scheduled jobs while another job is active
+  // Frontend already handles 6-hour validation
+
   return false;
+
 }
 
 export async function checkScheduleConflict(

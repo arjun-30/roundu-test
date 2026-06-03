@@ -104,6 +104,9 @@ interface State {
   // New Flow State
   isNewUser: boolean;
   walletBalance: number;
+  commissionDue: number;
+  codPendingCount: number;
+  isFrozen: boolean;
   isOnline: boolean;
   providerStats: {
     rating: number;
@@ -127,6 +130,10 @@ interface State {
 type Action =
   | { type: "ADD_PROVIDER_REQUEST"; request: ProviderRequest }
   | { type: "SET_PROVIDER_REQUESTS"; requests: ProviderRequest[] }
+  | { type: "ADD_COMMISSION_DUE"; amount: number }
+  | { type: "CLEAR_COMMISSION_DUE"; amount: number }
+  | { type: "INCREMENT_COD_COUNT" }
+  | { type: "FREEZE_ACCOUNT" }
   | { type: "SET_PHONE"; phone: string }
   | { type: "SET_USER_ID"; id: string }
   | { type: "SET_AUTH"; value: boolean }
@@ -141,8 +148,11 @@ type Action =
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
-  | { type: "UPDATE_BOOKING"; id: string; patch: Partial<Booking> }
-  | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any; targetRole?: "customer" | "provider" }
+  | {
+    type: "UPDATE_BOOKING";
+    id: string;
+    patch: any;
+  } | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any; targetRole?: "customer" | "provider" }
   | { type: "REMOVE_NOTIFICATION"; id: string }
   | { type: "ACCEPT_REQUEST"; id: string }
   | { type: "REJECT_REQUEST"; id: string }
@@ -205,6 +215,9 @@ const initialState: State = {
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
     ],
   },
+  commissionDue: 0,
+  codPendingCount: 0,
+  isFrozen: false,
   selectedServiceId: null,
   selectedProviderId: null,
   selectedDate: null,
@@ -404,8 +417,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, isAuthenticated: action.value };
     case "SET_ROLE":
       if (action.role) {
-          safeSetItem("roundu_role", action.role);
-        }
+        safeSetItem("roundu_role", action.role);
+      }
       return { ...state, role: action.role };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
@@ -614,7 +627,44 @@ function reducer(state: State, action: Action): State {
     case "SET_NEW_USER":
       return { ...state, isNewUser: action.value };
     case "UPDATE_WALLET":
-      return { ...state, walletBalance: state.walletBalance + action.amount };
+      return {
+        ...state,
+        walletBalance: state.walletBalance + action.amount
+      };
+
+    case "ADD_COMMISSION_DUE":
+      return {
+        ...state,
+        commissionDue:
+          state.commissionDue + action.amount
+      };
+
+    case "CLEAR_COMMISSION_DUE":
+      return {
+        ...state,
+        commissionDue: Math.max(
+          0,
+          state.commissionDue - action.amount
+        )
+      };
+
+    case "INCREMENT_COD_COUNT": {
+
+      const nextCount =
+        state.codPendingCount + 1;
+
+      return {
+        ...state,
+        codPendingCount: nextCount,
+        isFrozen: nextCount >= 2
+      };
+    }
+
+    case "FREEZE_ACCOUNT":
+      return {
+        ...state,
+        isFrozen: true
+      };
     case "SET_ONLINE":
       return { ...state, isOnline: action.value };
     case "UPDATE_STATS":

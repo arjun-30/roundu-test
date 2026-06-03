@@ -12,6 +12,8 @@ export interface Booking {
   notes: string;
   voice_note_url?: string;
   paid?: boolean;
+  providerLat?: number;
+  providerLng?: number;
 }
 
 export const BookingModel = {

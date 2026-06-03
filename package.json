@@ -2,15 +2,15 @@
   "name": "roundu-app",
   "version": "1.0.0",
   "scripts": {
-    "dev": "docker compose up -d && wait-on tcp:localhost:5432 && concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
-    "postinstall": "docker compose up -d && wait-on tcp:localhost:5432 && cd server && npm run migrate || true"
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "dependencies": {
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@capacitor/geolocation": "^8.2.0",
     "concurrently": "^9.2.1",
-    "wait-on": "^7.2.0"
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^5.0.0"
   }
 }

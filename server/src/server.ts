@@ -263,29 +263,54 @@ async function main() {
         const provider = await ProviderModel.findByUserId(data.providerId);
         const providerId = provider ? provider.id : data.providerId;
 
-        // Check if provider is currently busy on an active job
-        const isBusy = await isProviderBusy(providerId);
-        if (isBusy) {
-          socket.emit('quote_error', {
-            message: 'You are currently busy on an active job.'
-          });
-          return;
-        }
-
-        // Check if provider has schedule conflict for the broadcast slot
         const broadcast = activeBroadcasts.get(data.broadcastId);
-        if (broadcast) {
-          const proposedStart = parseDateTime(broadcast.date, broadcast.time);
-          const proposedDuration = broadcast.duration || 2;
-          const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
-          if (conflictCheck.conflict) {
+
+        const proposedStart = parseDateTime(
+          broadcast?.date,
+          broadcast?.time
+        );
+
+        const hoursFromNow =
+          (proposedStart.getTime() - Date.now()) /
+          (1000 * 60 * 60);
+
+        const isBusy = await isProviderBusy(providerId);
+
+        // Provider is active
+        if (isBusy) {
+
+          // Allow scheduled jobs only if 6+ hours away
+          if (hoursFromNow < 6) {
             socket.emit('quote_error', {
-              message: conflictCheck.message || 'Schedule conflict: You have another booking that overlaps with this request.'
+              message:
+                'Finish your current job before accepting another immediate booking.'
             });
             return;
           }
         }
 
+        // Check schedule conflicts
+        if (broadcast) {
+
+          const proposedDuration =
+            broadcast.duration || 2;
+
+          const conflictCheck =
+            await checkScheduleConflict(
+              providerId,
+              proposedStart,
+              proposedDuration
+            );
+
+          if (conflictCheck.conflict) {
+            socket.emit('quote_error', {
+              message:
+                conflictCheck.message ||
+                'Schedule conflict: You have another booking that overlaps with this request.'
+            });
+            return;
+          }
+        }
         const customerId = data.customerId || broadcast?.customerId;
 
         if (customerId) {

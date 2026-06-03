@@ -13,13 +13,6 @@ import { socket } from "@/lib/socket";
 // 4 core stages shown to both provider and customer
 const JOB_STAGES = [
   {
-    key: "on_the_way",
-    label: "Started",
-    icon: Navigation2,
-    color: "bg-indigo-500",
-    ring: "ring-indigo-300",
-  },
-  {
     key: "arrived",
     label: "Arrived",
     icon: MapPin,
@@ -27,25 +20,11 @@ const JOB_STAGES = [
     ring: "ring-orange-300",
   },
   {
-    key: "in_progress",
-    label: "Working",
-    icon: Wrench,
-    color: "bg-blue-600",
-    ring: "ring-blue-300",
-  },
-  {
     key: "completed",
     label: "Completed",
     icon: Flag,
     color: "bg-green-500",
     ring: "ring-green-300",
-  },
-  {
-    key: "payment_pending",
-    label: "Payment",
-    icon: Clock,
-    color: "bg-yellow-500",
-    ring: "ring-yellow-300",
   },
   {
     key: "paid",
@@ -97,14 +76,8 @@ const Job = () => {
 
   const job = providerRequests.find((r) => r.id === id);
 
-  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
 
-    const saved = localStorage.getItem(
-      `job_timer_${job?.id}`
-    );
-
-    return saved ? Number(saved) : 0;
-  }); const [notification, setNotification] = useState("");
+  const [notification, setNotification] = useState("");
   const [notifType, setNotifType] = useState<"info" | "success">("info");
 
   const showNotification = (msg: string, type: "info" | "success" = "info") => {
@@ -112,34 +85,6 @@ const Job = () => {
     setNotifType(type);
     setTimeout(() => setNotification(""), 3000);
   };
-  useEffect(() => {
-
-    let interval: NodeJS.Timeout;
-
-    if (job.status === "in_progress") {
-
-      interval = setInterval(() => {
-
-        setElapsedSeconds(prev => {
-
-          const next = prev + 1;
-
-          localStorage.setItem(
-            `job_timer_${job.id}`,
-            String(next)
-          );
-
-          return next;
-        });
-
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-
-  }, [job.status, job.id]);
 
   const [notFoundTimer, setNotFoundTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,10 +111,25 @@ const Job = () => {
   const service = getServiceById(job.serviceId);
 
   // ── Stage helpers ────────────────────────────────────────────────────────
-  const currentStatusIndex = STATUS_ORDER.indexOf(job.status);
-  const getStageIndex = (stageKey: StageKey) => STATUS_ORDER.indexOf(stageKey);
-  const isStageCompleted = (stageKey: StageKey) => currentStatusIndex > getStageIndex(stageKey);
-  const isStageActive = (stageKey: StageKey) => job.status === stageKey;
+  const visualStatus =
+    job.status === "paid"
+      ? "paid"
+      : ["completed", "payment_pending"].includes(job.status)
+        ? "completed"
+        : "arrived";
+
+  const currentStatusIndex =
+    JOB_STAGES.findIndex(
+      s => s.key === visualStatus
+    );
+
+  const isStageCompleted = (stageKey: StageKey) =>
+    JOB_STAGES.findIndex(
+      s => s.key === stageKey
+    ) < currentStatusIndex;
+
+  const isStageActive = (stageKey: StageKey) =>
+    visualStatus === stageKey;
 
   // ── Emit helpers ─────────────────────────────────────────────────────────
   const emitStatus = (status: any) => {
@@ -177,13 +137,10 @@ const Job = () => {
     socket.emit("update_job_status", { bookingId: job.id, status });
   };
 
-  const markOnTheWay = () => { emitStatus("on_the_way"); showNotification("🚗 Customer notified — you're on the way!", "info"); };
   const markArrived = () => { emitStatus("arrived"); showNotification("📍 Customer notified — you've arrived!", "info"); };
-  const startService = () => { emitStatus("in_progress"); showNotification("🔧 Service started! Customer notified.", "success"); };
-  localStorage.setItem(
-    `job_start_${job.id}`,
-    new Date().toISOString()
-  );
+
+
+
   const completeJob = () => {
     emitStatus("payment_pending");
 
@@ -231,116 +188,52 @@ const Job = () => {
   // ── CTA per status ───────────────────────────────────────────────────────
   const renderActionBar = () => {
     switch (job.status) {
-
       case "accepted":
       case "assigned":
-        return (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={markOnTheWay}
-            className="w-full py-4 rounded-[24px] bg-indigo-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(99,102,241,0.25)] transition-all"
-          >
-            <Navigation2 size={20} strokeWidth={2.5} />
-            I'm On the Way
-          </motion.button>
-        );
-
       case "on_the_way":
         return (
-          <div className="space-y-4">
-            <div className="bg-[#EEF2FF] border-2 border-[#E0E7FF] rounded-[24px] p-5 text-center shadow-sm">
-              <span className="text-[14px] font-extrabold text-[#312E81] flex items-center justify-center gap-2 tracking-tight">
-                <Car size={20} strokeWidth={2.5} />
-                Heading to Customer
-              </span>
+          <div className="flex gap-3">
 
-              <p className="text-[12px] font-medium text-[#4338CA] mt-2">
-                Status updates automatically when you arrive within 100m
-              </p>
-            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={openNavigation}
+              className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold"
+            >
+              Navigate
+            </motion.button>
 
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={openNavigation}
-                className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Navigation size={18} strokeWidth={2.5} />
-                Navigate
-              </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={markArrived}
+              className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold"
+            >
+              Mark Arrived
+            </motion.button>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={markArrived}
-                className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(249,115,22,0.25)]"
-              >
-                <MapPin size={18} strokeWidth={2.5} />
-                Mark Arrived
-              </motion.button>
-            </div>
           </div>
         );
-
       case "arrived":
         return (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={startService}
-            className="w-full py-4 rounded-[24px] bg-blue-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(37,99,235,0.25)] transition-all"
-          >
-            <Wrench size={20} strokeWidth={2.5} />
-            Start Service
-          </motion.button>
-        );
+          <div className="flex gap-3">
 
-      case "in_progress": {
-        const mins = Math.floor(elapsedSeconds / 60);
-        const secs = elapsedSeconds % 60;
+            <button
+              onClick={openNavigation}
+              className="flex-1 py-4 rounded-[20px] bg-white border"
+            >
+              Navigate
+            </button>
 
-        return (
-          <div className="space-y-4">
-
-            <div className="bg-[#F0F9FF] border-2 border-[#E0F2FE] rounded-[24px] p-5 flex items-center justify-between shadow-sm">
-              <span className="text-[14px] font-extrabold text-[#0C4A6E] flex items-center gap-2">
-                <Timer size={20} strokeWidth={2.5} />
-                Time Elapsed
-              </span>
-
-              <span className="text-[24px] font-black text-[#0284C7] font-mono tracking-tight">
-                {mins.toString().padStart(2, "0")}:
-                {secs.toString().padStart(2, "0")}
-              </span>
-            </div>
-
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={openNavigation}
-                className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Navigation size={18} strokeWidth={2.5} />
-                Navigate
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={completeJob}
-                className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(16,185,129,0.25)]"
-              >
-                <CheckCircle2 size={18} strokeWidth={2.5} />
-                Complete Job
-              </motion.button>
-            </div>
+            <button
+              onClick={completeJob}
+              className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white"
+            >
+              Complete Job
+            </button>
 
           </div>
         );
-      }
 
       case "payment_pending":
         return (
@@ -357,52 +250,95 @@ const Job = () => {
               </p>
             </div>
 
+            {/* ROUNDU QR PAYMENT */}
+            <div className="bg-white border rounded-2xl p-5 text-center">
+
+              <img
+                src="/qr-demo.png"
+                alt="RoundU QR"
+                className="w-44 h-44 mx-auto"
+              />
+
+              <p className="font-bold mt-3">
+                RoundU Payments
+              </p>
+
+              <p className="text-sm text-gray-500">
+                UPI ID: payments@roundu
+              </p>
+
+              <p className="text-lg font-bold mt-2">
+                ₹{job.quote || (job as any).price}
+              </p>
+
+            </div>
+
             {/* ONLINE PAYMENT */}
             <button
               onClick={() => {
-                showNotification(
-                  "Customer should pay via RoundU QR / App Payment",
-                  "info"
-                );
 
                 const confirmed = window.confirm(
-                  "Has the customer completed the online payment?"
+                  "confirm to Receive QR Payment");
+
+                if (!confirmed) return;
+
+                const amount = Number(
+                  job.quote || (job as any).price || 0
                 );
 
-                if (confirmed) {
-                  emitStatus("paid");
+                const providerShare = amount * 0.85;
 
-                  showNotification(
-                    "Online payment received successfully",
-                    "success"
-                  );
-                }
+                dispatch({
+                  type: "UPDATE_WALLET",
+                  amount: providerShare
+                });
+
+                emitStatus("paid");
+
+                showNotification(
+                  `₹${providerShare.toFixed(0)} credited to wallet`,
+                  "success"
+                );
               }}
-              className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold"
             >
-              💳 Online Payment Received
-            </button>
+              💳 Receive QR Payment            </button>
 
             {/* CASH PAYMENT */}
             <button
               onClick={() => {
+
                 const confirmed = window.confirm(
-                  "Confirm cash has been received from customer?"
+                  "Confirm cash has been received?"
                 );
 
-                if (confirmed) {
-                  emitStatus("paid");
+                if (!confirmed) return;
 
-                  showNotification(
-                    "Cash payment received successfully",
-                    "success"
-                  );
-                }
+                const amount = Number(
+                  job.quote || (job as any).price || 0
+                );
+
+                const commission = amount * 0.15;
+
+                dispatch({
+                  type: "ADD_COMMISSION_DUE",
+                  amount: commission
+                });
+
+                dispatch({
+                  type: "INCREMENT_COD_COUNT"
+                });
+
+                emitStatus("paid");
+
+                showNotification(
+                  `₹${commission.toFixed(0)} commission added to dues`,
+                  "success"
+                );
               }}
-              className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold"
             >
-              💵 Cash Received
-            </button>
+              💵 Receive Cash            </button>
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
               <p className="text-xs text-gray-600">
@@ -415,14 +351,26 @@ const Job = () => {
               </p>
             </div>
 
-          </div>
+          </div >
         );
+
       case "paid":
         return (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
-            <p className="font-bold text-emerald-700">
-              Payment Completed
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+
+            <CheckCircle2
+              size={50}
+              className="mx-auto text-emerald-600"
+            />
+
+            <p className="mt-3 font-bold text-emerald-700">
+              Payment Successful
             </p>
+
+            <p className="text-sm text-emerald-600 mt-2">
+              Job completed and earnings processed.
+            </p>
+
           </div>
         );
 
