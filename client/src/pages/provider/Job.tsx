@@ -326,7 +326,7 @@ const Job = () => {
                 );
               }}
               className="w-full py-4 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold shadow-md transition-all"            >
-              💵 Receive Cash            </button>
+              Receive Cash            </button>
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
               <p className="text-xs text-gray-600">
