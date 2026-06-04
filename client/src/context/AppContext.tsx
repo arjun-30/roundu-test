@@ -1118,7 +1118,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Short delay so the user can read the toast before redirect
       setTimeout(() => {
         dispatch({ type: "LOGOUT" });
-        window.location.href = "/auth";
+        window.location.href = "/login";
       }, 2000);
     };
 
