@@ -142,34 +142,34 @@ export const services: Service[] = [
 
   {
     id: "ac-cleaning",
-    label: "AC Cleaning",
+    label: "AC Repair",
     icon: Wind,
-    desc: "Indoor unit cleaning, filter cleaning, dust removal, performance improvement",
+    desc: "AC Maintenance",
     commonProblems: [
       "AC Not Cooling",
-      "AC Water Leakage",
-      "AC Bad Smell",
-      "AC Filter Cleaning",
-      "AC Deep Cleaning",
-      "AC Low Airflow",
-      "AC Noise Issue",
+      "Gas Refill",
+      "Water Leakage",
+      "AC Making Noise",
+      "Low Airflow",
+      "Remote Not Working",
+      "AC Not Turning On",
       "Other"
     ],
     relatedServiceIds: ["electrician", "housekeeping"]
   },
   {
     id: "washing-machine-cleaning",
-    label: "Washing Machine Cleaning",
+    label: "Washing Machine Repair",
     icon: WashingMachine,
-    desc: "Drum cleaning, filter cleaning, internal sanitization, odor removal",
+    desc: "Washing Machine Maintenance",
     commonProblems: [
-      "Drum Cleaning",
-      "Filter Cleaning",
-      "Bad Odor Removal",
-      "Internal Sanitization",
-      "Deep Cleaning",
-      "Dirt & Residue Removal",
-      "Performance Improvement",
+      "Machine Not Starting",
+      "Water Not Draining",
+      "Excessive Vibration",
+      "Drum Not Spinning",
+      "Water Leakage",
+      "Door Lock Issue",
+      "Motor Problem",
       "Other"
     ],
     relatedServiceIds: ["housekeeping", "plumber"]
