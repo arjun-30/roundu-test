@@ -10,8 +10,14 @@ import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
 
-// 4 core stages shown to both provider and customer
 const JOB_STAGES = [
+  {
+    key: "on_the_way",
+    label: "Started",
+    icon: Navigation2,
+    color: "bg-blue-600",
+    ring: "ring-blue-300",
+  },
   {
     key: "arrived",
     label: "Arrived",
@@ -34,7 +40,6 @@ const JOB_STAGES = [
     ring: "ring-emerald-300",
   }
 ];
-
 type StageKey = typeof JOB_STAGES[number]["key"];
 const STATUS_ORDER = [
   "accepted",
@@ -112,12 +117,13 @@ const Job = () => {
 
   // ── Stage helpers ────────────────────────────────────────────────────────
   const visualStatus =
-    (job.status === "paid" || job.paid)
+    job.status === "paid"
       ? "paid"
       : ["completed", "payment_pending"].includes(job.status)
         ? "completed"
-        : "arrived";
-
+        : job.status === "arrived"
+          ? "arrived"
+          : "on_the_way";
   const currentStatusIndex =
     JOB_STAGES.findIndex(
       s => s.key === visualStatus
@@ -188,7 +194,7 @@ const Job = () => {
   // ── CTA per status ───────────────────────────────────────────────────────
   const renderActionBar = () => {
     const actionStatus =
-      (job.status === "paid" || job.paid)
+      job.status === "paid"
         ? "paid"
         : ["completed", "payment_pending"].includes(job.status)
           ? "completed"
@@ -279,37 +285,13 @@ const Job = () => {
               </p>
 
             </div>
-
-            {/* ONLINE PAYMENT */}
-            <button
-              onClick={() => {
-
-                const confirmed = window.confirm(
-                  "confirm to Receive QR Payment");
-
-                if (!confirmed) return;
-
-                const amount = Number(
-                  job.quote || (job as any).price || 0
-                );
-
-                const providerShare = amount * 0.85;
-
-                dispatch({
-                  type: "UPDATE_WALLET",
-                  amount: providerShare
-                });
-
-                emitStatus("paid");
-
-                showNotification(
-                  `₹${providerShare.toFixed(0)} credited to wallet`,
-                  "success"
-                );
-              }}
-              className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold"
-            >
-              💳 Receive QR Payment            </button>
+            <div className="flex items-center justify-center">
+              <div className="h-px bg-gray-200 flex-1" />
+              <span className="px-4 text-sm font-semibold text-gray-500">
+                OR
+              </span>
+              <div className="h-px bg-gray-200 flex-1" />
+            </div>
 
             {/* CASH PAYMENT */}
             <button
@@ -343,8 +325,7 @@ const Job = () => {
                   "success"
                 );
               }}
-              className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold"
-            >
+              className="w-full py-4 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold shadow-md transition-all"            >
               💵 Receive Cash            </button>
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
