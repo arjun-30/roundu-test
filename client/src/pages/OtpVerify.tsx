@@ -79,6 +79,7 @@ const OtpVerify = () => {
             ...apiUser,
             profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
             avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
+            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : "customer")
           };
           safeSetItem("roundu_token", token);
           saveUserToLocalStorage(persistedUser);
@@ -94,6 +95,7 @@ const OtpVerify = () => {
             profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
             avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
             phone: phone || apiUser.phone || "",
+            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : "customer")
           },
         });
 
@@ -128,6 +130,7 @@ const OtpVerify = () => {
           email: "",
           address: "",
           role: "customer",
+          accountType: "customer" as const,
         };
 
         localStorage.removeItem("roundu_token");
@@ -141,7 +144,7 @@ const OtpVerify = () => {
         dispatch({ type: "SET_USER_ID", id: mockUser.id });
         dispatch({
           type: "UPDATE_USER",
-          user: { name: mockUser.name, email: "", address: "", role: "customer" },
+          user: { name: mockUser.name, email: "", address: "", role: "customer", accountType: "customer" as const },
         });
 
         const userPhone = phone || "9999999999";

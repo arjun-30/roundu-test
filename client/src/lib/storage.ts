@@ -8,7 +8,7 @@ function stripLargeFields(user: any) {
   if (!user || typeof user !== 'object') return user;
   const copy: any = {};
   // Keep only essential fields first
-  const keep = ['id', 'name', 'phone', 'role', 'email', 'address'];
+  const keep = ['id', 'name', 'phone', 'role', 'email', 'address', 'accountType'];
   keep.forEach((k) => { if (user[k] !== undefined) copy[k] = user[k]; });
 
   // Small profile metadata: prefer URL over embedded data

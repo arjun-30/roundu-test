@@ -96,6 +96,20 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+// Provider Route Guard
+const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
+  const { isAuthenticated, role, user, dispatch } = useApp();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user.accountType !== "provider") {
+    return <Navigate to="/home" replace />;
+  }
+  // Auto-switch back to provider role when accessing provider dashboard/profile/pages
+  if (role !== "provider") {
+    dispatch({ type: "SET_ROLE", role: "provider" });
+  }
+  return children;
+};
+
 // Admin Route Guard
 function RequireAdmin() {
   const token = localStorage.getItem("roundu_admin_token");
@@ -190,22 +204,24 @@ const AppRoutes = () => (
         <Route path="/assistant" element={<RequireAuth><Assistant /></RequireAuth>} />
 
         {/* Provider Routes */}
-        <Route path="/provider" element={<RequireAuth><ProviderDashboard /></RequireAuth>} />
-        <Route path="/provider/select-service" element={<RequireAuth><SelectService /></RequireAuth>} />
-        <Route path="/provider/personal-details" element={<RequireAuth><PersonalDetails /></RequireAuth>} />
-        <Route path="/provider/digilocker-kyc" element={<RequireAuth><DigiLockerKYC /></RequireAuth>} />
-        <Route path="/provider/video-portfolio" element={<RequireAuth><ProviderVideoPortfolio /></RequireAuth>} />
-        <Route path="/provider/gps-consent" element={<RequireAuth><GpsConsent /></RequireAuth>} />
-        <Route path="/provider/pending-approval" element={<RequireAuth><PendingApproval /></RequireAuth>} />
-        <Route path="/provider/job/:id" element={<RequireAuth><ProviderJob /></RequireAuth>} />
-        <Route path="/provider/job/:id/report" element={<RequireAuth><ServiceReport /></RequireAuth>} />
-        <Route path="/provider/navigation/:id" element={<RequireAuth><Navigation /></RequireAuth>} />
-        <Route path="/provider/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
-        <Route path="/provider/earnings" element={<RequireAuth><ProviderEarnings /></RequireAuth>} />
-        <Route path="/provider/profile" element={<RequireAuth><ProviderProfile /></RequireAuth>} />
-        <Route path="/provider/portfolio" element={<RequireAuth><Portfolio /></RequireAuth>} />
-        <Route path="/provider/documents" element={<RequireAuth><Documents /></RequireAuth>} />
-        <Route path="/provider/gps-monitor" element={<RequireAuth><GPSMonitor /></RequireAuth>} />
+        <Route element={<RequireProviderRole><Outlet /></RequireProviderRole>}>
+          <Route path="/provider" element={<ProviderDashboard />} />
+          <Route path="/provider/select-service" element={<SelectService />} />
+          <Route path="/provider/personal-details" element={<PersonalDetails />} />
+          <Route path="/provider/digilocker-kyc" element={<DigiLockerKYC />} />
+          <Route path="/provider/video-portfolio" element={<ProviderVideoPortfolio />} />
+          <Route path="/provider/gps-consent" element={<GpsConsent />} />
+          <Route path="/provider/pending-approval" element={<PendingApproval />} />
+          <Route path="/provider/job/:id" element={<ProviderJob />} />
+          <Route path="/provider/job/:id/report" element={<ServiceReport />} />
+          <Route path="/provider/navigation/:id" element={<Navigation />} />
+          <Route path="/provider/jobs" element={<Jobs />} />
+          <Route path="/provider/earnings" element={<ProviderEarnings />} />
+          <Route path="/provider/profile" element={<ProviderProfile />} />
+          <Route path="/provider/portfolio" element={<Portfolio />} />
+          <Route path="/provider/documents" element={<Documents />} />
+          <Route path="/provider/gps-monitor" element={<GPSMonitor />} />
+        </Route>
 
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />

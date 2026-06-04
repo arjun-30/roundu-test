@@ -58,6 +58,7 @@ interface UserProfile {
   savedAddresses?: SavedAddress[];
   profilePicture?: string;
   avatar_url?: string;
+  accountType?: "customer" | "provider";
 }
 
 export interface SavedAddress {
@@ -189,7 +190,17 @@ const token = localStorage.getItem("roundu_token");
 const savedUser = localStorage.getItem("roundu_user");
 const savedRole = localStorage.getItem("roundu_role");
 
-let parsedUser = { id: "", name: "", phone: "", email: "", address: "", profilePicture: "", avatar_url: "" };
+let parsedUser = {
+  id: "",
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  profilePicture: "",
+  avatar_url: "",
+  accountType: "customer",
+  role: "customer"
+};
 if (savedUser) {
   try {
     parsedUser = JSON.parse(savedUser);
@@ -208,6 +219,8 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
+    role: (savedRole as "customer" | "provider") || parsedUser.role || "customer",
+    accountType: parsedUser.accountType || "customer",
     profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
     avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
@@ -423,7 +436,14 @@ function reducer(state: State, action: Action): State {
       if (action.role) {
         safeSetItem("roundu_role", action.role);
       }
-      return { ...state, role: action.role };
+      return {
+        ...state,
+        role: action.role,
+        user: {
+          ...state.user,
+          role: action.role ? (action.role as "customer" | "provider") : undefined
+        }
+      };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
       if (action.user.profilePicture && !action.user.avatar_url) {
@@ -439,7 +459,11 @@ function reducer(state: State, action: Action): State {
       } catch (e) {
         console.error("Failed to persist user to localStorage", e);
       }
-      return { ...state, user: newUser };
+      return {
+        ...state,
+        user: newUser,
+        role: action.user.role !== undefined ? action.user.role : state.role
+      };
     }
     case "SELECT_SERVICE":
       return { ...state, selectedServiceId: action.id };
