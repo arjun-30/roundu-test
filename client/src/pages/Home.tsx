@@ -545,11 +545,11 @@ const Home = () => {
                     {activeBooking.status === "on_the_way" ? "Provider is on the way" :
                      activeBooking.status === "arrived" ? "Provider has arrived!" :
                      activeBooking.status === "in_progress" ? "Service in progress..." :
-                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Payment Pending: Click to Pay" :
+                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Service Completed — Pay Now" :
                      "Active Booking Tracking"}
                   </h4>
                   <p className="text-[11px] text-white/90 mt-0.5 font-medium">
-                    {(activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Tap to view and complete your payment" : "Tap to track live location & status"}
+                    {(activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Tap to view tracking & complete payment" : "Tap to track live location & status"}
                   </p>
                 </div>
               </div>

@@ -139,8 +139,8 @@ const Job = () => {
 
   // ── Emit helpers ─────────────────────────────────────────────────────────
   const emitStatus = (status: any) => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status } });
-    socket.emit("update_job_status", { bookingId: job.id, status });
+    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status, ...(status === "paid" ? { paid: true } : {}) } });
+    socket.emit("update_job_status", { bookingId: job.id, status, ...(status === "paid" ? { paid: true } : {}) });
   };
 
   const markArrived = () => { emitStatus("arrived"); showNotification("📍 Customer notified — you've arrived!", "info"); };

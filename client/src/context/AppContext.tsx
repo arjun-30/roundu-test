@@ -362,6 +362,7 @@ function reducer(state: State, action: Action): State {
           arrived: "📍 Provider has arrived at your location!",
           in_progress: "🛠️ Job in progress...",
           completed: "✅ Job completed successfully!",
+          paid: "💰 Payment confirmed! Please rate your experience.",
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -378,13 +379,16 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           bookings: state.bookings.map((b) =>
-            (b.id === normalizedId || b.id === bookingId) ? { ...b, status: status as any } : b
+            (b.id === normalizedId || b.id === bookingId)
+              ? { ...b, status: status as any, ...(status === "paid" ? { paid: true } : {}) }
+              : b
           ),
           notifications: newNotifications,
         };
       } else {
         const statusTexts: Record<string, string> = {
-          completed: "💰 Payment received! Job completed successfully.",
+          completed: "⏳ Job completed, waiting for payment.",
+          paid: "💰 Payment received! Job completed successfully.",
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -1021,10 +1025,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("job_status_updated", (data: { bookingId: string; status: string; paid?: boolean }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
+      // When provider marks "paid" (cash received or UPI confirmed), redirect customer to rating
       const currentState = stateRef.current;
-      if (currentState.role === "customer" && data.status === "completed") {
+      if (currentState.role === "customer" && data.status === "paid") {
         const targetBookingId = String(data.bookingId).replace("req-", "");
-        navigate("/booking/payment", { state: { bookingId: targetBookingId } });
+        dispatch({ type: "PAY_BOOKING", id: targetBookingId });
+        navigate(`/rating/${targetBookingId}`, { replace: true });
       }
     });
 

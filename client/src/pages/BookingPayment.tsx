@@ -67,8 +67,8 @@ const BookingPayment = () => {
       if (method === "cash") {
         try {
           dispatch({ type: "PAY_BOOKING", id: bookingId });
-          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
           navigate(`/rating/${bookingId}`, { replace: true });
         } catch (err) {
           setError("Failed to process cash payment option");
@@ -79,8 +79,8 @@ const BookingPayment = () => {
         try {
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           dispatch({ type: "PAY_BOOKING", id: bookingId });
-          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
           navigate(`/rating/${bookingId}`, { replace: true });
         } catch (err) {
           setError("Failed to process wallet payment");
@@ -130,8 +130,8 @@ const BookingPayment = () => {
                 }
 
                 dispatch({ type: "PAY_BOOKING", id: bookingId });
-                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-                socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+                socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
                 navigate(`/rating/${bookingId}`, { replace: true });
               } catch (err) {
                 console.error("Verification error:", err);

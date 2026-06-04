@@ -128,8 +128,11 @@ const Tracking = () => {
       else if (data.status === "arrived")    showNotification("📍", "Provider has arrived!");
       else if (data.status === "in_progress") showNotification("🔧", "Service has started!");
       else if (data.status === "completed" || data.status === "payment_pending") {
-        showNotification("✅", "Service completed!");
-        setTimeout(() => navigate(`/booking/payment`, { state: { bookingId: id }, replace: true }), 2000);
+        showNotification("✅", "Service completed! Please complete payment below.");
+      } else if (data.status === "paid") {
+        showNotification("✅", "Payment confirmed! Redirecting to ratings...");
+        dispatch({ type: "PAY_BOOKING", id });
+        setTimeout(() => navigate(`/rating/${id}`, { replace: true }), 1500);
       }
     };
 
@@ -147,18 +150,16 @@ const Tracking = () => {
     }
   }, [booking, bookings, id, navigate]);
 
-  // ── Redirect if completed & unpaid ────────────────────────────────────────
+  // ── Redirect to rating if already paid ─────────────────────────────────────
   useEffect(() => {
-    if (booking && (booking.status === "completed" || booking.status === "payment_pending") && !(booking as any).paid) {
-      showNotification("✅", "Service completed!");
+    if (booking && (booking as any).paid && (booking.status === "completed" || booking.status === "paid")) {
+      showNotification("✅", "Payment confirmed! Redirecting to ratings...");
       const t = setTimeout(() => {
-        dispatch({ type: "SELECT_PROVIDER", id: booking.providerId });
-        dispatch({ type: "SELECT_SERVICE", id: booking.serviceId });
-        navigate("/booking/payment", { state: { bookingId: booking.id }, replace: true });
-      }, 2000);
+        navigate(`/rating/${booking.id}`, { replace: true });
+      }, 1500);
       return () => clearTimeout(t);
     }
-  }, [booking?.status, (booking as any)?.paid, navigate, dispatch]);
+  }, [booking?.status, (booking as any)?.paid, navigate]);
 
   if (!booking) return null;
 
