@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import EmptyState from "@/components/EmptyState";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
+import AvailableBalanceCard from '@/components/AvailableBalanceCard';
+
 import axios from "axios";
 
 const Earnings = () => {
@@ -77,53 +78,19 @@ const Earnings = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold text-foreground">Earnings</h1>
-        <div className="px-5 space-y-4">
-        </div>
+      </div>
 
-        <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden">
+      <div className="px-5 space-y-4">
+        <AvailableBalanceCard
+          walletBalance={walletBalance}
+          commissionDue={commissionDue}
+          codPendingCount={codPendingCount}
+          onWithdraw={() => {
+            // Placeholder: actual withdraw handler logic remains unchanged
+          }}
+        />
 
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">
-            Withdrawable Balance
-          </p>
-
-          <p className="text-4xl font-extrabold text-white mt-2">
-            ₹{withdrawableAmount.toLocaleString("en-IN")}
-          </p>
-
-          <div className="mt-5 space-y-2 text-sm text-white">
-
-            <div className="flex justify-between">
-              <span>Wallet Balance</span>
-              <span className="font-bold">
-                ₹{walletBalance}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Commission Due</span>
-              <span className="font-bold text-red-300">
-                ₹{commissionDue}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span>COD Pending Jobs</span>
-              <span className="font-bold">
-                {codPendingCount}
-              </span>
-            </div>
-
-          </div>
-
-          <button
-            className="w-full mt-6 py-4 rounded-2xl bg-primary text-white font-extrabold"
-          >
-            Withdraw to Bank
-          </button>
-
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <div className="flex gap-2 justify-center overflow-x-auto no-scrollbar py-1">
           {["Today", "This Week", "This Month"].map((label) => (
             <button
               key={label}
@@ -138,29 +105,16 @@ const Earnings = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Stat
             label="Jobs Done"
             value={String(filteredJobs.length)}
             color="text-secondary"
           />
-
           <Stat
             label="Earned"
             value={`₹${timeframeTotal}`}
             color="text-emerald-600"
-          />
-
-          <Stat
-            label="Commission"
-            value={`₹${commissionDue}`}
-            color="text-red-500"
-          />
-
-          <Stat
-            label="COD Jobs"
-            value={String(codPendingCount)}
-            color="text-orange-500"
           />
         </div>
       </div>
@@ -169,7 +123,13 @@ const Earnings = () => {
       <div className="px-5 mt-6 flex-1 overflow-y-auto">
         <h2 className="text-sm font-bold text-foreground mb-3">Completed Jobs</h2>
         {filteredJobs.length === 0 ? (
-          <EmptyState icon={Wallet} title="No earnings yet" description="Completed jobs will appear here." />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Wallet size={48} className="text-muted-foreground mb-4" />
+            <h3 className="text-xl font-bold">No earnings yet</h3>
+            <p className="text-muted-foreground">
+              Completed jobs will appear here.
+            </p>
+          </div>
         ) : (
           <div className="space-y-2">
             {filteredJobs.map((j) => {
