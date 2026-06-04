@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS bookings (
     notes TEXT,
     voice_note BOOLEAN DEFAULT false,
     paid BOOLEAN DEFAULT false,
+    lat DECIMAL(9, 6),
+    lng DECIMAL(9, 6),
+    provider_lat DECIMAL(9, 6),
+    provider_lng DECIMAL(9, 6),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

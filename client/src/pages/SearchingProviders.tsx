@@ -329,19 +329,16 @@ const SearchingProviders = () => {
         provider_id: String(quote.providerId || ""),
         service_id: String(serviceId || ""),
         status: "assigned",
-
         scheduled_at: new Date().toISOString(),
-
         address:
           user?.address ||
-            currentLocation
+          (currentLocation
             ? `${currentLocation?.lat},${currentLocation?.lng}`
-            : "Customer Location",
-
+            : "Customer Location"),
+        lat: currentLocation?.lat || null,
+        lng: currentLocation?.lng || null,
         price: Number(quote.price || 0),
-
         notes: bookingNotes || "",
-
         voice_note: bookingVoiceNote || false,
         voice_note_url: bookingVoiceNoteUrl || null,
         paid: false,
@@ -363,7 +360,6 @@ const SearchingProviders = () => {
       throw new Error(res?.message || "Booking creation failed");
     } catch (error: any) {
       console.error("ACCEPT QUOTE ERROR", error);
-
       setError(
         error?.response?.data?.message ||
         error?.message ||
@@ -371,40 +367,6 @@ const SearchingProviders = () => {
       );
     } finally {
       setAcceptingQuoteId(null);
-    }
-    const bookingData = {
-      customer_id: user.id,
-      provider_id: quote.providerId,
-      service_id: serviceId,
-      status: "assigned",
-      scheduled_at: new Date(
-        Date.now() + quote.etaMin * 60000
-      ).toISOString(),
-      address: user.address || "Client Address",
-      lat: currentLocation?.lat,
-      lng: currentLocation?.lng,
-      price: quote.price,
-      notes: bookingNotes || "Quick fix requested",
-      voice_note: bookingVoiceNote,
-      voice_note_url: bookingVoiceNoteUrl || null,
-    };
-
-    try {
-      const res = await createBooking(bookingData);
-
-      if (res.success) {
-        dispatch({
-          type: "ADD_BOOKING",
-          booking: res.data,
-        });
-        navigate(`/tracking/${res.data.id}`);
-      }
-    } catch (err) {
-      console.error(err);
-
-      setAcceptingQuoteId(null);
-
-      setError("Failed to confirm booking");
     }
   };
 

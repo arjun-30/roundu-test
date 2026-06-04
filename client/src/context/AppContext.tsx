@@ -499,6 +499,10 @@ function reducer(state: State, action: Action): State {
         ...booking,
         providerId: booking.provider_id || booking.providerId,
         serviceId: booking.service_id || booking.serviceId,
+        lat: booking.lat !== undefined && booking.lat !== null ? Number(booking.lat) : undefined,
+        lng: booking.lng !== undefined && booking.lng !== null ? Number(booking.lng) : undefined,
+        providerLat: booking.provider_lat !== undefined && booking.provider_lat !== null ? Number(booking.provider_lat) : (booking.providerLat !== undefined ? Number(booking.providerLat) : undefined),
+        providerLng: booking.provider_lng !== undefined && booking.provider_lng !== null ? Number(booking.provider_lng) : (booking.providerLng !== undefined ? Number(booking.providerLng) : undefined),
         date: booking.date || date,
         time: booking.time || time
       };
@@ -525,6 +529,10 @@ function reducer(state: State, action: Action): State {
           ...b,
           providerId: b.provider_id || b.providerId,
           serviceId: b.service_id || b.serviceId,
+          lat: b.lat !== undefined && b.lat !== null ? Number(b.lat) : undefined,
+          lng: b.lng !== undefined && b.lng !== null ? Number(b.lng) : undefined,
+          providerLat: b.provider_lat !== undefined && b.provider_lat !== null ? Number(b.provider_lat) : (b.providerLat !== undefined ? Number(b.providerLat) : undefined),
+          providerLng: b.provider_lng !== undefined && b.provider_lng !== null ? Number(b.provider_lng) : (b.providerLng !== undefined ? Number(b.providerLng) : undefined),
           date,
           time
         };

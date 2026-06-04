@@ -15,6 +15,10 @@ async function main() {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DECIMAL(9, 6);');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lng DECIMAL(9, 6);');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_lat DECIMAL(9, 6);');
+    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_lng DECIMAL(9, 6);');
     // Single-session enforcement: session_version invalidates old JWTs on new login
     await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER DEFAULT 1;');
     console.log('[server] Database schema up to date.');
@@ -139,7 +143,9 @@ async function main() {
     socket.on('join_job_room', (data: { jobId: string }) => {
       const room = `job:${data.jobId}`;
       socket.join(room);
-      console.log(`[socket] ${socket.id} joined room: ${room}`);
+      socket.join(`chat:${data.jobId}`);
+      socket.join(`booking:${data.jobId}`);
+      console.log(`[socket] ${socket.id} joined job room: ${room}, chat room, and booking room`);
     });
 
     socket.on('new_booking', async (data: any) => {
@@ -367,7 +373,9 @@ async function main() {
     socket.on('join_chat_room', (data: { bookingId: string }) => {
       const room = `chat:${data.bookingId}`;
       socket.join(room);
-      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}`);
+      socket.join(`job:${data.bookingId}`);
+      socket.join(`booking:${data.bookingId}`);
+      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}, job room, and booking room`);
     });
 
     socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
@@ -451,9 +459,33 @@ async function main() {
       }
     });
 
-    socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {
+    socket.on('provider_location_update', async (data: { jobId: string; lat: number; lng: number }) => {
       const room = `job:${data.jobId}`;
-      socket.to(room).emit('provider_location_update', { lat: data.lat, lng: data.lng });
+      
+      // Emit update with bookingId so front-end context matches it correctly
+      socket.to(room).emit('provider_location_update', { 
+        bookingId: data.jobId, 
+        lat: data.lat, 
+        lng: data.lng 
+      });
+
+      // Emit to booking: room as well for compatibility with tracking service observers
+      io.to(`booking:${data.jobId}`).emit('provider:location_updated', {
+        bookingId: data.jobId,
+        lat: data.lat,
+        lng: data.lng
+      });
+
+      // Persist the coordinates to the database bookings table
+      const dbId = String(data.jobId).replace('req-', '');
+      try {
+        await getPool().query(
+          'UPDATE bookings SET provider_lat = $1, provider_lng = $2 WHERE id = $3',
+          [data.lat, data.lng, dbId]
+        );
+      } catch (err) {
+        console.error('[socket] Failed to update provider coordinates in DB:', err);
+      }
     });
 
     socket.on('update_job_status', async (data: any) => {
