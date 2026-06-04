@@ -38,7 +38,7 @@ interface ChatMsg {
 const Tracking = () => {
   const navigate = useNavigate();
   const { id = "" } = useParams();
-  const { user, bookings, dispatch } = useApp();
+  const { user, bookings, dispatch, currentLocation } = useApp();
   const booking = bookings.find((b) => b.id === id);
 
   // Provider state – initialised from context/mock, then enriched via API
@@ -230,12 +230,22 @@ const Tracking = () => {
         <span><strong>For your safety:</strong> Do not negotiate prices or share payment details outside the app.</span>
       </div>
 
-      {/* ── Map ───────────────────────────────────────────────────────── */}
+      {/* ── Map ── */}
       <div className="tracking-map">
         <MapComponent
           bookingId={id}
-          customerLocation={[12.9716, 77.5946]}
-          providerLocation={provider && typeof provider.lat === 'number' && typeof provider.lng === 'number' ? [provider.lat, provider.lng] : [12.9766, 77.5996]}
+          customerLocation={
+            booking.lat && booking.lng 
+              ? [Number(booking.lat), Number(booking.lng)] 
+              : currentLocation 
+                ? [currentLocation.lat, currentLocation.lng] 
+                : [12.9716, 77.5946]
+          }
+          providerLocation={
+            booking.providerLat && booking.providerLng 
+              ? [Number(booking.providerLat), Number(booking.providerLng)] 
+              : [12.9766, 77.5996]
+          }
         />
         <div className="tracking-eta-badge">
           <span>⏱</span>
