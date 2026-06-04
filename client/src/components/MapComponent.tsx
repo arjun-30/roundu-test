@@ -5,12 +5,14 @@ interface MapComponentProps {
   bookingId: string;
   customerLocation: [number, number];
   providerLocation: [number, number];
+  onRouteUpdate?: (data: { distanceKm: number; durationMin: number }) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
   bookingId,
   customerLocation,
   providerLocation,
+  onRouteUpdate,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapInstance | null>(null);
@@ -60,6 +62,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
           .then((routeResult) => {
             if (!isMounted || !mapRef.current) return;
             routeCleanup.current = mapRef.current.drawRoute(routeResult.coordinates, "#f97316");
+            if (onRouteUpdate) {
+              onRouteUpdate({
+                distanceKm: Number((routeResult.distanceMetres / 1000).toFixed(1)),
+                durationMin: Math.ceil(routeResult.durationSeconds / 60),
+              });
+            }
           })
           .catch((err) => console.warn("Failed to load initial directions:", err));
       })
@@ -103,6 +111,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
         }
         if (mapRef.current) {
           routeCleanup.current = mapRef.current.drawRoute(routeResult.coordinates, "#f97316");
+        }
+        if (onRouteUpdate) {
+          onRouteUpdate({
+            distanceKm: Number((routeResult.distanceMetres / 1000).toFixed(1)),
+            durationMin: Math.ceil(routeResult.durationSeconds / 60),
+          });
         }
       })
       .catch((err) => console.warn("Failed to update directions:", err));

@@ -68,6 +68,7 @@ const Tracking = () => {
   // Live status & stage
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [stageTimes, setStageTimes] = useState<Record<string, string>>({});
+  const [routeInfo, setRouteInfo] = useState<{ distanceKm: number; durationMin: number } | null>(null);
 
   // ETA
   const [eta, setEta] = useState<number>(provider?.etaMin || 12);
@@ -244,14 +245,19 @@ const Tracking = () => {
           providerLocation={
             booking.providerLat && booking.providerLng 
               ? [Number(booking.providerLat), Number(booking.providerLng)] 
-              : [12.9766, 77.5996]
+              : booking.lat && booking.lng
+                ? [Number(booking.lat) + 0.003, Number(booking.lng) + 0.003]
+                : currentLocation
+                  ? [currentLocation.lat + 0.003, currentLocation.lng + 0.003]
+                  : [12.9766, 77.5996]
           }
+          onRouteUpdate={(info) => setRouteInfo(info)}
         />
         <div className="tracking-eta-badge">
           <span>⏱</span>
           <div>
-            <span className="tracking-eta-num">{eta} min</span>
-            <span className="tracking-eta-label">Away</span>
+            <span className="tracking-eta-num">{routeInfo ? `${routeInfo.durationMin} min` : `${eta} min`}</span>
+            <span className="tracking-eta-label">Away {routeInfo ? `(${routeInfo.distanceKm} km)` : ""}</span>
           </div>
         </div>
       </div>
@@ -343,7 +349,7 @@ const Tracking = () => {
           })}
         </div>
         <p className="tracking-eta-text">
-          Expected arrival in <strong style={{ color: "#f97316" }}>{eta} min</strong>
+          Expected arrival in <strong style={{ color: "#f97316" }}>{routeInfo ? `${routeInfo.durationMin} min` : `${eta} min`}</strong>{routeInfo && ` (${routeInfo.distanceKm} km)`}
         </p>
 
         <div className="tracking-divider" />
@@ -444,13 +450,14 @@ const Tracking = () => {
         .tracking-map {
           height: 220px; position: relative; background: #e2e8f0;
         }
-        .tracking-map > div { height: 100%; }
+        .tracking-map > div:first-child { height: 100%; }
         .tracking-eta-badge {
           position: absolute; bottom: 14px; right: 14px;
           background: #fff; border-radius: 12px; padding: 6px 12px;
           display: flex; align-items: center; gap: 6px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.12);
           font-size: 12px; color: #374151;
+          z-index: 10;
         }
         .tracking-eta-num { font-weight: 700; font-size: 15px; color: #111; display: block; }
         .tracking-eta-label { font-size: 11px; color: #6b7280; display: block; }
