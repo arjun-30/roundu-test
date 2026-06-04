@@ -1,5 +1,5 @@
 import {
-  Zap, Droplets, Sparkles, Car, User, LucideIcon, SprayCan
+  Zap, Droplets, Sparkles, Car, User, LucideIcon, SprayCan, Wind, WashingMachine
 } from "lucide-react";
 
 export interface Service {
@@ -138,6 +138,41 @@ export const services: Service[] = [
     desc: "Premium customized services",
     commonProblems: ["Custom requirement", "Technical fix", "General maintenance"],
     relatedServiceIds: ["plumber", "electrician"]
+  },
+
+  {
+    id: "ac-cleaning",
+    label: "AC Cleaning",
+    icon: Wind,
+    desc: "Indoor unit cleaning, filter cleaning, dust removal, performance improvement",
+    commonProblems: [
+      "AC Not Cooling",
+      "AC Water Leakage",
+      "AC Bad Smell",
+      "AC Filter Cleaning",
+      "AC Deep Cleaning",
+      "AC Low Airflow",
+      "AC Noise Issue",
+      "Other"
+    ],
+    relatedServiceIds: ["electrician", "housekeeping"]
+  },
+  {
+    id: "washing-machine-cleaning",
+    label: "Washing Machine Cleaning",
+    icon: WashingMachine,
+    desc: "Drum cleaning, filter cleaning, internal sanitization, odor removal",
+    commonProblems: [
+      "Drum Cleaning",
+      "Filter Cleaning",
+      "Bad Odor Removal",
+      "Internal Sanitization",
+      "Deep Cleaning",
+      "Dirt & Residue Removal",
+      "Performance Improvement",
+      "Other"
+    ],
+    relatedServiceIds: ["housekeeping", "plumber"]
   },
 ];
 
