@@ -12,10 +12,16 @@ export interface Booking {
   notes: string;
   voice_note_url?: string;
   paid?: boolean;
+  providerLat?: number;
+  providerLng?: number;
 }
 
 export const BookingModel = {
   async create(booking: Partial<Booking> & { voice_note?: boolean, voice_note_url?: string, paid?: boolean }): Promise<Booking> {
+
+    console.log("========== BOOKING INSERT ==========");
+    console.log(JSON.stringify(booking, null, 2));
+
     const res = await getPool().query(
       'INSERT INTO bookings (customer_id, provider_id, service_id, status, scheduled_at, address, price, notes, voice_note, voice_note_url, paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
       [booking.customer_id, booking.provider_id, booking.service_id, booking.status || 'pending', booking.scheduled_at, booking.address, booking.price, booking.notes, booking.voice_note || false, booking.voice_note_url || null, booking.paid || false]

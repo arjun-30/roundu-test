@@ -28,13 +28,22 @@ const ProviderDetail = () => {
       const targetUserId = quote?.providerId || id;
       if (!targetUserId) return;
       try {
-        const res = await api.get(`/providers/dashboard?userId=${targetUserId}`);
+        const res = await api.get(`/providers/${targetUserId}`);
         if (res.data.success) {
           setDynamicProfile(res.data.data.provider);
           setDynamicStats(res.data.data.stats);
         }
       } catch (err) {
-        console.warn("Could not fetch dynamic profile:", err);
+        console.warn("Could not fetch profile directly, trying dashboard fallback...", err);
+        try {
+          const res = await api.get(`/providers/dashboard?userId=${targetUserId}`);
+          if (res.data.success) {
+            setDynamicProfile(res.data.data.provider);
+            setDynamicStats(res.data.data.stats);
+          }
+        } catch (err2) {
+          console.warn("Could not fetch dynamic profile from dashboard:", err2);
+        }
       }
     };
     fetchProfile();
@@ -216,7 +225,11 @@ const ProviderDetail = () => {
       {/* Header Image & Action Bar */}
       <div className="relative h-80 bg-gray-900 overflow-hidden">
         <img 
-          src={provider.avatar.length === 2 ? `https://ui-avatars.com/api/?name=${provider.name}&background=152E4B&color=fff&size=512` : provider.image} 
+          src={
+            provider.avatar && typeof provider.avatar === 'string' && provider.avatar.startsWith('http')
+              ? provider.avatar
+              : provider.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(provider.name || "Provider")}&background=152E4B&color=fff&size=512`
+          } 
           alt={provider.name} 
           className="w-full h-full object-cover opacity-80" 
         />
@@ -275,19 +288,19 @@ const ProviderDetail = () => {
           <div className="grid grid-cols-3 gap-2 bg-[#F8FAFC] rounded-[24px] p-4 mb-8">
             <StatItem 
                icon={Star} 
-               value={provider.rating === 0 ? "New" : provider.rating.toString()} 
-               label={`${provider.reviews} Reviews`} 
+               value={(provider.rating || 0) === 0 ? "New" : (provider.rating || 0).toString()} 
+               label={`${provider.reviews || 0} Reviews`} 
                color="text-yellow-500"
             />
             <StatItem 
                icon={CheckCircle2} 
-               value={provider.experienceYrs.toString()} 
+               value={(provider.experienceYrs || 0).toString()} 
                label="Years Exp" 
                color="text-blue-500"
             />
             <StatItem 
                icon={Briefcase} 
-               value={provider.jobs?.toString() || "250+"} 
+               value={(provider.jobs || 0).toString() || "250+"} 
                label="Jobs Done" 
                color="text-primary"
             />
@@ -325,7 +338,7 @@ const ProviderDetail = () => {
           <div className="mb-8">
              <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Specialties & Skills</h3>
              <div className="flex flex-wrap gap-2.5">
-                {provider.tags.map(tag => (
+                {(provider.tags || []).map((tag: string) => (
                    <span key={tag} className="px-4 py-2 bg-secondary/5 rounded-full text-[13px] font-bold text-secondary border border-secondary/10">
                       {tag}
                    </span>
@@ -372,7 +385,7 @@ const ProviderDetail = () => {
                 <h3 className="text-[17px] font-extrabold text-foreground">Client Reviews</h3>
                 <div className="flex items-center gap-1.5">
                    <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                   <span className="text-[15px] font-extrabold text-foreground">{provider.rating}</span>
+                   <span className="text-[15px] font-extrabold text-foreground">{provider.rating || 0}</span>
                 </div>
              </div>
              
@@ -459,7 +472,7 @@ const ProviderDetail = () => {
                 <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                   Client Reviews
                   <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Star size={12} className="fill-yellow-600 text-yellow-600" /> {provider.rating}
+                    <Star size={12} className="fill-yellow-600 text-yellow-600" /> {provider.rating || 0}
                   </span>
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">All {mockReviews.length} verified customer reviews</p>

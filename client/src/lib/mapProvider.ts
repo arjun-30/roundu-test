@@ -221,6 +221,53 @@ export async function geocode(address: string): Promise<LatLng> {
   return { lat, lng };
 }
 
+export function formatCityCountry(feature: any): string {
+  if (!feature) return "";
+  
+  // Try to find place (city)
+  let city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text;
+  
+  // Fallbacks for city
+  if (!city) {
+    city = feature.context?.find((c: any) => c.id.startsWith("district"))?.text;
+  }
+  if (!city) {
+    city = feature.context?.find((c: any) => c.id.startsWith("region"))?.text;
+  }
+  if (!city) {
+    if (feature.id?.startsWith("place") || feature.id?.startsWith("district")) {
+      city = feature.text;
+    }
+  }
+  
+  // Try to find country
+  let country = feature.context?.find((c: any) => c.id.startsWith("country"))?.text;
+  if (!country && feature.id?.startsWith("country")) {
+    country = feature.text;
+  }
+  if (!country && feature.place_name) {
+    const parts = feature.place_name.split(",");
+    country = parts[parts.length - 1]?.trim();
+  }
+  if (!country) {
+    country = "India";
+  }
+  
+  if (city) {
+    return `${city.trim()}, ${country.trim()}`;
+  }
+  
+  if (feature.place_name) {
+    const parts = feature.place_name.split(",");
+    if (parts.length >= 2) {
+      return `${parts[parts.length - 2].trim()}, ${parts[parts.length - 1].trim()}`;
+    }
+    return feature.place_name;
+  }
+  
+  return "Set Location";
+}
+
 export async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; area: string; city: string; pincode: string }> {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
   const res = await fetch(url);
@@ -243,8 +290,10 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
     }
   }
   
+  const formattedAddress = formatCityCountry(feature);
+  
   return { 
-    address: feature.place_name,
+    address: formattedAddress,
     area: area,
     city: city,
     pincode: pincode

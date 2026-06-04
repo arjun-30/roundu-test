@@ -77,7 +77,7 @@ async function main() {
         socket.leave('providers');
         // Leave any service rooms they may have joined previously
         const rooms = Array.from(socket.rooms);
-        rooms.forEach(room => {
+        rooms.forEach((room: any) => {
           if (room.startsWith('service:')) socket.leave(room);
         });
         console.log(`[socket] customer ${data.userId} cleaned from provider/service rooms`);
@@ -293,12 +293,26 @@ async function main() {
           return;
         }
 
+        const proposedStart = parseDateTime(
+          broadcast?.date,
+          broadcast?.time
+        );
+
+        const hoursFromNow =
+          (proposedStart.getTime() - Date.now()) /
+          (1000 * 60 * 60);
+
         // Check if provider is currently busy on an active job
         try {
           const isBusy = await isProviderBusy(providerId);
           if (isBusy) {
-            socket.emit('quote_error', { message: 'You are currently busy on an active job.' });
-            return;
+            // Allow scheduled jobs only if 6+ hours away
+            if (hoursFromNow < 6) {
+              socket.emit('quote_error', {
+                message: 'Finish your current job before accepting another immediate booking.'
+              });
+              return;
+            }
           }
         } catch (busyErr) {
           console.warn('[socket] submit_quote: isProviderBusy check failed (non-fatal), continuing:', busyErr);
@@ -307,7 +321,6 @@ async function main() {
         // Check schedule conflict
         if (broadcast) {
           try {
-            const proposedStart = parseDateTime(broadcast.date, broadcast.time);
             const proposedDuration = broadcast.duration || 2;
             const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
             if (conflictCheck.conflict) {

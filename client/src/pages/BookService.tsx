@@ -108,35 +108,28 @@ const BookService = () => {
             );
 
           if (result.address) {
-            const shortAddr =
-              result.area
-                ? `${result.area}${
-                    result.city
-                      ? ", " +
-                        result.city
-                      : ""
-                  }`
-                : result.address
-                    .split(",")
-                    .slice(0, 2)
-                    .join(",");
-
             dispatch({
               type: "UPDATE_USER",
               user: {
-                address: shortAddr,
+                address: result.address,
               },
             });
+            localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address, ts: Date.now() }));
           }
         } catch (err) {
-          dispatch({
-            type: "UPDATE_USER",
-            user: {
-              address: `${lat.toFixed(
-                4
-              )}, ${lng.toFixed(4)}`,
-            },
-          });
+          console.warn("Reverse geocode failed:", err);
+          try {
+            const cached = localStorage.getItem("roundu_last_location");
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              dispatch({
+                type: "UPDATE_USER",
+                user: {
+                  address: parsed.address,
+                },
+              });
+            }
+          } catch (_) {}
         } finally {
           setLocating(false);
         }
@@ -659,24 +652,7 @@ const BookService = () => {
           </div>
         </div>
 
-        {/* PRICE */}
-        <div className="bg-white rounded-[28px] border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
-          <p className="text-[13px] font-semibold text-slate-500">
-            Estimated Price
-          </p>
-
-          <div className="flex items-end justify-between mt-2">
-
-            <h3 className="text-[30px] font-extrabold text-[#0F172A]">
-              ₹299 – ₹599
-            </h3>
-
-            <span className="text-[13px] text-slate-500">
-              After inspection
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* LOCATION MODAL */}

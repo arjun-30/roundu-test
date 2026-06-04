@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Booking, Provider, ProviderRequest,
   initialProviderRequests, initialCompletedJobs,
@@ -12,6 +13,7 @@ import { getDistance, formatLocalBookingDateTime } from "@/lib/utils";
 import { getStoredMembership, setStoredMembership } from "@/lib/membership";
 import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
+import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
 
 
 type Role = "customer" | "provider" | null;
@@ -55,6 +57,8 @@ interface UserProfile {
   role?: "customer" | "provider";
   savedAddresses?: SavedAddress[];
   profilePicture?: string;
+  avatar_url?: string;
+  accountType?: "customer" | "provider";
 }
 
 export interface SavedAddress {
@@ -101,6 +105,9 @@ interface State {
   // New Flow State
   isNewUser: boolean;
   walletBalance: number;
+  commissionDue: number;
+  codPendingCount: number;
+  isFrozen: boolean;
   isOnline: boolean;
   providerStats: {
     rating: number;
@@ -124,6 +131,10 @@ interface State {
 type Action =
   | { type: "ADD_PROVIDER_REQUEST"; request: ProviderRequest }
   | { type: "SET_PROVIDER_REQUESTS"; requests: ProviderRequest[] }
+  | { type: "ADD_COMMISSION_DUE"; amount: number }
+  | { type: "CLEAR_COMMISSION_DUE"; amount: number }
+  | { type: "INCREMENT_COD_COUNT" }
+  | { type: "FREEZE_ACCOUNT" }
   | { type: "SET_PHONE"; phone: string }
   | { type: "SET_USER_ID"; id: string }
   | { type: "SET_AUTH"; value: boolean }
@@ -138,8 +149,11 @@ type Action =
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
-  | { type: "UPDATE_BOOKING"; id: string; patch: Partial<Booking> }
-  | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any; targetRole?: "customer" | "provider" }
+  | {
+    type: "UPDATE_BOOKING";
+    id: string;
+    patch: any;
+  } | { type: "ADD_NOTIFICATION"; text: string; notificationType?: string; metadata?: any; targetRole?: "customer" | "provider" }
   | { type: "REMOVE_NOTIFICATION"; id: string }
   | { type: "ACCEPT_REQUEST"; id: string }
   | { type: "REJECT_REQUEST"; id: string }
@@ -164,7 +178,7 @@ type Action =
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
   | { type: "UPDATE_BOOKING_STATUS"; bookingId: string; status: string }
   | { type: "HANDLE_JOB_ACCEPTED"; booking: any }
-  | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string } }
+  | { type: "HANDLE_JOB_STATUS_UPDATED"; data: { bookingId: string; status: string; paid?: boolean } }
   | { type: "SET_CHAT_HISTORY"; payload: { bookingId: string; messages: any[] } }
   | { type: "ADD_CHAT_MESSAGE"; payload: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean } }
   | { type: "MARK_MESSAGES_SEEN"; payload: { bookingId: string; seenBy: string } }
@@ -176,7 +190,17 @@ const token = localStorage.getItem("roundu_token");
 const savedUser = localStorage.getItem("roundu_user");
 const savedRole = localStorage.getItem("roundu_role");
 
-let parsedUser = { id: "", name: "", phone: "", email: "", address: "", profilePicture: "" };
+let parsedUser = {
+  id: "",
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  profilePicture: "",
+  avatar_url: "",
+  accountType: "customer",
+  role: "customer"
+};
 if (savedUser) {
   try {
     parsedUser = JSON.parse(savedUser);
@@ -195,12 +219,18 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
-    profilePicture: parsedUser.profilePicture || "",
+    role: (savedRole as "customer" | "provider") || parsedUser.role || "customer",
+    accountType: parsedUser.accountType || "customer",
+    profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
+    avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
     ],
   },
+  commissionDue: 0,
+  codPendingCount: 0,
+  isFrozen: false,
   selectedServiceId: null,
   selectedProviderId: null,
   selectedDate: null,
@@ -345,6 +375,7 @@ function reducer(state: State, action: Action): State {
           arrived: "📍 Provider has arrived at your location!",
           in_progress: "🛠️ Job in progress...",
           completed: "✅ Job completed successfully!",
+          paid: "💰 Payment confirmed! Please rate your experience.",
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -361,13 +392,16 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           bookings: state.bookings.map((b) =>
-            (b.id === normalizedId || b.id === bookingId) ? { ...b, status: status as any } : b
+            (b.id === normalizedId || b.id === bookingId)
+              ? { ...b, status: status as any, ...(status === "paid" ? { paid: true } : {}) }
+              : b
           ),
           notifications: newNotifications,
         };
       } else {
         const statusTexts: Record<string, string> = {
-          completed: "💰 Payment received! Job completed successfully.",
+          completed: "⏳ Job completed, waiting for payment.",
+          paid: "💰 Payment received! Job completed successfully.",
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -384,7 +418,7 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           providerRequests: state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any } : r
+            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
           ),
           notifications: newNotifications,
         };
@@ -400,18 +434,36 @@ function reducer(state: State, action: Action): State {
       return { ...state, isAuthenticated: action.value };
     case "SET_ROLE":
       if (action.role) {
-        localStorage.setItem("roundu_role", action.role);
+        safeSetItem("roundu_role", action.role);
       }
-      return { ...state, role: action.role };
+      return {
+        ...state,
+        role: action.role,
+        user: {
+          ...state.user,
+          role: action.role ? (action.role as "customer" | "provider") : undefined
+        }
+      };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
+      if (action.user.profilePicture && !action.user.avatar_url) {
+        newUser.avatar_url = action.user.profilePicture;
+      }
+      if (action.user.avatar_url && !action.user.profilePicture) {
+        newUser.profilePicture = action.user.avatar_url;
+      }
       // Persist user to localStorage for session restoration
+      // Persist a compact user payload to localStorage
       try {
-        localStorage.setItem("roundu_user", JSON.stringify(newUser));
+        saveUserToLocalStorage(newUser);
       } catch (e) {
         console.error("Failed to persist user to localStorage", e);
       }
-      return { ...state, user: newUser };
+      return {
+        ...state,
+        user: newUser,
+        role: action.user.role !== undefined ? action.user.role : state.role
+      };
     }
     case "SELECT_SERVICE":
       return { ...state, selectedServiceId: action.id };
@@ -603,7 +655,44 @@ function reducer(state: State, action: Action): State {
     case "SET_NEW_USER":
       return { ...state, isNewUser: action.value };
     case "UPDATE_WALLET":
-      return { ...state, walletBalance: state.walletBalance + action.amount };
+      return {
+        ...state,
+        walletBalance: state.walletBalance + action.amount
+      };
+
+    case "ADD_COMMISSION_DUE":
+      return {
+        ...state,
+        commissionDue:
+          state.commissionDue + action.amount
+      };
+
+    case "CLEAR_COMMISSION_DUE":
+      return {
+        ...state,
+        commissionDue: Math.max(
+          0,
+          state.commissionDue - action.amount
+        )
+      };
+
+    case "INCREMENT_COD_COUNT": {
+
+      const nextCount =
+        state.codPendingCount + 1;
+
+      return {
+        ...state,
+        codPendingCount: nextCount,
+        isFrozen: nextCount >= 2
+      };
+    }
+
+    case "FREEZE_ACCOUNT":
+      return {
+        ...state,
+        isFrozen: true
+      };
     case "SET_ONLINE":
       return { ...state, isOnline: action.value };
     case "UPDATE_STATS":
@@ -660,9 +749,9 @@ function reducer(state: State, action: Action): State {
       };
     }
     case "ADD_CHAT_MESSAGE": {
-      const { id, bookingId, text, senderId, time, audioBase64, is_seen } = action.payload;
+      const { id, bookingId, text, senderId, senderRole, time, audioBase64, is_seen } = action.payload;
       const chatRoom = state.chatHistories[bookingId] || [];
-      const isMe = senderId === state.user.id;
+      const isMe = senderRole === state.role || (!senderRole && senderId === state.user.id);
 
       const isDuplicate = chatRoom.some(m => m.id === id || (m.text === text && m.time === time && m.sender === (isMe ? "me" : "other")));
       if (isDuplicate) return state;
@@ -726,8 +815,35 @@ interface Ctx extends State {
 
 const AppContext = createContext<Ctx | null>(null);
 
+// Helper: read role override from URL and apply it (useful for testing two separate roles in the same browser)
+const getRoleFromUrl = () => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get('role');
+    if (role === 'customer' || role === 'provider') {
+      return role as Role;
+    }
+  }
+  return null;
+};
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const navigate = useNavigate();
+
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Apply role override after initial load (once)
+  useEffect(() => {
+    const urlRole = getRoleFromUrl();
+    if (urlRole && state.role !== urlRole) {
+      dispatch({ type: "SET_ROLE", role: urlRole });
+      localStorage.setItem("roundu_role", urlRole);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -848,26 +964,77 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
     });
 
-    socket.on("provider_location_update", (data: { id: string; lat: number; lng: number; name: string }) => {
-      dispatch({ type: "UPDATE_NEARBY_PROVIDER", ...data });
+    socket.on("provider_location_update", (data: any) => {
+      // data may be { id, lat, lng, name } or { bookingId, lat, lng } depending on server path
+      try {
+        const currentState = stateRef.current;
+        if (!data) return;
 
-      // Auto-update status to 'arrived' when provider is within 100m of customer
-      if (state.role === "customer" && state.currentLocation) {
-        state.bookings.forEach((b) => {
-          const providerId = (b as any).provider_id || b.providerId;
-          if (providerId === data.id && b.status === "on_the_way") {
-            const dist = getDistance(state.currentLocation!, { lat: data.lat, lng: data.lng });
-            if (dist < 0.1) { // 100 metres
-              socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
+        let providerId: string | null = null;
+        let lat: number | null = null;
+        let lng: number | null = null;
+        let name: string = '';
+
+        if (data.id) {
+          providerId = data.id;
+          lat = Number(data.lat);
+          lng = Number(data.lng);
+          name = data.name || '';
+          dispatch({ type: "UPDATE_NEARBY_PROVIDER", id: providerId, lat, lng, name });
+        } else if (data.bookingId) {
+          lat = Number(data.lat);
+          lng = Number(data.lng);
+          // Map booking -> providerId if available
+          const booking = currentState.bookings.find(b => String(b.id) === String(data.bookingId));
+          if (booking) {
+            providerId = (booking as any).provider_id || (booking as any).providerId || null;
+            name = (booking as any).providerName || '';
+            dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: lat, providerLng: lng } });
+            if (providerId) {
+              dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat, lng, name });
             }
           }
-        });
+        }
+
+        // Auto-update status to 'arrived' when provider is within 100m of customer
+        if (currentState.role === "customer" && currentState.currentLocation && lat != null && !isNaN(lat) && lng != null && !isNaN(lng)) {
+          currentState.bookings.forEach((b) => {
+            const pId = (b as any).provider_id || b.providerId;
+            const match = (providerId && pId === providerId) || (data.bookingId && String(b.id) === String(data.bookingId));
+            if (match && b.status === "on_the_way") {
+              const dist = getDistance(currentState.currentLocation!, { lat, lng });
+              if (dist < 0.1) { // 100 metres
+                socket.emit("update_job_status", { bookingId: b.id, status: "arrived" });
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[socket] provider_location_update handler error', err);
       }
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
       console.log("[socket] ✅ incoming_broadcast received:", broadcast);
       dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
+    });
+
+    // Server-side tracking emits this event to booking rooms: { bookingId, lat, lng }
+    socket.on('provider:location_updated', (data: { bookingId: string; lat: number; lng: number }) => {
+      try {
+        // Update booking's provider coords if we have the booking in state
+        const booking = state.bookings.find(b => b.id === String(data.bookingId));
+        if (booking) {
+          const providerId = (booking as any).provider_id || (booking as any).providerId || null;
+          if (providerId) {
+            dispatch({ type: 'UPDATE_BOOKING', id: booking.id, patch: { providerLat: data.lat, providerLng: data.lng } });
+            // Also update nearbyProviders map so UI can access quickly
+            dispatch({ type: 'UPDATE_NEARBY_PROVIDER', id: providerId, lat: data.lat, lng: data.lng, name: (booking as any).providerName || '' } as any);
+          }
+        }
+      } catch (err) {
+        console.warn('[socket] provider:location_updated handler error', err);
+      }
     });
 
     socket.on("new_quote_received", (quote: ProviderQuote) => {
@@ -900,8 +1067,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "HANDLE_JOB_ACCEPTED", booking });
     });
 
-    socket.on("job_status_updated", (data: { bookingId: string; status: string }) => {
+    socket.on("job_status_updated", (data: { bookingId: string; status: string; paid?: boolean }) => {
       dispatch({ type: "HANDLE_JOB_STATUS_UPDATED", data });
+      // When provider marks "paid" (cash received or UPI confirmed), redirect customer to rating
+      const currentState = stateRef.current;
+      if (currentState.role === "customer" && data.status === "paid") {
+        const targetBookingId = String(data.bookingId).replace("req-", "");
+        dispatch({ type: "PAY_BOOKING", id: targetBookingId });
+        navigate(`/rating/${targetBookingId}`, { replace: true });
+      }
     });
 
     socket.on("chat_message_received", (data: { id?: string; bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string; is_seen?: boolean }) => {
@@ -1040,7 +1214,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     : null;
 
   useEffect(() => {
-    localStorage.setItem("roundu_user", JSON.stringify(state.user));
+    // Save a compact representation of the current user to localStorage
+    saveUserToLocalStorage(state.user);
   }, [state.user]);
 
   return (

@@ -8,6 +8,7 @@ import FilterModal, { FilterValues } from "@/components/FilterModal";
 import EmptyState from "@/components/EmptyState";
 
 import api, { createBooking } from "@/lib/api";
+import { getDistance } from "@/lib/utils";
 
 const tabs = ["All", "Top Rated", "Nearest", "Budget", "Fastest"];
 const defaultFilters: FilterValues = { maxPrice: 1000, minRating: 0, maxDistance: 50, availableOnly: false };
@@ -48,8 +49,20 @@ const ProvidersPage = () => {
     
     // Convert DB fields to frontend card fields if needed
     l = l.map(p => {
-      const calculatedDistance = p.distance_km || 0;
-      
+      // Prefer live calc from currentLocation if available and provider has coordinates
+      let calculatedDistance = p.distance_km || 0;
+      if (currentLocation && p.lat != null && p.lng != null) {
+        const plat = Number(p.lat);
+        const plng = Number(p.lng);
+        if (!isNaN(plat) && !isNaN(plng)) {
+          try {
+            calculatedDistance = Math.round(getDistance(currentLocation, { lat: plat, lng: plng }) * 10) / 10;
+          } catch (e) {
+            // fallback to server-provided
+          }
+        }
+      }
+
       return {
         ...p,
         pricePerHr: p.price_per_hr || 0,

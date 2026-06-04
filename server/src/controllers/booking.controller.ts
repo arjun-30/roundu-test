@@ -4,8 +4,11 @@ import { ProviderModel } from '../models/provider.model';
 import { NotificationModel } from '../models/notification.model';
 import { isProviderBusy, checkScheduleConflict } from '../utils/bookingHelper';
 
+
 export const createBooking = async (req: Request, res: Response) => {
   try {
+    console.log("========== CREATE BOOKING ==========");
+    console.log("BODY:", JSON.stringify(req.body, null, 2));
     const bookingData = { ...req.body };
 
     // Normalize and sanitize scheduled_at dynamically to prevent timezone offset shifts
@@ -26,7 +29,7 @@ export const createBooking = async (req: Request, res: Response) => {
             const minutes = parseInt(minutesStr, 10);
             if (modifier === "PM" && hours < 12) hours += 12;
             else if (modifier === "AM" && hours === 12) hours = 0;
-            
+
             const [year, month, day] = datePart.split("-").map((num) => parseInt(num, 10));
             const localDateObj = new Date(year, month - 1, day, hours, minutes, 0, 0);
             if (!isNaN(localDateObj.getTime())) {
@@ -38,7 +41,7 @@ export const createBooking = async (req: Request, res: Response) => {
         }
       }
     }
-    
+
     // The frontend might send users.id instead of providers.id for the quote.
     // Try to resolve it to a providers.id if it matches a user.
     if (bookingData.provider_id) {
@@ -47,14 +50,14 @@ export const createBooking = async (req: Request, res: Response) => {
       bookingData.provider_id = providerId;
 
       // 1. Check if provider is currently busy
-      const isBusy = await isProviderBusy(providerId);
-      if (isBusy) {
-        return res.status(400).json({
-          success: false,
-          message: 'Provider is currently busy on an active job.'
-        });
-      }
-
+      /* const isBusy = await isProviderBusy(providerId);
+       if (isBusy) {
+         return res.status(400).json({
+           success: false,
+           message: 'Provider is currently busy on an active job.'
+         });
+       }
+ */
       // 2. Check if provider has a schedule conflict
       if (bookingData.scheduled_at) {
         const proposedStart = new Date(bookingData.scheduled_at);
@@ -69,12 +72,17 @@ export const createBooking = async (req: Request, res: Response) => {
       }
     }
 
+    console.log("FINAL BOOKING DATA:");
+    console.log(JSON.stringify(bookingData, null, 2));
+
     const booking = await BookingModel.create(bookingData);
-    
+
+    console.log("BOOKING CREATED:");
+    console.log(booking);
     // Notify relevant providers
     if (booking.service_id) {
       const providers = await ProviderModel.findByServiceId(booking.service_id);
-      
+
       const notifications = providers.map(p => ({
         user_id: p.user_id,
         title: 'New Job Request',
@@ -86,7 +94,7 @@ export const createBooking = async (req: Request, res: Response) => {
       for (const n of notifications) {
         await NotificationModel.create(n);
       }
-      
+
       // Real-time notification via Socket.io
       // Provide the booking directly to all connected clients, but clients filter by provider_id
       req.app.locals.io.emit('job_accepted', { ...booking, provider_user_id: req.body.provider_id });

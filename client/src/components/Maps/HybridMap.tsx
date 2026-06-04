@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, Navigation } from 'lucide-react';
 import { loadMap, geocode, reverseGeocode, MapInstance, LatLng } from '@/lib/mapProvider';
+import { Geolocation } from '@capacitor/geolocation';
 
 interface HybridMapProps {
   onLocationSelect?: (location: { lat: number; lng: number; address: string }) => void;
@@ -67,33 +68,53 @@ const HybridMap: React.FC<HybridMapProps> = ({
     }
   };
 
-  const fetchCurrentLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.setCenter(coords, 16);
-          mapInstanceRef.current.addMarker({ position: coords, type: 'pin' });
-          
-          try {
-            const result = await reverseGeocode(coords.lat, coords.lng);
-            const displayAddress = (result.area && result.city) 
-              ? `${result.area}, ${result.city}` 
-              : result.address;
-            setAddress(displayAddress);
-            
-            if (onLocationSelect) {
-              onLocationSelect({ ...coords, address: displayAddress });
-            }
-          } catch (err) {
-            console.error("Reverse geocoding failed:", err);
-          }
-        }
-      },
-      (error) => {
-        console.error("Error getting location:", error);
+  const fetchCurrentLocation = async () => {
+    try {
+      let permResult;
+      try {
+        permResult = await Geolocation.checkPermissions();
+      } catch (e) {
+        permResult = { location: "prompt" };
       }
-    );
+
+      if (permResult.location !== "granted") {
+        try {
+          permResult = await Geolocation.requestPermissions();
+        } catch (e) {
+          permResult = { location: "denied" };
+        }
+      }
+
+      if (permResult.location !== "granted") {
+        console.warn("Location permission not granted");
+        return;
+      }
+
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+
+      const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setCenter(coords, 16);
+        mapInstanceRef.current.addMarker({ position: coords, type: 'pin' });
+        
+        try {
+          const result = await reverseGeocode(coords.lat, coords.lng);
+          const displayAddress = result.address;
+          setAddress(displayAddress);
+          
+          if (onLocationSelect) {
+            onLocationSelect({ ...coords, address: displayAddress });
+          }
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
+        }
+      }
+    } catch (error) {
+      console.error("Error getting location:", error);
+    }
   };
 
   return (

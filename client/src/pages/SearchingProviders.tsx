@@ -320,18 +320,58 @@ const SearchingProviders = () => {
   const handleAcceptQuote = async (quote: ProviderQuote) => {
     if (acceptingQuoteId) return;
 
-    if (!user || !user.id) {
-      setError("Please login");
+    try {
+      setError("");
+      setAcceptingQuoteId(quote.providerId);
 
-      setTimeout(() => {
-        navigate("/auth", { replace: true });
-      }, 1500);
+      const bookingData = {
+        customer_id: String(user?.id || ""),
+        provider_id: String(quote.providerId || ""),
+        service_id: String(serviceId || ""),
+        status: "assigned",
 
-      return;
+        scheduled_at: new Date().toISOString(),
+
+        address:
+          user?.address ||
+            currentLocation
+            ? `${currentLocation?.lat},${currentLocation?.lng}`
+            : "Customer Location",
+
+        price: Number(quote.price || 0),
+
+        notes: bookingNotes || "",
+
+        voice_note: bookingVoiceNote || false,
+        voice_note_url: bookingVoiceNoteUrl || null,
+        paid: false,
+      };
+
+      console.log("BOOKING PAYLOAD", bookingData);
+
+      const res = await createBooking(bookingData);
+
+      console.log("BOOKING RESPONSE", res);
+
+      if (res?.success && res?.data?.id) {
+        // Add booking to context and navigate to tracking page
+        dispatch({ type: "ADD_BOOKING", booking: res.data });
+        navigate(`/tracking/${res.data.id}`);
+        return;
+      }
+
+      throw new Error(res?.message || "Booking creation failed");
+    } catch (error: any) {
+      console.error("ACCEPT QUOTE ERROR", error);
+
+      setError(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to confirm booking"
+      );
+    } finally {
+      setAcceptingQuoteId(null);
     }
-
-    setAcceptingQuoteId(quote.providerId);
-
     const bookingData = {
       customer_id: user.id,
       provider_id: quote.providerId,
@@ -353,7 +393,11 @@ const SearchingProviders = () => {
       const res = await createBooking(bookingData);
 
       if (res.success) {
-        navigate(`/chat/${res.data.id}`);
+        dispatch({
+          type: "ADD_BOOKING",
+          booking: res.data,
+        });
+        navigate(`/tracking/${res.data.id}`);
       }
     } catch (err) {
       console.error(err);
@@ -397,22 +441,22 @@ const SearchingProviders = () => {
 
         {/* RADAR RINGS */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute w-[110px] h-[110px] rounded-full border border-blue-300/30 animate-pulse" />
+          <div className="absolute w-[110px] h-[110px] rounded-full border border-[#152E4B]/30 animate-pulse" />
 
-          <div className="absolute w-[180px] h-[180px] rounded-full border border-blue-300/20" />
+          <div className="absolute w-[180px] h-[180px] rounded-full border border-[#152E4B]/20" />
 
-          <div className="absolute w-[250px] h-[250px] rounded-full border border-blue-300/10" />
+          <div className="absolute w-[250px] h-[250px] rounded-full border border-[#152E4B]/10" />
         </div>
 
         {/* CENTER POINT */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <div className="relative flex items-center justify-center">
 
-            <div className="absolute w-20 h-20 rounded-full bg-blue-500/10 animate-ping" />
+            <div className="absolute w-20 h-20 rounded-full bg-[#152E4B]/10 animate-ping" />
 
-            <div className="absolute w-12 h-12 rounded-full bg-blue-500/10" />
+            <div className="absolute w-12 h-12 rounded-full bg-[#152E4B]/10" />
 
-            <div className="w-5 h-5 rounded-full bg-blue-600 border-4 border-white shadow-lg" />
+            <div className="w-5 h-5 rounded-full bg-[#152E4B] border-4 border-white shadow-lg" />
           </div>
         </div>
 
@@ -423,15 +467,15 @@ const SearchingProviders = () => {
             <div className="relative">
               <div
                 className={`w-3 h-3 rounded-full ${foundCount > 0
-                    ? "bg-emerald-500"
-                    : "bg-amber-400"
+                  ? "bg-emerald-500"
+                  : "bg-amber-400"
                   }`}
               />
 
               <div
                 className={`absolute inset-0 rounded-full animate-ping ${foundCount > 0
-                    ? "bg-emerald-400"
-                    : "bg-amber-300"
+                  ? "bg-emerald-400"
+                  : "bg-amber-300"
                   }`}
               />
             </div>
@@ -468,7 +512,7 @@ const SearchingProviders = () => {
             >
               <div className="relative">
 
-                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-[#152E4B]/20 animate-ping" />
 
                 <div className="w-11 h-11 rounded-full bg-white p-[2px] shadow-xl border border-white">
 
@@ -479,7 +523,7 @@ const SearchingProviders = () => {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-full h-full rounded-full bg-[#152E4B] flex items-center justify-center text-white font-bold text-sm">
                       {p.name?.charAt(0)}
                     </div>
                   )}
@@ -545,7 +589,7 @@ const SearchingProviders = () => {
                 <div className="flex justify-between">
 
                   <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-blue-600">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[#152E4B]">
                       {q.providerAvatar}
                     </div>
 
@@ -571,7 +615,7 @@ const SearchingProviders = () => {
                   </div>
 
                   <div className="text-right">
-                    <div className="text-[20px] font-black text-blue-600">
+                    <div className="text-[20px] font-black text-[#152E4B]">
                       ₹{q.price}
                     </div>
 
@@ -584,7 +628,7 @@ const SearchingProviders = () => {
                 <button
                   disabled={acceptingQuoteId === q.providerId}
                   onClick={() => handleAcceptQuote(q)}
-                  className="w-full mt-4 bg-blue-600 text-white py-3 rounded-2xl font-bold active:scale-95 transition"
+                  className="w-full mt-4 bg-[#152E4B] text-white py-3 rounded-2xl font-bold active:scale-95 transition"
                 >
                   {acceptingQuoteId === q.providerId
                     ? "Confirming..."
@@ -601,8 +645,8 @@ const SearchingProviders = () => {
                 <div
                   key={i}
                   className={`transition-all duration-300 rounded-full ${i === activeDotIndex
-                      ? "w-3 h-3 bg-amber-400 scale-125"
-                      : "w-2 h-2 bg-slate-300"
+                    ? "w-3 h-3 bg-amber-400 scale-125"
+                    : "w-2 h-2 bg-slate-300"
                     }`}
                 />
               ))}
@@ -664,7 +708,7 @@ const TrustIndicator = ({
   label: string;
 }) => (
   <div className="flex items-center gap-2">
-    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+    <div className="w-5 h-5 rounded-full bg-[#152E4B] flex items-center justify-center">
       <svg
         width="10"
         height="8"

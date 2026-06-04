@@ -1,411 +1,661 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Phone, MessageCircle, CheckCircle2, XCircle,
-  IndianRupee, Navigation2, MapPin, Wrench, Flag, MessageSquare
+  Phone, MessageSquare, ChevronLeft, Navigation2, MapPin,
+  Wrench, CheckCircle, MoreVertical, Send, Mic, AlertTriangle,
+  Key, Calendar, CreditCard, IndianRupee, ChevronRight,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import MapComponent from "@/components/MapComponent";
 import { socket } from "@/lib/socket";
-import { getProviderById } from "@/data/mockData";
+import { getProviderById, getServiceById } from "@/data/mockData";
+import api from "@/lib/api";
 
-// 4 stages matching the provider side
-const CUSTOMER_STAGES = [
-  {
-    key: "on_the_way",
-    label: "Started",
-    desc: "Provider is heading to you",
-    icon: Navigation2,
-    color: "bg-indigo-500",
-    ring: "ring-indigo-200",
-    light: "bg-indigo-50 border-indigo-200",
-    textColor: "text-indigo-700",
-    emoji: "🚗",
-  },
-  {
-    key: "arrived",
-    label: "Arrived",
-    desc: "Provider has reached your location",
-    icon: MapPin,
-    color: "bg-orange-500",
-    ring: "ring-orange-200",
-    light: "bg-orange-50 border-orange-200",
-    textColor: "text-orange-700",
-    emoji: "📍",
-  },
-  {
-    key: "in_progress",
-    label: "Ongoing",
-    desc: "Service is in progress",
-    icon: Wrench,
-    color: "bg-blue-600",
-    ring: "ring-blue-200",
-    light: "bg-blue-50 border-blue-200",
-    textColor: "text-blue-700",
-    emoji: "🔧",
-  },
-  {
-    key: "completed",
-    label: "Completed",
-    desc: "Service has been completed!",
-    icon: Flag,
-    color: "bg-green-500",
-    ring: "ring-green-200",
-    light: "bg-green-50 border-green-200",
-    textColor: "text-green-700",
-    emoji: "✅",
-  },
+// ── Stages matching the mockup (horizontal progress bar) ────────────────────
+const STAGES = [
+  { key: "on_the_way",  label: "On the way",   icon: "🛵" },
+  { key: "arrived",     label: "Arrived",       icon: "👤" },
+  { key: "in_progress", label: "On Progress",   icon: "🔧" },
+  { key: "completed",   label: "Completed",     icon: "✓"  },
 ] as const;
 
-type StageKey = typeof CUSTOMER_STAGES[number]["key"];
-
-// Statuses that precede our 4-stage display
 const STATUS_ORDER = ["assigned", "on_the_way", "arrived", "in_progress", "completed"];
 
-const getStageReached = (status: string): number => {
-  return STATUS_ORDER.indexOf(status) - 1; // -1 means not started yet (assigned)
+const stageIndex = (status: string) => {
+  const mappedStatus = status === "payment_pending" ? "completed" : status;
+  const i = STATUS_ORDER.indexOf(mappedStatus);
+  return Math.max(i - 1, -1); // -1 = not started, 0 = on_the_way, etc.
 };
+
+// ── Chat message type ────────────────────────────────────────────────────────
+interface ChatMsg {
+  id: string;
+  text: string;
+  sender: "provider" | "customer";
+  time: string;
+}
 
 const Tracking = () => {
   const navigate = useNavigate();
   const { id = "" } = useParams();
-  const { bookings, dispatch } = useApp();
+  const { user, bookings, dispatch } = useApp();
   const booking = bookings.find((b) => b.id === id);
 
-  const [eta, setEta] = useState(15);
+  // Provider state – initialised from context/mock, then enriched via API
+  const [provider, setProvider] = useState<any>(() => {
+    if (!booking) return undefined;
+    if ((booking as any).providerDetails) return (booking as any).providerDetails;
+    const mock = getProviderById(booking.providerId);
+    if (mock) return mock;
+    // Friendly default fallback to prevent crashes for real users in DB
+    return {
+      id: booking.providerId,
+      name: "Professional",
+      rating: 4.8,
+      reviews: 120,
+      pricePerHr: 399,
+      experienceYrs: 5,
+      avatar: "P",
+      verified: true,
+      available: true,
+      serviceId: booking.serviceId,
+    };
+  });
+
+  // OTP for the booking
+  const [otp, setOtp] = useState<string>((booking as any)?.otp || "8306");
+
+  // Live status & stage
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
-  const [pendingQuote, setPendingQuote] = useState<{ amount: number } | null>(null);
-  const [notification, setNotification] = useState({ text: "", emoji: "" });
   const [stageTimes, setStageTimes] = useState<Record<string, string>>({});
-  const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ETA countdown
+  // ETA
+  const [eta, setEta] = useState<number>(provider?.etaMin || 12);
+
+  // Notification toast
+  const [notification, setNotification] = useState<{ text: string; emoji: string }>({ text: "", emoji: "" });
+  const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pending quote
+  const [pendingQuote, setPendingQuote] = useState<{ amount: number } | null>(null);
+
+  const chatHistories = (useApp() as any).chatHistories || {};
+  const globalChat = chatHistories[id] || [];
+
+  // ── Fetch full provider details if not already loaded ─────────────────────
   useEffect(() => {
-    const t = setInterval(() => setEta((e) => Math.max(0, e - 1)), 60000);
-    return () => clearInterval(t);
-  }, []);
+    if (!booking?.providerId) return;
+    if (provider?.phone) return; // already have full details
+    api.get(`/providers/${booking.providerId}`)
+      .then((res) => {
+        if (res.data?.success && res.data?.data?.provider) {
+          setProvider(res.data.data.provider);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch provider details via api:", err);
+      });
+  }, [booking?.providerId]);
 
-  const showNotification = (emoji: string, text: string) => {
-    setNotification({ text, emoji });
-    if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
-    notifTimerRef.current = setTimeout(() => setNotification({ text: "", emoji: "" }), 4000);
-  };
-
-  // Listen for real-time status updates
+  // ── Fetch OTP ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    const handleStatusUpdate = (data: { bookingId: string; status: string; quote?: number }) => {
-      const normalizedId = data.bookingId.replace("req-", "");
-      if (normalizedId !== id && data.bookingId !== id) return;
+    if (!id) return;
+    fetch(`/api/bookings/${id}/otp`)
+      .then((r) => r.json())
+      .then((data) => { if (data?.otp) setOtp(String(data.otp)); })
+      .catch(() => {});
+  }, [id]);
 
+  // ── Fetch chat history ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    socket.emit("join_chat_room", { bookingId: id });
+  }, [id]);
+
+  // ── Socket: location & status ─────────────────────────────────────────────
+  useEffect(() => {
+    const onStatus = (data: { bookingId: string; status: string; quote?: number }) => {
+      const nid = data.bookingId.replace("req-", "");
+      if (nid !== id && data.bookingId !== id) return;
       setLiveStatus(data.status);
       dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: id, status: data.status as any });
-
-      // Record timestamp
       const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setStageTimes((prev) => ({ ...prev, [data.status]: now }));
-
+      setStageTimes((p) => ({ ...p, [data.status]: now }));
       if (data.status === "quote_set" && data.quote) {
         setPendingQuote({ amount: data.quote });
         showNotification("💰", `Provider sent a quote: ₹${data.quote}`);
-      } else if (data.status === "on_the_way") {
-        showNotification("🚗", "Your provider is on the way!");
-      } else if (data.status === "arrived") {
-        showNotification("📍", "Your provider has arrived!");
-      } else if (data.status === "in_progress") {
-        showNotification("🔧", "Service has started!");
-      } else if (data.status === "completed") {
-        showNotification("✅", "Service completed! Taking you to payment…");
-        setTimeout(() => {
-          navigate("/booking/payment", { state: { bookingId: id } });
-        }, 2000);
+      } else if (data.status === "on_the_way") showNotification("🛵", "Provider is on the way!");
+      else if (data.status === "arrived")    showNotification("📍", "Provider has arrived!");
+      else if (data.status === "in_progress") showNotification("🔧", "Service has started!");
+      else if (data.status === "completed" || data.status === "payment_pending") {
+        showNotification("✅", "Service completed! Please complete payment below.");
+      } else if (data.status === "paid") {
+        showNotification("✅", "Payment confirmed! Redirecting to ratings...");
+        dispatch({ type: "PAY_BOOKING", id });
+        setTimeout(() => navigate(`/rating/${id}`, { replace: true }), 1500);
       }
     };
 
-    socket.on("job_status_updated", handleStatusUpdate);
-    return () => { socket.off("job_status_updated", handleStatusUpdate); };
+    socket.on("job_status_updated", onStatus);
+    return () => {
+      socket.off("job_status_updated", onStatus);
+    };
   }, [id, dispatch, navigate]);
+
+  // ── Redirect if booking missing ───────────────────────────────────────────
+  useEffect(() => {
+    if (!booking) {
+      const t = setTimeout(() => { if (!bookings.find((b) => b.id === id)) navigate("/home", { replace: true }); }, 500);
+      return () => clearTimeout(t);
+    }
+  }, [booking, bookings, id, navigate]);
+
+  // ── Redirect to rating if already paid ─────────────────────────────────────
+  useEffect(() => {
+    if (booking && (booking as any).paid && (booking.status === "completed" || booking.status === "paid")) {
+      showNotification("✅", "Payment confirmed! Redirecting to ratings...");
+      const t = setTimeout(() => {
+        navigate(`/rating/${booking.id}`, { replace: true });
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [booking?.status, (booking as any)?.paid, navigate]);
+
+  if (!booking) return null;
+
+  // ── ETA countdown ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const t = setInterval(() => setEta((e) => Math.max(0, e - 1)), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+
+
+  const showNotification = (emoji: string, text: string) => {
+    setNotification({ text, emoji });
+    if (notifTimer.current) clearTimeout(notifTimer.current);
+    notifTimer.current = setTimeout(() => setNotification({ text: "", emoji: "" }), 4000);
+  };
+
+  const handleCall = () => {
+    const phone = provider?.phone || "+919999999999";
+    window.open(`tel:${phone}`, "_self");
+  };
+
+
 
   const handleApproveQuote = () => {
     dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: id, status: "in_progress" as any });
     socket.emit("update_job_status", { bookingId: id, status: "in_progress" });
     setPendingQuote(null);
-    showNotification("✅", "Quote approved! Service is starting.");
+    showNotification("✅", "Quote approved!");
   };
 
   const handleRejectQuote = () => {
     setPendingQuote(null);
-    showNotification("❌", "Quote rejected. Provider will be notified.");
-  };
-
-  if (!booking) {
-    navigate("/home", { replace: true });
-    return null;
-  }
-
-  const handleCall = () => {
-    const phone = provider?.phone || "+919999999992";
-    showNotification("📞", "Connecting via secure masked number…");
-    window.open(`tel:${phone}`, "_self");
+    showNotification("❌", "Quote rejected.");
   };
 
   const currentStatus = liveStatus || booking.status;
-  const provider = (booking as any).providerDetails || getProviderById(booking.providerId);
+  const activeStage = stageIndex(currentStatus);
+  const service = getServiceById(booking.serviceId);
 
-  // Index into our 4 stages (0 = on_the_way, 1 = arrived, etc.)
-  const stageReached = getStageReached(currentStatus);
-
-  // Header status text
-  const headerText =
-    currentStatus === "assigned" ? `Provider assigned · ETA ${eta} min` :
-    currentStatus === "on_the_way" ? "Provider is on the way" :
-    currentStatus === "arrived" ? "Provider has arrived" :
-    currentStatus === "in_progress" ? "Service in progress" :
-    currentStatus === "completed" ? "Service complete" :
-    `ETA: ${eta} min`;
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-full flex flex-col bg-background pb-32 font-['DM_Sans',sans-serif]">
-
-      {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
-        <button
-          onClick={() => navigate("/home")}
-          className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95"
-        >
-          <ArrowLeft size={20} />
+    <div className="tracking-root">
+      {/* ── Top Header ──────────────────────────────────────────────────── */}
+      <div className="tracking-header">
+        <button className="tracking-header-back" onClick={() => navigate("/home")}>
+          <ChevronLeft size={20} />
         </button>
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Live Tracking</h1>
-          <p className="text-[11px] text-muted-foreground">{headerText}</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-green-600 font-semibold">Live</span>
+
+        <div className="tracking-header-provider">
+          <div className="tracking-provider-avatar">
+            {user?.profilePicture || user?.avatar_url ? (
+              <img src={user.profilePicture || user.avatar_url} alt={user?.name} />
+            ) : (
+              <span>{user?.name?.[0] || "C"}</span>
+            )}
+          </div>
+          <div>
+            <p className="tracking-provider-name">{user?.name || "Customer"}</p>
+            <p className="tracking-provider-role">Customer</p>
+          </div>
         </div>
       </div>
 
-      <div className="px-5 flex-1 space-y-4">
+      {/* ── Safety Banner ─────────────────────────────────────────────── */}
+      <div className="tracking-safety-banner">
+        <AlertTriangle size={14} className="tracking-safety-icon" />
+        <span><strong>For your safety:</strong> Do not negotiate prices or share payment details outside the app.</span>
+      </div>
 
-        {/* ── Notification Toast ─────────────────────────────────────────── */}
+      {/* ── Map ───────────────────────────────────────────────────────── */}
+      <div className="tracking-map">
+        <MapComponent
+          bookingId={id}
+          customerLocation={[12.9716, 77.5946]}
+          providerLocation={provider && typeof provider.lat === 'number' && typeof provider.lng === 'number' ? [provider.lat, provider.lng] : [12.9766, 77.5996]}
+        />
+        <div className="tracking-eta-badge">
+          <span>⏱</span>
+          <div>
+            <span className="tracking-eta-num">{eta} min</span>
+            <span className="tracking-eta-label">Away</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Sheet ──────────────────────────────────────────────── */}
+      <div className="tracking-sheet">
+        {/* Drag handle */}
+        <div className="tracking-sheet-handle" />
+
+        {/* Notification toast */}
         {notification.text && (
-          <div className="bg-primary text-primary-foreground p-3 rounded-2xl text-sm font-semibold shadow-lg animate-slide-in flex items-center gap-2">
-            <span className="text-base">{notification.emoji}</span>
-            {notification.text}
+          <div className="tracking-toast">
+            <span>{notification.emoji}</span> {notification.text}
           </div>
         )}
 
-        {/* ── Live Status Hero Card ──────────────────────────────────────── */}
-        <div className={`w-full rounded-2xl overflow-hidden border p-5 flex flex-col items-center gap-2 transition-all duration-500 ${
-          currentStatus === "completed"
-            ? "bg-green-50 border-green-200"
-            : currentStatus === "in_progress"
-            ? "bg-blue-50 border-blue-200"
-            : currentStatus === "arrived"
-            ? "bg-orange-50 border-orange-200"
-            : currentStatus === "on_the_way"
-            ? "bg-indigo-50 border-indigo-200"
-            : "bg-gradient-to-br from-primary/10 to-primary/5 border-border"
-        }`}>
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-500 ${
-            currentStatus === "completed" ? "bg-green-100" :
-            currentStatus === "in_progress" ? "bg-blue-100" :
-            currentStatus === "arrived" ? "bg-orange-100" :
-            currentStatus === "on_the_way" ? "bg-indigo-100" :
-            "bg-primary/20"
-          }`}>
-            <Navigation2 size={24} className={`transition-all duration-500 ${
-              currentStatus === "completed" ? "text-green-600" :
-              currentStatus === "in_progress" ? "text-blue-600" :
-              currentStatus === "arrived" ? "text-orange-600" :
-              currentStatus === "on_the_way" ? "text-indigo-600" :
-              "text-primary animate-pulse"
-            }`} />
-          </div>
-          <p className={`text-sm font-bold transition-colors ${
-            currentStatus === "completed" ? "text-green-800" :
-            currentStatus === "in_progress" ? "text-blue-800" :
-            currentStatus === "arrived" ? "text-orange-800" :
-            currentStatus === "on_the_way" ? "text-indigo-800" :
-            "text-foreground"
-          }`}>
-            {headerText}
-          </p>
-          <p className="text-[11px] text-muted-foreground">{(booking as any).address || "Your location"}</p>
-        </div>
-
-        {/* ── Provider card ─────────────────────────────────────────────── */}
-        {provider && (
-          <div className="bg-card border border-border rounded-2xl p-4 shadow-card flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-              {typeof provider.avatar === "string" && provider.avatar.startsWith("http")
-                ? <img src={provider.avatar} className="w-12 h-12 rounded-xl object-cover" alt={provider.name} />
-                : (provider.avatar || provider.name?.[0] || "P")}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground">{provider.name}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {provider.rating === 0 ? (
-                  <span className="bg-yellow-100 text-yellow-700 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mr-1">New</span>
-                ) : (
-                  `${provider.rating} ★ · `
-                )}
-                {provider.experienceYrs} yrs experience
-              </p>
-            </div>
-            <button onClick={handleCall} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center">
-              <Phone size={16} className="text-primary" />
-            </button>
-            <button
-              onClick={() => navigate(`/chat/${booking.id}`)}
-              className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center"
-            >
-              <MessageCircle size={16} className="text-white" />
-            </button>
-          </div>
-        )}
-
-        {/* ── Pending Quote Approval ─────────────────────────────────────── */}
+        {/* Pending quote */}
         {pendingQuote && (
-          <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-5 shadow-lg animate-fade-in">
-            <p className="text-sm font-bold text-amber-900 mb-1 flex items-center gap-2">
-              <IndianRupee size={16} /> Provider Sent a Quote
-            </p>
-            <p className="text-3xl font-extrabold text-amber-700 mb-4">₹{pendingQuote.amount}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleApproveQuote}
-                className="flex-1 py-3 rounded-xl bg-green-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
-              >
-                <CheckCircle2 size={16} /> Approve
-              </button>
-              <button
-                onClick={handleRejectQuote}
-                className="flex-1 py-3 rounded-xl bg-red-100 text-red-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 border border-red-200"
-              >
-                <XCircle size={16} /> Reject
-              </button>
+          <div className="tracking-quote-card">
+            <p className="tracking-quote-title"><IndianRupee size={14} /> Provider Sent a Quote</p>
+            <p className="tracking-quote-amount">₹{pendingQuote.amount}</p>
+            <div className="tracking-quote-actions">
+              <button className="tracking-quote-approve" onClick={handleApproveQuote}>✓ Approve</button>
+              <button className="tracking-quote-reject" onClick={handleRejectQuote}>✕ Reject</button>
             </div>
           </div>
         )}
 
-        {/* ── 4-Stage Animated Timeline ──────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-          <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-4">Service Progress</p>
+        {/* Status heading + OTP */}
+        <div className="tracking-status-section">
+          <h2 className="tracking-status-heading">
+            {currentStatus === "on_the_way" ? "Provider is on the way" :
+             currentStatus === "arrived"     ? "Provider has arrived" :
+             currentStatus === "in_progress" ? "Service in progress" :
+             (currentStatus === "completed" || currentStatus === "payment_pending")   ? "Service completed" :
+             "Provider assigned"}
+          </h2>
+          {(currentStatus === "on_the_way" || currentStatus === "arrived") && (
+            <>
+              <p className="tracking-otp-label">Please show this OTP to your provider</p>
+              <div className="tracking-otp-row">
+                {otp.split("").map((d, i) => (
+                  <span key={i} className="tracking-otp-digit">{d}</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
-          <div className="space-y-0">
-            {CUSTOMER_STAGES.map((stage, idx) => {
-              const done = stageReached >= idx;
-              const active = stageReached === idx;
-              const Icon = stage.icon;
-              const isLast = idx === CUSTOMER_STAGES.length - 1;
-              const timestamp = stageTimes[stage.key];
-
-              return (
-                <div key={stage.key} className="flex gap-4">
-                  {/* Timeline column */}
-                  <div className="flex flex-col items-center">
-                    {/* Circle */}
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-700 ${
-                      done
-                        ? `${stage.color} shadow-md`
-                        : active
-                        ? `${stage.color} ring-4 ${stage.ring} scale-110 shadow-lg`
-                        : "bg-input border-2 border-border"
-                    }`}>
-                      <Icon size={16} className={done || active ? "text-white" : "text-muted-foreground"} />
-                      {active && (
-                        <span className="absolute w-9 h-9 rounded-full animate-ping opacity-20 bg-current" />
-                      )}
-                    </div>
-                    {/* Connector */}
-                    {!isLast && (
-                      <div className={`w-0.5 h-8 mt-1 mb-1 transition-all duration-700 ${
-                        done ? stage.color : "bg-border"
-                      }`} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className={`flex-1 pb-5 ${isLast ? "pb-0" : ""}`}>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <p className={`text-sm font-bold transition-colors ${
-                        done || active ? "text-foreground" : "text-muted-foreground"
-                      }`}>
-                        {stage.emoji} {stage.label}
-                      </p>
-                      {timestamp && (
-                        <span className="text-[10px] text-muted-foreground font-medium">{timestamp}</span>
-                      )}
-                    </div>
-                    <p className={`text-[11px] transition-colors ${
-                      done || active ? "text-muted-foreground" : "text-muted-foreground/50"
-                    }`}>
-                      {stage.desc}
-                    </p>
-
-                    {/* Active stage badge */}
-                    {active && (
-                      <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${stage.light} ${stage.textColor}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                        In progress
-                      </div>
-                    )}
-                    {done && stage.key === "completed" && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-[10px] font-bold text-green-700">
-                        ✅ Done
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Provider info row */}
+        <div className="tracking-provider-row">
+          <div className="tracking-provider-row-avatar">
+            {typeof provider?.avatar === "string" && provider.avatar.startsWith("http") ? (
+              <img src={provider.avatar} alt={provider?.name} />
+            ) : (
+              <span>{provider?.name?.[0] || "P"}</span>
+            )}
+          </div>
+          <div className="tracking-provider-row-info">
+            <p className="tracking-provider-row-name">{provider?.name || "Provider"}</p>
+            <p className="tracking-provider-row-role">{service?.label || "Service"}</p>
+            <p className="tracking-provider-row-rating">⭐ {provider?.rating?.toFixed(1) || "4.8"}</p>
+          </div>
+          <div className="tracking-provider-row-btns">
+            <button className="tracking-icon-btn" onClick={(e) => { e.stopPropagation(); handleCall(); }}>
+              <Phone size={18} />
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* ── Floating Chat Button ───────────────────────────────────────────── */}
-      <button
-        onClick={() => navigate(`/chat/${booking.id}`)}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-primary shadow-xl flex items-center justify-center active:scale-95 transition-transform z-20"
-        aria-label="Open chat"
-      >
-        <MessageSquare size={22} className="text-white" />
-      </button>
+        <div className="tracking-divider" />
 
-      {/* ── Complete & Pay CTA ─────────────────────────────────────────────── */}
-      {currentStatus === "completed" && (
-        <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
+        {/* 4-step horizontal progress */}
+        <div className="tracking-steps">
+          {STAGES.map((stage, idx) => {
+            const done   = activeStage > idx;
+            const active = activeStage === idx;
+            return (
+              <div key={stage.key} className={`tracking-step ${active ? "tracking-step--active" : done ? "tracking-step--done" : ""}`}>
+                <div className={`tracking-step-icon ${active ? "tracking-step-icon--active" : done ? "tracking-step-icon--done" : ""}`}>
+                  {stage.icon}
+                </div>
+                <p className={`tracking-step-label ${active ? "tracking-step-label--active" : ""}`}>{stage.label}</p>
+                {idx < STAGES.length - 1 && (
+                  <div className={`tracking-step-connector ${done || active ? "tracking-step-connector--filled" : ""}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="tracking-eta-text">
+          Expected arrival in <strong style={{ color: "#f97316" }}>{eta} min</strong>
+        </p>
+
+        <div className="tracking-divider" />
+
+        {/* Booking detail rows */}
+        <div className="tracking-details">
+          <DetailRow icon={<Wrench size={15} />}      label="Service"        value={service?.label || booking.serviceId || "Service"} />
+          <DetailRow icon={<Key size={15} />}          label="Booking ID"     value={`KA${String(booking.id).slice(-6).toUpperCase()}`} />
+          <DetailRow icon={<Calendar size={15} />}     label="Scheduled Time" value={`${booking.date || "Today"}, ${booking.time || "Now"}`} />
+          <DetailRow icon={<IndianRupee size={15} />}  label="Price"           value={booking.price ? `₹${booking.price}` : "After inspection"} />
+          <DetailRow icon={<CreditCard size={15} />}   label="Payment Mode"   value="Cash after service" />
+        </div>
+
+        <div className="tracking-divider" />
+
+        {/* Start Conversation button */}
+        <button className="tracking-chat-btn" onClick={() => navigate(`/chat/${booking.id}`)}>
+          <MessageSquare size={17} /> Start Conversation
+        </button>
+
+        {/* Complete & Pay */}
+        {(currentStatus === "completed" || currentStatus === "payment_pending") && (
           <button
+            className="tracking-pay-btn"
             onClick={() => {
               if (!(booking as any).paid) {
                 dispatch({ type: "SELECT_PROVIDER", id: booking.providerId });
                 dispatch({ type: "SELECT_SERVICE", id: booking.serviceId });
-                navigate("/booking/payment");
+                navigate("/booking/payment", { state: { bookingId: booking.id } });
               } else {
                 navigate(`/rating/${booking.id}`);
               }
             }}
-            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:bg-secondary active:scale-[0.98]"
           >
             {!(booking as any).paid ? "Complete & Pay" : "Rate Your Experience"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
+        /* ── Root ── */
+        .tracking-root {
+          min-height: 100dvh;
+          display: flex;
+          flex-direction: column;
+          background: #f5f5f5;
+          font-family: 'Inter', sans-serif;
+          max-width: 430px;
+          margin: 0 auto;
         }
-        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
 
-        @keyframes slide-in {
-          from { opacity: 0; transform: translateY(-12px); }
-          to { opacity: 1; transform: translateY(0); }
+        /* ── Header ── */
+        .tracking-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 16px 12px;
+          background: #fff;
+          border-bottom: 1px solid #f0f0f0;
         }
-        .animate-slide-in { animation: slide-in 0.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+        .tracking-header-back {
+          width: 36px; height: 36px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          background: #f5f5f5; border: none; cursor: pointer; flex-shrink: 0;
+          color: #111;
+        }
+        .tracking-header-provider {
+          display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+        }
+        .tracking-provider-avatar {
+          width: 42px; height: 42px; border-radius: 50%;
+          background: #1e293b; color: #fff;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 700; font-size: 17px; flex-shrink: 0; overflow: hidden;
+        }
+        .tracking-provider-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .tracking-provider-name { font-weight: 700; font-size: 15px; color: #111; line-height: 1.2; }
+        .tracking-provider-role { font-size: 12px; color: #f97316; font-weight: 600; }
+        .tracking-header-actions {
+          display: flex; gap: 8px; align-items: center;
+        }
+        .tracking-header-actions button {
+          width: 36px; height: 36px; border-radius: 50%;
+          border: 1.5px solid #e5e7eb; background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #374151; cursor: pointer;
+        }
+
+        /* ── Safety Banner ── */
+        .tracking-safety-banner {
+          background: #fffbeb; border-bottom: 1px solid #fde68a;
+          padding: 8px 14px; display: flex; align-items: flex-start; gap: 8px;
+          font-size: 12px; color: #92400e;
+        }
+        .tracking-safety-icon { color: #f59e0b; margin-top: 1px; flex-shrink: 0; }
+
+        /* ── Map ── */
+        .tracking-map {
+          height: 220px; position: relative; background: #e2e8f0;
+        }
+        .tracking-map > div { height: 100%; }
+        .tracking-eta-badge {
+          position: absolute; bottom: 14px; right: 14px;
+          background: #fff; border-radius: 12px; padding: 6px 12px;
+          display: flex; align-items: center; gap: 6px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+          font-size: 12px; color: #374151;
+        }
+        .tracking-eta-num { font-weight: 700; font-size: 15px; color: #111; display: block; }
+        .tracking-eta-label { font-size: 11px; color: #6b7280; display: block; }
+
+        /* ── Bottom Sheet ── */
+        .tracking-sheet {
+          flex: 1; background: #fff;
+          border-radius: 22px 22px 0 0; margin-top: -14px;
+          padding: 8px 20px 40px; overflow-y: auto;
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.07);
+        }
+        .tracking-sheet-handle {
+          width: 36px; height: 4px; border-radius: 2px;
+          background: #d1d5db; margin: 4px auto 16px;
+        }
+
+        /* ── Toast ── */
+        .tracking-toast {
+          background: #1e293b; color: #fff; border-radius: 12px;
+          padding: 10px 14px; font-size: 13px; font-weight: 600;
+          margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+          animation: slideDown 0.3s ease;
+        }
+
+        /* ── Quote card ── */
+        .tracking-quote-card {
+          background: #fffbeb; border: 2px solid #fcd34d; border-radius: 16px;
+          padding: 16px; margin-bottom: 14px;
+        }
+        .tracking-quote-title {
+          font-size: 13px; font-weight: 700; color: #92400e;
+          display: flex; align-items: center; gap: 4px; margin-bottom: 6px;
+        }
+        .tracking-quote-amount { font-size: 28px; font-weight: 800; color: #b45309; margin-bottom: 12px; }
+        .tracking-quote-actions { display: flex; gap: 10px; }
+        .tracking-quote-approve {
+          flex: 1; padding: 10px; border-radius: 10px;
+          background: #22c55e; color: #fff; font-weight: 700; border: none; cursor: pointer; font-size: 14px;
+        }
+        .tracking-quote-reject {
+          flex: 1; padding: 10px; border-radius: 10px;
+          background: #fee2e2; color: #dc2626; font-weight: 700;
+          border: 1px solid #fecaca; cursor: pointer; font-size: 14px;
+        }
+
+        /* ── Status heading + OTP ── */
+        .tracking-status-section { text-align: center; margin-bottom: 16px; }
+        .tracking-status-heading { font-size: 17px; font-weight: 800; color: #111; margin-bottom: 4px; }
+        .tracking-otp-label { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+        .tracking-otp-row { display: flex; justify-content: center; gap: 10px; }
+        .tracking-otp-digit {
+          width: 48px; height: 56px; border: 1.5px solid #e5e7eb; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 26px; font-weight: 800; color: #111; background: #fff;
+        }
+
+        /* ── Provider info row ── */
+        .tracking-provider-row {
+          display: flex; align-items: center; gap: 12px; width: 100%;
+          background: none; border: none; padding: 4px 0; text-align: left;
+          margin-bottom: 4px;
+        }
+        .tracking-provider-row-avatar {
+          width: 50px; height: 50px; border-radius: 50%; overflow: hidden;
+          background: #1e293b; color: #fff; display: flex; align-items: center;
+          justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;
+        }
+        .tracking-provider-row-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .tracking-provider-row-info { flex: 1; min-width: 0; }
+        .tracking-provider-row-name { font-size: 15px; font-weight: 700; color: #111; }
+        .tracking-provider-row-role { font-size: 12px; color: #6b7280; }
+        .tracking-provider-row-rating { font-size: 13px; color: #374151; margin-top: 2px; }
+        .tracking-provider-row-btns { display: flex; gap: 8px; }
+        .tracking-icon-btn {
+          width: 38px; height: 38px; border-radius: 50%;
+          border: 1.5px solid #e5e7eb; background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #374151; cursor: pointer;
+        }
+
+        /* ── Divider ── */
+        .tracking-divider { height: 1px; background: #f3f4f6; margin: 14px 0; }
+
+        /* ── Horizontal steps ── */
+        .tracking-steps {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          position: relative; margin-bottom: 8px;
+        }
+        .tracking-step {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 6px; flex: 1; position: relative;
+        }
+        .tracking-step-icon {
+          width: 42px; height: 42px; border-radius: 50%;
+          background: #f3f4f6; display: flex; align-items: center; justify-content: center;
+          font-size: 18px; border: 2px solid #e5e7eb; z-index: 1; position: relative;
+        }
+        .tracking-step-icon--active {
+          background: #fff7ed; border-color: #f97316; color: #f97316;
+        }
+        .tracking-step-icon--done {
+          background: #fff7ed; border-color: #f97316;
+        }
+        .tracking-step-label { font-size: 10px; color: #9ca3af; text-align: center; font-weight: 500; }
+        .tracking-step-label--active { color: #f97316; font-weight: 700; }
+        .tracking-step-connector {
+          position: absolute; top: 20px; left: 50%; width: 100%;
+          height: 2px; background: #e5e7eb; z-index: 0;
+        }
+        .tracking-step-connector--filled { background: #f97316; }
+        .tracking-eta-text { text-align: center; font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+        /* ── Booking details ── */
+        .tracking-details { display: flex; flex-direction: column; }
+        .tracking-detail-row {
+          display: flex; align-items: center; padding: 11px 0;
+          border-bottom: 1px solid #f3f4f6; gap: 10px;
+        }
+        .tracking-detail-row:last-child { border-bottom: none; }
+        .tracking-detail-icon { color: #6b7280; flex-shrink: 0; }
+        .tracking-detail-label { font-size: 13px; color: #374151; flex: 1; }
+        .tracking-detail-value { font-size: 13px; font-weight: 600; color: #111; }
+        .tracking-detail-arrow { color: #9ca3af; }
+
+        /* ── Start conversation button ── */
+        .tracking-chat-btn {
+          width: 100%; padding: 14px; border-radius: 14px;
+          border: 1.5px solid #e5e7eb; background: #fff;
+          font-size: 14px; font-weight: 700; color: #111;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          cursor: pointer; margin-bottom: 4px;
+        }
+        .tracking-chat-btn:active { background: #f9fafb; }
+
+        /* ── Chat panel ── */
+        .tracking-chat-panel {
+          border: 1.5px solid #e5e7eb; border-radius: 16px;
+          overflow: hidden; margin-top: 8px; background: #fff;
+        }
+        .tracking-chat-date {
+          text-align: center; font-size: 11px; color: #9ca3af;
+          padding: 10px 0 4px; font-weight: 500;
+        }
+        .tracking-chat-messages {
+          padding: 8px 12px; max-height: 240px; overflow-y: auto;
+          display: flex; flex-direction: column; gap: 12px;
+        }
+        .tracking-chat-msg { display: flex; gap: 8px; align-items: flex-end; }
+        .tracking-chat-msg--customer { flex-direction: row-reverse; }
+        .tracking-chat-avatar {
+          width: 30px; height: 30px; border-radius: 50%;
+          background: #1e293b; color: #fff; display: flex;
+          align-items: center; justify-content: center;
+          font-size: 13px; font-weight: 700; flex-shrink: 0;
+        }
+        .tracking-chat-bubble {
+          background: #f3f4f6; padding: 10px 13px; border-radius: 16px 16px 16px 4px;
+          font-size: 13px; color: #111; max-width: 220px;
+        }
+        .tracking-chat-bubble--customer {
+          background: #e0e7ff; border-radius: 16px 16px 4px 16px;
+        }
+        .tracking-chat-time { font-size: 10px; color: #9ca3af; margin-top: 3px; }
+        .tracking-chat-time--right { text-align: right; }
+        .tracking-chat-input-bar {
+          display: flex; align-items: center; gap: 8px;
+          padding: 10px 12px; border-top: 1px solid #f3f4f6;
+        }
+        .tracking-chat-mic {
+          width: 36px; height: 36px; border-radius: 50%;
+          border: 1.5px solid #e5e7eb; background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #374151; cursor: pointer; flex-shrink: 0;
+        }
+        .tracking-chat-input {
+          flex: 1; border: 1.5px solid #e5e7eb; border-radius: 20px;
+          padding: 8px 14px; font-size: 13px; color: #111;
+          outline: none; background: #f9fafb;
+        }
+        .tracking-chat-input::placeholder { color: #9ca3af; }
+        .tracking-chat-send {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: #1e293b; color: #fff; border: none;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; flex-shrink: 0;
+        }
+
+        /* ── Pay button ── */
+        .tracking-pay-btn {
+          width: 100%; padding: 15px; margin-top: 14px; border-radius: 14px;
+          background: #1e293b; color: #fff; font-weight: 700; font-size: 15px;
+          border: none; cursor: pointer;
+        }
+        .tracking-pay-btn:active { opacity: 0.9; }
+
+        /* ── Animations ── */
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
     </div>
   );
 };
+
+// ── Helper: booking detail row ──────────────────────────────────────────────
+const DetailRow = ({
+  icon, label, value,
+}: { icon: React.ReactNode; label: string; value: string }) => (
+  <div className="tracking-detail-row">
+    <span className="tracking-detail-icon">{icon}</span>
+    <span className="tracking-detail-label">{label}</span>
+    <span className="tracking-detail-value">{value}</span>
+    <ChevronRight size={14} className="tracking-detail-arrow" />
+  </div>
+);
 
 export default Tracking;

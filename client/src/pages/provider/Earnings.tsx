@@ -3,19 +3,24 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import EmptyState from "@/components/EmptyState";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
+import AvailableBalanceCard from '@/components/AvailableBalanceCard';
+
 import axios from "axios";
 
 const Earnings = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useApp();
-  
+  const {
+    user,
+    walletBalance = 0,
+    commissionDue = 0,
+    codPendingCount = 0
+  } = useApp() as any;
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("This Week");
+  const [timeframe, setTimeframe] = useState<"Today" | "This Week" | "This Month">("Today");
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -31,9 +36,9 @@ const Earnings = () => {
         const dashboardRes = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
         if (dashboardRes.data.success) {
           setBalance(dashboardRes.data.data.wallet?.balance || 0);
-          
+
           const providerId = dashboardRes.data.data.provider.id;
-          
+
           const bookingsRes = await axios.get(`/api/v1/bookings/provider/${providerId}`);
           if (bookingsRes.data.success) {
             const completed = bookingsRes.data.data.filter((b: any) => b.status === 'completed');
@@ -58,8 +63,13 @@ const Earnings = () => {
     if (timeframe === "This Week") return now - jobDate < 7 * 86400000;
     return now - jobDate < 30 * 86400000;
   });
-  
+
   const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
+  const withdrawableAmount =
+    Math.max(
+      0,
+      walletBalance - commissionDue
+    );
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
@@ -71,36 +81,41 @@ const Earnings = () => {
       </div>
 
       <div className="px-5 space-y-4">
-        <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-colors" />
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Available Balance</p>
-          <div className="flex items-end gap-2 mt-2">
-            <p className="text-4xl font-extrabold text-white">₹{balance.toLocaleString('en-IN')}</p>
-          </div>
-          <button className="w-full mt-6 py-4 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
-            Withdraw to Bank
-          </button>
-        </div>
+        <AvailableBalanceCard
+          walletBalance={walletBalance}
+          commissionDue={commissionDue}
+          codPendingCount={codPendingCount}
+          onWithdraw={() => {
+            // Placeholder: actual withdraw handler logic remains unchanged
+          }}
+        />
 
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <div className="flex gap-2 justify-center overflow-x-auto no-scrollbar py-1">
           {["Today", "This Week", "This Month"].map((label) => (
             <button
               key={label}
               onClick={() => setTimeframe(label as any)}
-              className={`px-5 py-2.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all ${
-                timeframe === label 
-                  ? "bg-primary border-primary text-primary-foreground shadow-md" 
-                  : "bg-white border-border text-muted-foreground"
-              }`}
+              className={`px-5 py-2.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all ${timeframe === label
+                ? "bg-primary border-primary text-primary-foreground shadow-md"
+                : "bg-white border-border text-muted-foreground"
+                }`}
             >
               {label}
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Stat label="Jobs Done" value={String(filteredJobs.length)} color="text-secondary" />
-          <Stat label="Earned" value={`₹${timeframeTotal}`} color="text-emerald-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Stat
+            label="Jobs Done"
+            value={String(filteredJobs.length)}
+            color="text-secondary"
+          />
+          <Stat
+            label="Earned"
+            value={`₹${timeframeTotal}`}
+            color="text-emerald-600"
+          />
         </div>
       </div>
 
@@ -108,7 +123,13 @@ const Earnings = () => {
       <div className="px-5 mt-6 flex-1 overflow-y-auto">
         <h2 className="text-sm font-bold text-foreground mb-3">Completed Jobs</h2>
         {filteredJobs.length === 0 ? (
-          <EmptyState icon={Wallet} title="No earnings yet" description="Completed jobs will appear here." />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Wallet size={48} className="text-muted-foreground mb-4" />
+            <h3 className="text-xl font-bold">No earnings yet</h3>
+            <p className="text-muted-foreground">
+              Completed jobs will appear here.
+            </p>
+          </div>
         ) : (
           <div className="space-y-2">
             {filteredJobs.map((j) => {

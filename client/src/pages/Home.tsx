@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, ChevronRight, Menu, X, Home as HomeIcon, CalendarCheck,
   Settings, HelpCircle, LogOut, Smartphone, Wallet, Gift, Sparkles, Wrench,
-  Loader2, Zap, Droplet, Paintbrush, Hammer, ShieldAlert,
+  Loader2, Zap, Droplet, Paintbrush, Hammer, ShieldAlert, Fan, CloudRain, ShieldCheck, SprayCan, AirVent,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { services, quickFixes, smartSuggestions, SmartSuggestion } from "@/data/mockData";
@@ -27,9 +27,122 @@ const getSuggestionIconConfig = (serviceId: string) => {
       return { icon: Hammer, bgColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
     case "pestcontrol":
       return { icon: ShieldAlert, bgColor: "bg-red-500/10 text-red-500 border-red-500/20" };
+    case "housekeeping":
+      return { icon: SprayCan, bgColor: "bg-amber-100 text-amber-700 border-amber-200/80" };
     default:
       return { icon: Wrench, bgColor: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" };
   }
+};
+
+const electricalCardBg = "bg-gradient-to-br from-sky-50 via-white to-slate-100";
+const electricalTextColor = "text-slate-900";
+
+const modernSuggestionCardConfigs: Record<string, {
+  title: string;
+  caption: string;
+  icon: typeof Zap;
+  iconBg: string;
+  cardBg: string;
+  textColor: string;
+  accentRing: string;
+  label?: string;
+}> = {
+  "sug-elec-3": {
+    title: "Smart AC Cleaning",
+    caption: "Fresh air starts here",
+    icon: AirVent,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "AC Care",
+  },
+  "sug-elec-1": {
+    title: "Fan Deep Cleaning",
+    caption: "Smooth airflow for your home",
+    icon: Fan,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "Fan Service",
+  },
+  "sug-elec-2": {
+    title: "Switchboard maintenance due",
+    caption: "Loose connections are a fire risk.",
+    icon: Zap,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "LOW VOLTAGE",
+  },
+  "sug-plumb-4": {
+    title: "Drainage Cleaning",
+    caption: "Prevent water blockage",
+    icon: CloudRain,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "Rain Ready",
+  },
+  "sug-hk-2": {
+    title: "Home Sanitization",
+    caption: "Safe and germ-free living",
+    icon: SprayCan,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "Sanitize",
+  },
+  "sug-elec-5": {
+    title: "Festival Home Setup",
+    caption: "Sparkling clean festive home",
+    icon: Sparkles,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "Festival Ready",
+  },
+  "sug-exp-2": {
+    title: "Festival home preparation",
+    caption: "Get your home ready for celebrations.",
+    icon: Gift,
+    iconBg: "bg-white text-[#92400E]",
+    cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+    textColor: "text-slate-900",
+    accentRing: "bg-amber-200/40",
+    label: "Customisation",
+  },
+};
+
+const getModernSuggestionConfig = (sugg: SmartSuggestion) => {
+  const base = modernSuggestionCardConfigs[sugg.id];
+  if (base) return base;
+  const fallback = getSuggestionIconConfig(sugg.serviceId);
+  if (sugg.serviceId === "electrician") {
+    return {
+      title: sugg.title,
+      caption: sugg.subtitle,
+      icon: fallback.icon,
+      iconBg: "bg-white text-[#92400E]",
+      cardBg: "bg-gradient-to-br from-[#FEF3C7] via-[#FDE68A] to-[#FCD34D]",
+      textColor: "text-slate-900",
+      accentRing: "bg-amber-200/40",
+    };
+  }
+  return {
+    title: sugg.title,
+    caption: sugg.subtitle,
+    icon: fallback.icon,
+    iconBg: fallback.bgColor,
+    cardBg: "bg-white border border-slate-200",
+    textColor: "text-slate-900",
+    accentRing: "bg-slate-200/70",
+  };
 };
 
 const recommendedDescriptions: Record<string, string> = {
@@ -81,6 +194,22 @@ const Home = () => {
     fetchRealProviders();
   }, []);
 
+  useEffect(() => {
+    const fetchLatestBookings = async () => {
+      if (user?.id) {
+        try {
+          const res = await api.get(`/bookings/customer/${user.id}`);
+          if (res.data?.success) {
+            dispatch({ type: "SET_BOOKINGS", bookings: res.data.data });
+          }
+        } catch (err) {
+          console.error("Failed to fetch customer bookings on home mount:", err);
+        }
+      }
+    };
+    fetchLatestBookings();
+  }, [user?.id, dispatch]);
+
   const currentSeason: SmartSuggestion["season"] = useMemo(() => {
     const m = new Date().getMonth();
     if (m >= 2 && m <= 5) return "summer";
@@ -110,8 +239,21 @@ const Home = () => {
       }
       if (deduped.length >= 5) break;
     }
+
+    const festivalSuggestion = scored.find((s) => s.id === "sug-exp-2");
+    if (festivalSuggestion && !deduped.some((s) => s.id === "sug-exp-2")) {
+      deduped.push(festivalSuggestion);
+    }
+
     return deduped;
   }, [bookings, currentSeason]);
+
+  const activeBooking = useMemo(() => {
+    return (bookings || []).find((b: any) =>
+      ["pending", "accepted", "assigned", "on_the_way", "arrived", "in_progress", "payment_pending"].includes(b.status) ||
+      (b.status === "completed" && !b.paid)
+    );
+  }, [bookings]);
 
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
     dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
@@ -119,14 +261,18 @@ const Home = () => {
     try {
       const result = await reverseGeocode(lat, lng);
       if (result.address) {
-        const shortAddr = result.area
-          ? `${result.area}${result.city ? ", " + result.city : ""}`
-          : result.address.split(",").slice(0, 2).join(",");
-        dispatch({ type: "UPDATE_USER", user: { address: shortAddr } });
+        dispatch({ type: "UPDATE_USER", user: { address: result.address } });
+        localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: result.address, ts: Date.now() }));
       }
     } catch (err) {
       console.warn("Reverse geocode failed:", err);
-      dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
+      try {
+        const cached = localStorage.getItem("roundu_last_location");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          dispatch({ type: "UPDATE_USER", user: { address: parsed.address } });
+        }
+      } catch (_) {}
     } finally {
       setLocating(false);
     }
@@ -169,9 +315,6 @@ const Home = () => {
     { icon: Smartphone, label: "Refer & Earn", path: "/refer-earn", isLogout: false },
     { icon: Settings, label: "Settings", path: "/settings", isLogout: false },
     { icon: HelpCircle, label: "Help & Support", path: "/support", isLogout: false },
-    ...(user.role === "provider"
-      ? [{ icon: Wrench, label: "Switch to Provider", path: "/provider", isLogout: false }]
-      : []),
     { icon: LogOut, label: "Logout", path: "", isLogout: true },
   ];
 
@@ -326,17 +469,6 @@ const Home = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {user.role === "provider" && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/provider")}
-              className="w-11 h-11 rounded-[16px] bg-accent/10 border-2 border-accent/20 flex items-center justify-center transition-all shadow-sm"
-              title="Switch to Provider"
-            >
-              <Wrench size={18} className="text-accent" strokeWidth={2.5} />
-            </motion.button>
-          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -388,6 +520,46 @@ const Home = () => {
         animate="visible"
         className="flex-1 overflow-y-auto"
       >
+        {/* ═══ ACTIVE BOOKING BANNER ═══ */}
+        {activeBooking && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-5 pt-4 pb-2"
+          >
+            <div
+              onClick={() => navigate(`/tracking/${activeBooking.id}`)}
+              className="w-full flex items-center justify-between p-4 rounded-[20px] bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 text-white shadow-lg cursor-pointer hover:from-orange-600 hover:to-amber-700 transition-all active:scale-[0.99] group border border-amber-400/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center animate-pulse">
+                  <span className="text-xl">
+                    {activeBooking.status === "on_the_way" ? "🛵" :
+                     activeBooking.status === "arrived" ? "📍" :
+                     activeBooking.status === "in_progress" ? "🔧" :
+                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "💳" : "👤"}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm leading-tight text-white">
+                    {activeBooking.status === "on_the_way" ? "Provider is on the way" :
+                     activeBooking.status === "arrived" ? "Provider has arrived!" :
+                     activeBooking.status === "in_progress" ? "Service in progress..." :
+                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Service Completed — Pay Now" :
+                     "Active Booking Tracking"}
+                  </h4>
+                  <p className="text-[11px] text-white/90 mt-0.5 font-medium">
+                    {(activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Tap to view tracking & complete payment" : "Tap to track live location & status"}
+                  </p>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                <ChevronRight size={16} className="text-white" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ═══ AD BANNERS ═══ */}
         <AdBannerCarousel />
 
@@ -479,87 +651,38 @@ const Home = () => {
                 History
               </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto px-5 pb-5 scrollbar-hide snap-x snap-mandatory">
+            <div className="flex gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide snap-x snap-mandatory">
               {rankedSuggestions.map((sugg) => {
-                const conf = getSuggestionIconConfig(sugg.serviceId);
-                const IconComponent = conf.icon;
+                const cardConfig = getModernSuggestionConfig(sugg);
+                const IconComponent = cardConfig.icon;
                 return (
                   <button
                     key={sugg.id}
                     onClick={() => goToRecommendedBooking(sugg)}
-                    className={`
-                      w-[280px] flex-shrink-0 rounded-3xl p-5 border snap-start text-left
-                      group relative overflow-hidden transition-all duration-500
-                      hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)] hover:-translate-y-1 active:scale-[0.98]
-                      ${sugg.season === "summer" ? "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-100 border-amber-100"
-                        : sugg.season === "monsoon" ? "bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-100 border-sky-100"
-                          : sugg.season === "winter" ? "bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-100 border-slate-200"
-                            : sugg.season === "festival" ? "bg-gradient-to-br from-rose-50 via-pink-50 to-orange-50 border-rose-100"
-                              : "bg-gradient-to-br from-white via-slate-50 to-primary/5 border-slate-100"}
-                    `}
+                    className={`w-[260px] flex-shrink-0 rounded-[28px] p-4 snap-start text-left group relative overflow-hidden transition-all duration-500 hover:-translate-y-1 active:scale-[0.98] ${cardConfig.cardBg}`}
                   >
-                    {sugg.season === "summer" && (
-                      <>
-                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-amber-300/20 rounded-full blur-3xl" />
-                        <div className="absolute bottom-[-30px] left-[-20px] w-24 h-24 bg-orange-300/10 rounded-full blur-2xl" />
-                      </>
-                    )}
-                    {sugg.season === "monsoon" && (
-                      <>
-                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-sky-300/20 rounded-full blur-3xl" />
-                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-cyan-300/10 rounded-full blur-2xl" />
-                      </>
-                    )}
-                    {sugg.season === "winter" && (
-                      <>
-                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-slate-300/20 rounded-full blur-3xl" />
-                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-gray-300/10 rounded-full blur-2xl" />
-                      </>
-                    )}
-                    {sugg.season === "festival" && (
-                      <>
-                        <div className="absolute top-[-20px] right-[-20px] w-28 h-28 bg-rose-300/20 rounded-full blur-3xl" />
-                        <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-orange-300/10 rounded-full blur-2xl" />
-                      </>
-                    )}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-[10px] font-black tracking-[0.18em] uppercase text-muted-foreground/50">
-                        {sugg.category}
-                      </span>
-                      {(() => {
-                        const seasonStyles = {
-                          summer: { label: "Summer Essential", className: "bg-amber-50 text-amber-700 border border-amber-200", dot: "bg-amber-500" },
-                          monsoon: { label: "Monsoon Care", className: "bg-sky-50 text-sky-700 border border-sky-200", dot: "bg-sky-500" },
-                          winter: { label: "Winter Protection", className: "bg-slate-100 text-slate-700 border border-slate-200", dot: "bg-slate-500" },
-                          festival: { label: "Festive Special", className: "bg-rose-50 text-rose-700 border border-rose-200", dot: "bg-rose-500" },
-                          all: { label: "Recommended", className: "bg-primary/5 text-primary border border-primary/10", dot: "bg-primary" },
-                        };
-                        const s = seasonStyles[sugg.season as keyof typeof seasonStyles] || seasonStyles.all;
-                        return (
-                          <div className={`flex items-center gap-2 px-3 py-[7px] rounded-full text-[10px] font-semibold tracking-wide ${s.className}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                            <span className="leading-none">{s.label}</span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 ${conf.bgColor} group-hover:scale-105`}>
-                        <IconComponent size={20} strokeWidth={2.2} />
+                    <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-40" style={{ backgroundColor: cardConfig.accentRing }} />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`text-[10px] font-black tracking-[0.18em] uppercase ${cardConfig.textColor}`}>{sugg.category}</span>
+                        {cardConfig.label ? (
+                          <span className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${cardConfig.textColor}`}>{cardConfig.label}</span>
+                        ) : null}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                          {sugg.title}
-                        </h3>
-                        <p className="text-[12px] text-muted-foreground mt-1 leading-normal line-clamp-2">
-                          {sugg.subtitle}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-[24px] flex items-center justify-center ${cardConfig.iconBg} shadow-[0_10px_20px_rgba(15,23,42,0.08)]`}>
+                          <IconComponent size={22} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-[16px] font-semibold leading-tight ${cardConfig.textColor} line-clamp-2`}>
+                            {cardConfig.title}
+                          </h3>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-50">
-                      <span className="text-[12px] font-semibold text-primary group-hover:underline">Explore Providers</span>
-                      <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                        <ChevronRight size={14} />
+                      <div className="mt-4 flex items-end justify-end">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white shadow-sm">
+                          Book Now <ChevronRight size={14} />
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -575,37 +698,36 @@ const Home = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/refer-earn")}
-            className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 shadow-[0_8px_30px_rgba(245,158,11,0.06)] relative overflow-hidden group"
+            className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-[#152E4B] border border-[#0f2a41] shadow-[0_8px_30px_rgba(0,0,0,0.08)] relative overflow-hidden group"
           >
-            <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-accent/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-accent/20 transition-colors duration-500" />
-            <div className="w-14 h-14 rounded-[18px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-300">
-              <Gift size={26} className="text-accent" strokeWidth={2} />
+            <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-[#152E4B]/80 rounded-full blur-[40px] pointer-events-none group-hover:bg-[#1A3B5A]/90 transition-colors duration-500" />
+            <div className="w-14 h-14 rounded-[18px] bg-[#163B60] shadow-sm flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-300">
+              <Gift size={26} className="text-white" strokeWidth={2} />
             </div>
             <div className="flex-1 text-left z-10">
-              <h3 className="text-[16px] font-semibold text-foreground leading-tight">Refer and Earn</h3>
-              <p className="text-[12px] font-medium text-accent/80 mt-1">Invite friends and get ₹500 on their first booking</p>
+              <h3 className="text-[16px] font-semibold text-white leading-tight">Refer and Earn</h3>
+              <p className="text-[12px] font-medium text-slate-300 mt-1">Invite friends and get ₹500 on their first booking</p>
             </div>
-            <ChevronRight size={20} className="text-accent flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight size={20} className="text-white flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
           </motion.button>
         </motion.div>
 
         {/* ═══ GET HELP ═══ */}
         <motion.div variants={itemVariants} className="px-5 pb-6 pt-2">
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => navigate("/get-help")}
-            className="w-full flex items-center gap-4 p-5 rounded-[24px] bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 shadow-[0_8px_30px_rgba(21,46,75,0.04)] relative overflow-hidden group"
+            className="w-full flex items-center gap-4 p-5 rounded-[30px] bg-[#FEF2F2] border border-red-100 shadow-sm shadow-red-100/70 overflow-hidden"
           >
-            <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-primary/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-primary/20 transition-colors duration-500" />
-            <div className="w-14 h-14 rounded-[18px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-300">
-              <HelpCircle size={26} className="text-primary" strokeWidth={2} />
+            <div className="w-14 h-14 rounded-[18px] bg-white border border-red-100 shadow-sm flex items-center justify-center flex-shrink-0">
+              <HelpCircle size={22} className="text-red-600" strokeWidth={2.2} />
             </div>
-            <div className="flex-1 text-left z-10">
-              <h3 className="text-[16px] font-semibold text-foreground leading-tight">Get Help</h3>
-              <p className="text-[12px] font-medium text-primary/80 mt-1">Not sure what's wrong? Let our experts inspect it.</p>
+            <div className="flex-1 text-left">
+              <h3 className="text-[16px] font-semibold text-slate-900 leading-tight">Get Help</h3>
+              <p className="text-[13px] text-slate-500 mt-1 leading-relaxed">Our experts are ready to help you.</p>
             </div>
-            <ChevronRight size={20} className="text-primary flex-shrink-0 z-10 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight size={20} className="text-red-500 flex-shrink-0" />
           </motion.button>
         </motion.div>
       </motion.div>

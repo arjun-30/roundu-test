@@ -107,7 +107,7 @@ const Chat = () => {
         if (res.success) {
           const formatted = res.data.map((m: any) => ({
             id: m.id,
-            sender: m.senderId === user.id ? "me" : "other",
+            sender: (m.senderRole || m.sender_role) === role ? "me" : "other",
             text: m.text,
             time: m.time,
             audioBase64: m.audioBase64,
@@ -434,7 +434,7 @@ const Chat = () => {
                   )}
                   <div className={`max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
                     {msg.audioBase64 ? (
-                      <div className={`rounded-[24px] p-3 shadow-sm flex items-center gap-3 min-w-[180px] ${isMe ? "bg-primary text-white rounded-br-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px]"}`}>
+                      <div className={`rounded-[24px] p-3 shadow-sm flex items-center gap-3 min-w-[180px] ${isMe ? "bg-primary text-white rounded-br-[8px] rounded-tl-[8px]" : "bg-white border-2 border-transparent rounded-bl-[8px] rounded-tr-[8px]"}`}>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -582,9 +582,8 @@ const Chat = () => {
                 whileTap={{ scale: 0.9 }}
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                  message.trim() ? "bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)]" : "bg-[#F8FAFC] text-[#CBD5E1]"
-                }`}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${message.trim() ? "bg-primary text-white shadow-[0_8px_20px_rgba(249,115,22,0.3)]" : "bg-[#F8FAFC] text-[#CBD5E1]"
+                  }`}
               >
                 <Send size={20} className={message.trim() ? "-ml-0.5" : ""} strokeWidth={2.5} />
               </motion.button>

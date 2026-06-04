@@ -10,11 +10,11 @@ import api, { createBooking, loadRazorpay } from "@/lib/api";
 
 const BookingPayment = () => {
   const navigate = useNavigate();
-  const { 
-    selectedProvider, 
-    selectedServiceId, 
-    selectedDate = new Date().toISOString().slice(0, 10), 
-    selectedTime = "10:00 AM", 
+  const {
+    selectedProvider,
+    selectedServiceId,
+    selectedDate = new Date().toISOString().slice(0, 10),
+    selectedTime = "10:00 AM",
     bookingNotes,
     bookingVoiceNote,
     bookingVoiceNoteUrl,
@@ -23,7 +23,7 @@ const BookingPayment = () => {
     dispatch,
     addBooking
   } = useApp();
-  
+
   const location = useLocation();
   const bookingId = location.state?.bookingId;
   const existingBooking = bookings.find((b) => b.id === bookingId);
@@ -39,14 +39,14 @@ const BookingPayment = () => {
     }
   }, [bookingId, selectedProvider, selectedServiceId, navigate]);
 
-  if (!bookingId && (!selectedProvider || !selectedServiceId)) return null;
+  if (!bookingId) return null;
 
   const provider = existingBooking
     ? ((existingBooking as any).providerDetails || getProviderById(existingBooking.providerId) || {
-        id: existingBooking.providerId,
-        name: "Service Provider",
-        pricePerHr: existingBooking.price,
-      })
+      id: existingBooking.providerId,
+      name: "Service Provider",
+      pricePerHr: existingBooking.price,
+    })
     : selectedProvider;
 
   const serviceId = existingBooking ? existingBooking.serviceId : selectedServiceId;
@@ -67,8 +67,8 @@ const BookingPayment = () => {
       if (method === "cash") {
         try {
           dispatch({ type: "PAY_BOOKING", id: bookingId });
-          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
           navigate(`/rating/${bookingId}`, { replace: true });
         } catch (err) {
           setError("Failed to process cash payment option");
@@ -79,8 +79,8 @@ const BookingPayment = () => {
         try {
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           dispatch({ type: "PAY_BOOKING", id: bookingId });
-          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-          socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+          dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+          socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
           navigate(`/rating/${bookingId}`, { replace: true });
         } catch (err) {
           setError("Failed to process wallet payment");
@@ -130,8 +130,8 @@ const BookingPayment = () => {
                 }
 
                 dispatch({ type: "PAY_BOOKING", id: bookingId });
-                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "completed" });
-                socket.emit("update_job_status", { bookingId: bookingId, status: "completed", paid: true });
+                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
+                socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
                 navigate(`/rating/${bookingId}`, { replace: true });
               } catch (err) {
                 console.error("Verification error:", err);
@@ -183,8 +183,11 @@ const BookingPayment = () => {
           const bookingRes = await createBooking(bookingData);
           if (bookingRes.success) {
             addBooking(bookingRes.data);
+            // Mark booking as completed and navigate to rating page
+            dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+            dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
             dispatch({ type: "RESET_BOOKING_DRAFT" });
-            navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+            navigate(`/rating/${bookingRes.data.id}`, { replace: true });
           }
         } catch (err) {
           setError("Failed to complete booking with Cash option");
@@ -280,8 +283,11 @@ const BookingPayment = () => {
                 if (bookingRes.success) {
                   const enrichedData = { ...bookingRes.data, paid: true };
                   addBooking(enrichedData);
+                  // Mark booking as completed and navigate to rating page
+                  dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingRes.data.id, status: "completed" });
+                  dispatch({ type: "PAY_BOOKING", id: bookingRes.data.id });
                   dispatch({ type: "RESET_BOOKING_DRAFT" });
-                  navigate(`/booking/success/${bookingRes.data.id}`, { replace: true });
+                  navigate(`/rating/${bookingRes.data.id}`, { replace: true });
                 }
               } catch (err) {
                 console.error("Verification/Booking error:", err);
@@ -390,9 +396,8 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
 const PaymentOption = ({ active, onClick, icon: Icon, title, subtitle }: any) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-[0.98] ${
-      active ? "bg-primary/5 border-primary" : "bg-card border-border"
-    }`}
+    className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-[0.98] ${active ? "bg-primary/5 border-primary" : "bg-card border-border"
+      }`}
   >
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${active ? "bg-primary text-primary-foreground" : "bg-input text-primary"}`}>
       <Icon size={18} />

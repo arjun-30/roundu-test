@@ -8,6 +8,7 @@ interface BookingCardProps {
 
 const statusStyles: Record<string, string> = {
   pending: "bg-muted text-muted-foreground",
+  accepted: "bg-primary/10 text-primary",
   assigned: "bg-primary/10 text-primary",
   on_the_way: "bg-accent/20 text-accent-foreground",
   arrived: "bg-accent/20 text-accent-foreground",
@@ -18,6 +19,7 @@ const statusStyles: Record<string, string> = {
 
 const statusLabels: Record<string, string> = {
   pending: "Pending",
+  accepted: "Accepted",
   assigned: "Assigned",
   on_the_way: "On the way",
   arrived: "Arrived",

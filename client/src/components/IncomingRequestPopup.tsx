@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useApp } from "@/context/AppContext";
+import { getDistance } from "@/lib/utils";
 import { ProviderRequest } from "@/data/mockData";
 import { getServiceById } from "@/data/mockData";
 import { X, Check, MapPin, Calendar, Clock, Star, Map, User, Navigation } from "lucide-react";
@@ -24,6 +26,21 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
 
   const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft);
   const service = getServiceById(request.serviceId);
+  const { currentLocation } = useApp() as any;
+  const computeDistanceKm = () => {
+    if (currentLocation && request.lat != null && request.lng != null) {
+      const rlat = Number(request.lat);
+      const rlng = Number(request.lng);
+      if (!isNaN(rlat) && !isNaN(rlng)) {
+        try {
+          return Math.round(getDistance(currentLocation, { lat: rlat, lng: rlng }) * 10) / 10;
+        } catch (e) {
+          return request.distanceKm || 0;
+        }
+      }
+    }
+    return request.distanceKm || 0;
+  };
 
   useEffect(() => {
     // If already expired when popup opens, call onReject immediately
@@ -91,7 +108,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                  <Navigation size={12} /> {request.distanceKm || "2.5"} km away
+                  <Navigation size={12} /> {computeDistanceKm() || "2.5"} km away
                 </span>
               </div>
             </div>

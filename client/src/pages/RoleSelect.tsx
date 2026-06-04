@@ -22,6 +22,7 @@ const RoleSelect = () => {
     if (phone) saveRoleForPhone(phone, role);
 
     dispatch({ type: "SET_ROLE", role });
+    dispatch({ type: "UPDATE_USER", user: { role, accountType: role } });
 
     if (role === "customer") {
       navigate("/onboarding", { replace: true });
@@ -37,7 +38,7 @@ const RoleSelect = () => {
     try {
       const res = await checkProviderExists(user.id);
       if (res.exists) {
-        dispatch({ type: "UPDATE_USER", user: { role: "provider" } });
+        dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
         navigate("/provider", { replace: true });
         return;
       }

@@ -9,6 +9,8 @@ import {
   useSpring,
   useTransform,
 } from "motion/react"
+import { Geolocation } from "@capacitor/geolocation"
+import { reverseGeocode } from "@/lib/mapProvider"
 
 interface LocationMapProps {
   location?: string
@@ -54,49 +56,58 @@ export function LocationMap({
     setIsHovered(false)
   }
 
-  const handleClick = () => {
+  const handleClick = async () => {
     setIsExpanded(!isExpanded)
     
     if (!isExpanded) {
       setFetching(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setCurrentCoords(`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
-          
+      try {
+        let permResult;
+        try {
+          permResult = await Geolocation.checkPermissions();
+        } catch (e) {
+          permResult = { location: "prompt" };
+        }
+
+        if (permResult.location !== "granted") {
           try {
-            const query = await fetch(
-              `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`
-            );
-            const json = await query.json();
-            if (json.features && json.features.length > 0) {
-              // Find the first feature that is a POI or address
-              const bestFeature = json.features.find((f: any) => 
-                f.place_type && (f.place_type.includes('poi') || f.place_type.includes('address'))
-              );
-              
-              // Fallback to the most specific feature available (usually index 0, like neighborhood or city)
-              const featureToUse = bestFeature || json.features[0];
-              
-              setCurrentLoc(featureToUse.text || featureToUse.place_name);
-            } else {
-              setCurrentLoc("Koramangala, Bengaluru");
-            }
-          } catch (err) {
-            console.error("Failed to reverse geocode:", err);
-            setCurrentLoc("Error fetching address");
-          } finally {
-            setFetching(false);
+            permResult = await Geolocation.requestPermissions();
+          } catch (e) {
+            permResult = { location: "denied" };
           }
-        },
-        (error) => {
-          console.error("Error getting location:", error);
+        }
+
+        if (permResult.location !== "granted") {
           setError("Failed to get location. Please enable GPS.");
           setTimeout(() => setError(""), 3000);
           setFetching(false);
+          return;
         }
-      );
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000
+        });
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setCurrentCoords(`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+        
+        try {
+          const result = await reverseGeocode(lat, lng);
+          setCurrentLoc(result.address);
+        } catch (err) {
+          console.error("Failed to reverse geocode:", err);
+          setCurrentLoc("Error fetching address");
+        } finally {
+          setFetching(false);
+        }
+      } catch (error) {
+        console.error("Error getting location:", error);
+        setError("Failed to get location. Please enable GPS.");
+        setTimeout(() => setError(""), 3000);
+        setFetching(false);
+      }
     }
   }
 

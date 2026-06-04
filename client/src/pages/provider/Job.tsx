@@ -10,53 +10,47 @@ import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import { socket } from "@/lib/socket";
 
-// 4 core stages shown to both provider and customer
 const JOB_STAGES = [
   {
     key: "on_the_way",
     label: "Started",
-    subtitle: "Heading to customer",
     icon: Navigation2,
-    color: "bg-indigo-500",
-    ring: "ring-indigo-300",
-    light: "bg-indigo-50",
-    text: "text-indigo-700",
+    color: "bg-blue-600",
+    ring: "ring-blue-300",
   },
   {
     key: "arrived",
     label: "Arrived",
-    subtitle: "At customer location",
     icon: MapPin,
     color: "bg-orange-500",
     ring: "ring-orange-300",
-    light: "bg-orange-50",
-    text: "text-orange-700",
-  },
-  {
-    key: "in_progress",
-    label: "Ongoing",
-    subtitle: "Service in progress",
-    icon: Wrench,
-    color: "bg-blue-600",
-    ring: "ring-blue-300",
-    light: "bg-blue-50",
-    text: "text-blue-700",
   },
   {
     key: "completed",
     label: "Completed",
-    subtitle: "Job finished",
     icon: Flag,
     color: "bg-green-500",
     ring: "ring-green-300",
-    light: "bg-green-50",
-    text: "text-green-700",
   },
-] as const;
-
+  {
+    key: "paid",
+    label: "Paid",
+    icon: CheckCircle2,
+    color: "bg-emerald-600",
+    ring: "ring-emerald-300",
+  }
+];
 type StageKey = typeof JOB_STAGES[number]["key"];
-const STATUS_ORDER: string[] = ["accepted", "assigned", "on_the_way", "arrived", "in_progress", "completed"];
-
+const STATUS_ORDER = [
+  "accepted",
+  "assigned",
+  "on_the_way",
+  "arrived",
+  "in_progress",
+  "completed",
+  "payment_pending",
+  "paid"
+];
 const Job = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,7 +81,7 @@ const Job = () => {
 
   const job = providerRequests.find((r) => r.id === id);
 
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const [notification, setNotification] = useState("");
   const [notifType, setNotifType] = useState<"info" | "success">("info");
 
@@ -96,14 +90,6 @@ const Job = () => {
     setNotifType(type);
     setTimeout(() => setNotification(""), 3000);
   };
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout | number;
-    if (job?.status === "in_progress") {
-      timer = setInterval(() => { setElapsedSeconds((prev) => prev + 1); }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [job?.status]);
 
   const [notFoundTimer, setNotFoundTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -130,21 +116,61 @@ const Job = () => {
   const service = getServiceById(job.serviceId);
 
   // ── Stage helpers ────────────────────────────────────────────────────────
-  const currentStatusIndex = STATUS_ORDER.indexOf(job.status);
-  const getStageIndex = (stageKey: StageKey) => STATUS_ORDER.indexOf(stageKey);
-  const isStageCompleted = (stageKey: StageKey) => currentStatusIndex > getStageIndex(stageKey);
-  const isStageActive = (stageKey: StageKey) => job.status === stageKey;
+  const visualStatus =
+    job.status === "paid"
+      ? "paid"
+      : ["completed", "payment_pending"].includes(job.status)
+        ? "completed"
+        : job.status === "arrived"
+          ? "arrived"
+          : "on_the_way";
+  const currentStatusIndex =
+    JOB_STAGES.findIndex(
+      s => s.key === visualStatus
+    );
+
+  const isStageCompleted = (stageKey: StageKey) =>
+    JOB_STAGES.findIndex(
+      s => s.key === stageKey
+    ) < currentStatusIndex;
+
+  const isStageActive = (stageKey: StageKey) =>
+    visualStatus === stageKey;
 
   // ── Emit helpers ─────────────────────────────────────────────────────────
   const emitStatus = (status: any) => {
-    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status } });
-    socket.emit("update_job_status", { bookingId: job.id, status });
+    dispatch({ type: "UPDATE_REQUEST", id: job.id, patch: { status, ...(status === "paid" ? { paid: true } : {}) } });
+    socket.emit("update_job_status", { bookingId: job.id, status, ...(status === "paid" ? { paid: true } : {}) });
   };
 
-  const markOnTheWay = () => { emitStatus("on_the_way"); showNotification("🚗 Customer notified — you're on the way!", "info"); };
-  const markArrived  = () => { emitStatus("arrived");    showNotification("📍 Customer notified — you've arrived!", "info"); };
-  const startService = () => { emitStatus("in_progress"); showNotification("🔧 Service started! Customer notified.", "success"); };
-  const completeJob  = () => { emitStatus("completed"); navigate(`/provider/job/${job.id}/report`); };
+  const markArrived = () => { emitStatus("arrived"); showNotification("📍 Customer notified — you've arrived!", "info"); };
+
+
+
+  const completeJob = () => {
+    emitStatus("payment_pending");
+
+    showNotification(
+      "Waiting for payment confirmation",
+      "info"
+    );
+  }; const confirmCashReceived = () => {
+    emitStatus("paid");
+
+    showNotification(
+      "Payment received successfully",
+      "success"
+    );
+  };
+
+  const waitForOnlinePayment = () => {
+    emitStatus("payment_pending");
+
+    showNotification(
+      "Waiting for online payment",
+      "info"
+    );
+  };
 
   const handleCall = () => {
     const phone = job?.customerPhone || "+919876543210";
@@ -167,76 +193,179 @@ const Job = () => {
 
   // ── CTA per status ───────────────────────────────────────────────────────
   const renderActionBar = () => {
-    switch (job.status) {
+    const actionStatus =
+      job.status === "paid"
+        ? "paid"
+        : ["completed", "payment_pending"].includes(job.status)
+          ? "completed"
+          : job.status;
+
+    switch (actionStatus) {
       case "accepted":
       case "assigned":
-        return (
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={markOnTheWay}
-            className="w-full py-4 rounded-[24px] bg-indigo-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(99,102,241,0.25)] transition-all"
-          >
-            <Navigation2 size={20} strokeWidth={2.5} /> I'm On the Way
-          </motion.button>
-        );
       case "on_the_way":
         return (
-          <div className="space-y-4">
-            <div className="bg-[#EEF2FF] border-2 border-[#E0E7FF] rounded-[24px] p-5 text-center shadow-sm">
-              <span className="text-[14px] font-extrabold text-[#312E81] flex items-center justify-center gap-2 tracking-tight">
-                <Car size={20} strokeWidth={2.5} /> Heading to Customer
-              </span>
-              <p className="text-[12px] font-medium text-[#4338CA] mt-2">Status updates automatically when you arrive within 100m</p>
-            </div>
-            <div className="flex gap-3">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openNavigation}
-                className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Navigation size={18} strokeWidth={2.5} /> Navigate
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={markArrived}
-                className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(249,115,22,0.25)]"
-              >
-                <MapPin size={18} strokeWidth={2.5} /> Mark Arrived
-              </motion.button>
-            </div>
+          <div className="flex gap-3">
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={openNavigation}
+              className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold"
+            >
+              Navigate
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={markArrived}
+              className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold"
+            >
+              Mark Arrived
+            </motion.button>
+
           </div>
         );
       case "arrived":
         return (
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={startService}
-            className="w-full py-4 rounded-[24px] bg-blue-600 text-white font-extrabold text-[15px] flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(37,99,235,0.25)] transition-all"
-          >
-            <Wrench size={20} strokeWidth={2.5} /> Start Service
-          </motion.button>
-        );
-      case "in_progress": {
-        const mins = Math.floor(elapsedSeconds / 60);
-        const secs = elapsedSeconds % 60;
-        return (
-          <div className="space-y-4">
-            <div className="bg-[#F0F9FF] border-2 border-[#E0F2FE] rounded-[24px] p-5 flex items-center justify-between shadow-sm">
-              <span className="text-[14px] font-extrabold text-[#0C4A6E] flex items-center gap-2"><Timer size={20} strokeWidth={2.5} /> Time Elapsed</span>
-              <span className="text-[24px] font-black text-[#0284C7] font-mono tracking-tight">{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
-            </div>
-            <div className="flex gap-3">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openNavigation}
-                className="flex-1 py-4 rounded-[20px] bg-white text-primary border-2 border-primary/20 font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Navigation size={18} strokeWidth={2.5} /> Navigate
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={completeJob}
-                className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white font-extrabold text-[14px] flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(16,185,129,0.25)] transition-all"
-              >
-                <CheckCircle2 size={18} strokeWidth={2.5} /> Complete Job
-              </motion.button>
-            </div>
+          <div className="flex gap-3">
+
+            <button
+              onClick={openNavigation}
+              className="flex-1 py-4 rounded-[20px] bg-white border"
+            >
+              Navigate
+            </button>
+
+            <button
+              onClick={completeJob}
+              className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white"
+            >
+              Complete Job
+            </button>
+
           </div>
         );
-      }
+
+      case "completed":
+        return (
+          <div className="space-y-4">
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+              <p className="font-bold text-yellow-800">
+                Payment Pending
+              </p>
+
+              <p className="text-sm text-yellow-700 mt-1">
+                Choose payment method. Provider cannot accept
+                another Quick Fix job until payment is completed.
+              </p>
+            </div>
+
+            {/* ROUNDU QR PAYMENT */}
+            <div className="bg-white border rounded-2xl p-5 text-center">
+
+              <img
+                src="/qr-demo.png"
+                alt="RoundU QR"
+                className="w-44 h-44 mx-auto"
+              />
+
+              <p className="font-bold mt-3">
+                RoundU Payments
+              </p>
+
+              <p className="text-sm text-gray-500">
+                UPI ID: payments@roundu
+              </p>
+
+              <p className="text-lg font-bold mt-2">
+                ₹{job.quote || (job as any).price}
+              </p>
+
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="h-px bg-gray-200 flex-1" />
+              <span className="px-4 text-sm font-semibold text-gray-500">
+                OR
+              </span>
+              <div className="h-px bg-gray-200 flex-1" />
+            </div>
+
+            {/* CASH PAYMENT */}
+            <button
+              onClick={() => {
+
+                const confirmed = window.confirm(
+                  "Confirm cash has been received?"
+                );
+
+                if (!confirmed) return;
+
+                const amount = Number(
+                  job.quote || (job as any).price || 0
+                );
+
+                const commission = amount * 0.15;
+
+                dispatch({
+                  type: "ADD_COMMISSION_DUE",
+                  amount: commission
+                });
+
+                dispatch({
+                  type: "INCREMENT_COD_COUNT"
+                });
+
+                emitStatus("paid");
+
+                showNotification(
+                  `₹${commission.toFixed(0)} commission added to dues`,
+                  "success"
+                );
+              }}
+              className="w-full py-4 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold shadow-md transition-all"            >
+              Receive Cash            </button>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
+              <p className="text-xs text-gray-600">
+                Online Payment → Money goes to RoundU App account.
+              </p>
+
+              <p className="text-xs text-gray-600 mt-1">
+                Cash Payment → Provider collects cash and platform
+                commission will be deducted from provider wallet.
+              </p>
+            </div>
+
+          </div >
+        );
+
+      case "paid":
+        return (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+
+            <CheckCircle2
+              size={50}
+              className="mx-auto text-emerald-600"
+            />
+
+            <p className="mt-3 font-bold text-emerald-700">
+              Payment Successful
+            </p>
+
+            <p className="text-sm text-emerald-600 mt-2">
+              Job completed and earnings processed.
+            </p>
+
+          </div>
+        );
+
       default:
         return null;
     }
   };
-
   return (
     <div className="min-h-full flex flex-col bg-background pb-[140px]">
       {/* Header */}
@@ -265,11 +394,10 @@ const Job = () => {
         <AnimatePresence>
           {notification && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className={`p-4 rounded-[20px] text-[13px] font-bold shadow-sm border ${
-                notifType === "success"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
-              }`}>
+              <div className={`p-4 rounded-[20px] text-[13px] font-bold shadow-sm border ${notifType === "success"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+                }`}>
                 {notification}
               </div>
             </motion.div>
@@ -291,9 +419,8 @@ const Job = () => {
                       <div className={`h-full transition-all duration-700 ${done ? stage.color : "bg-border"}`} />
                     </div>
                   )}
-                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${
-                    done ? `${stage.color} shadow-md` : active ? `${stage.color} shadow-lg ring-4 ${stage.ring} scale-110` : "bg-input border-2 border-border"
-                  }`}>
+                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${done ? `${stage.color} shadow-md` : active ? `${stage.color} shadow-lg ring-4 ${stage.ring} scale-110` : "bg-input border-2 border-border"
+                    }`}>
                     <Icon size={14} className={done || active ? "text-white" : "text-muted-foreground"} />
                     {active && <span className="absolute inset-0 rounded-full animate-ping opacity-30 bg-current" />}
                   </div>

@@ -43,7 +43,7 @@ const ServiceReport = () => {
     }
     
     dispatch({ type: "COMPLETE_REQUEST", id: job.id });
-    socket.emit("update_job_status", { bookingId: job.id, status: "completed" });
+    socket.emit("update_job_status", { bookingId: job.id, status: "completed", paid: false });
     setNotification(`Job completed! ₹${job.quote || job.price} added to your earnings.`);
     setTimeout(() => navigate("/provider", { replace: true }), 1500);
   };
