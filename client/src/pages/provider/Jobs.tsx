@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
@@ -177,8 +177,8 @@ const Jobs = () => {
       return (day: Date) => !isSameDay(day, today);
     }
 
-    // Fallback (should not reach here)
-    return () => false;
+    const { start, end } = getActiveFilterRange();
+    return (day: Date) => isBefore(day, startOfDay(start)) || isAfter(day, endOfDay(end));
   };
 
   const openCalendar = () => {
@@ -243,11 +243,10 @@ const Jobs = () => {
 
         {shouldRenderCalendar && (
           <div
-            className={`mt-2 overflow-hidden rounded-xl border ${styles.border} bg-white shadow-sm origin-top ${
-              calendarClosing
+            className={`mt-2 overflow-hidden rounded-xl border ${styles.border} bg-white shadow-sm origin-top ${calendarClosing
                 ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-200"
                 : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
-            }`}
+              }`}
           >
             <DateRangeCalendar
               initialFocus
@@ -269,7 +268,18 @@ const Jobs = () => {
                 day_disabled: "text-muted-foreground opacity-25 cursor-not-allowed bg-transparent hover:bg-transparent",
                 day_range_middle: styles.middle,
                 day_outside: "day-outside text-muted-foreground opacity-20 aria-selected:opacity-30",
+                nav_button_previous: tab === "active" ? "opacity-30 cursor-not-allowed" : "",
+                nav_button_next: tab === "active" ? "opacity-30 cursor-not-allowed" : "",
+                nav_button: tab === "active" ? "pointer-events-none opacity-30" : undefined,
               }}
+              components={
+                tab === "active"
+                  ? {
+                      IconLeft: (props) => <ChevronLeft className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />, 
+                      IconRight: (props) => <ChevronRight className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />, 
+                    }
+                  : undefined
+              }
             />
           </div>
         )}
