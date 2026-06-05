@@ -254,6 +254,26 @@ const SearchingProviders = () => {
     isLongWait,
   ]);
 
+  // Reset timer when a new service search starts (serviceId changes)
+  useEffect(() => {
+    // If we are not restoring from cached state or the serviceId differs, start fresh timer
+    if (!cachedState || cachedState.serviceId !== serviceId) {
+      const now = Date.now();
+      localStorage.setItem('search_start_time', String(now));
+      setSearchStartTime(now);
+      setRemainingSeconds(120);
+      setHasTimedOut(false);
+      setShowTimeoutModal(false);
+    }
+  }, [serviceId, cachedState]);
+
+  // Cleanup timer on component unmount
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('search_start_time');
+    };
+  }, []);
+
   // CACHE QUOTES
   useEffect(() => {
     if (receivedQuotes.length > 0) {
@@ -439,11 +459,7 @@ const SearchingProviders = () => {
 
   return (
     <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
-  
-  {/* TIMER DISPLAY */}
-  <div className="px-5 mt-2 text-center text-sm text-amber-700 font-bold">
-    Time Remaining: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
-  </div>
+ 
 
   {/* TIMEOUT MODAL */}
   {showTimeoutModal && (
@@ -457,19 +473,24 @@ const SearchingProviders = () => {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => {
-              localStorage.removeItem('search_start_time');
-              setHasTimedOut(false);
-              setShowTimeoutModal(false);
+              // Reset timer for a new attempt
               const now = Date.now();
               localStorage.setItem('search_start_time', String(now));
               setSearchStartTime(now);
+              setRemainingSeconds(120);
+              setHasTimedOut(false);
+              setShowTimeoutModal(false);
             }}
             className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
           >
             Try Again
           </button>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              // Clear timer data when exiting
+              localStorage.removeItem('search_start_time');
+              navigate(-1);
+            }}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
           >
             Go Back
@@ -626,6 +647,12 @@ const SearchingProviders = () => {
               ? "Searching nearby providers"
               : "Providers available nearby"}
           </h2>
+          <div className="text-center mt-2">
+            <p className="text-sm font-medium text-slate-600">Time Remaining</p>
+            <p className={remainingSeconds <= 30 ? "text-2xl font-bold text-red-600" : "text-2xl font-bold text-amber-500"}>
+              {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
+            </p>
+          </div>
 
           {/* STATUS TEXT */}
           <div className="h-8 flex items-center justify-center overflow-hidden relative mb-6">
@@ -731,7 +758,7 @@ const SearchingProviders = () => {
 
         {/* CANCEL BUTTON */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => { localStorage.removeItem('search_start_time'); navigate(-1); }}
           className="w-full h-14 rounded-2xl border border-red-100 bg-red-50 text-red-500 font-bold active:scale-95 transition"
         >
           Cancel Request
