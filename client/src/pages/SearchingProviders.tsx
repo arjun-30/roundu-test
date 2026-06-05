@@ -409,7 +409,7 @@ const SearchingProviders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF3F8] overflow-hidden flex flex-col relative font-['DM_Sans',sans-serif]">
+    <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
 
       {/* TOP BAR */}
       <div className="px-5 pt-6 pb-3 flex items-center gap-4 z-20 relative">
@@ -422,7 +422,7 @@ const SearchingProviders = () => {
       </div>
 
       {/* MAP */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="h-[320px] w-full flex-shrink-0 relative overflow-hidden">
 
         {/* GRID BACKGROUND */}
         <div
@@ -579,7 +579,7 @@ const SearchingProviders = () => {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex flex-col gap-3 max-h-[300px] overflow-y-auto mb-6"
+            className="flex flex-col gap-3 mb-6"
           >
             {receivedQuotes.map((q) => (
               <div

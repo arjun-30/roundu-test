@@ -108,6 +108,7 @@
     @apply bg-card border border-border shadow-sm;
   }
 
+<<<<<<< HEAD
   .scrollbar-hide::-webkit-scrollbar,
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -117,6 +118,15 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+=======
+  /* Hide scrollbars globally */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+  * {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+>>>>>>> 5a18c94a02d4de4bf31039ada0975fc0df0db201
   }
 
   .gradient-primary {

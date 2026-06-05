@@ -37,7 +37,7 @@ const Jobs = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { providerRequests, completedJobs } = useApp();
-  const [tab, setTab] = useState<JobTab>("upcoming");
+  const [tab, setTab] = useState<JobTab>("active");
   const [dateRanges, setDateRanges] = useState<JobsDateRanges>(emptyDateRanges);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarClosing, setCalendarClosing] = useState(false);
@@ -172,8 +172,13 @@ const Jobs = () => {
       return (day: Date) => !isBefore(day, today);
     }
 
-    const { start, end } = getActiveFilterRange();
-    return (day: Date) => isBefore(day, startOfDay(start)) || isAfter(day, endOfDay(end));
+    if (targetTab === "active") {
+      // Only allow selecting today; disable all other dates
+      return (day: Date) => !isSameDay(day, today);
+    }
+
+    // Fallback (should not reach here)
+    return () => false;
   };
 
   const openCalendar = () => {
@@ -400,15 +405,6 @@ const Jobs = () => {
       {/* Tab Buttons */}
       <div className="px-5 mt-6 flex gap-2">
         <button
-          onClick={() => setTab("upcoming")}
-          className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "upcoming"
-            ? "bg-amber-500 text-white shadow-md"
-            : "bg-input text-muted-foreground hover:bg-input/80"
-            }`}
-        >
-          Upcoming ({upcomingJobs.length})
-        </button>
-        <button
           onClick={() => setTab("active")}
           className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "active"
             ? "bg-amber-500 text-white shadow-md"
@@ -416,6 +412,15 @@ const Jobs = () => {
             }`}
         >
           Active ({activeJobs.length})
+        </button>
+        <button
+          onClick={() => setTab("upcoming")}
+          className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "upcoming"
+            ? "bg-amber-500 text-white shadow-md"
+            : "bg-input text-muted-foreground hover:bg-input/80"
+            }`}
+        >
+          Upcoming ({upcomingJobs.length})
         </button>
         <button
           onClick={() => setTab("completed")}
