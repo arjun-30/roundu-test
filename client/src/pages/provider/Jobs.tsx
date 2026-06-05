@@ -176,7 +176,13 @@ const Jobs = () => {
     }
 
     if (targetTab === "completed") {
-      return (day: Date) => !isBefore(day, today);
+      return (day: Date) => {
+        const isTodayDate = isSameDay(day, today);
+
+        if (isTodayDate) return false;
+
+        return isAfter(day, today);
+      };
     }
 
     if (targetTab === "active") {
