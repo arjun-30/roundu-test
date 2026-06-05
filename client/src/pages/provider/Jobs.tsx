@@ -41,7 +41,7 @@ const Jobs = () => {
   const [dateRanges, setDateRanges] = useState<JobsDateRanges>(emptyDateRanges);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarClosing, setCalendarClosing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"today" | "week" | "month">("week");
+  const [activeFilter] = useState<"today">("today");
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const today = startOfToday();
@@ -244,8 +244,8 @@ const Jobs = () => {
         {shouldRenderCalendar && (
           <div
             className={`mt-2 overflow-hidden rounded-xl border ${styles.border} bg-white shadow-sm origin-top ${calendarClosing
-                ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-200"
-                : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+              ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-200"
+              : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
               }`}
           >
             <DateRangeCalendar
@@ -275,9 +275,9 @@ const Jobs = () => {
               components={
                 tab === "active"
                   ? {
-                      IconLeft: (props) => <ChevronLeft className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />, 
-                      IconRight: (props) => <ChevronRight className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />, 
-                    }
+                    IconLeft: (props) => <ChevronLeft className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />,
+                    IconRight: (props) => <ChevronRight className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />,
+                  }
                   : undefined
               }
             />
@@ -290,18 +290,11 @@ const Jobs = () => {
   // Get filter range for Active tab based on selected chip
   const getActiveFilterRange = (): { start: Date; end: Date } => {
     const today = startOfToday();
-    switch (activeFilter) {
-      case "today":
-        return { start: today, end: endOfDay(today) };
-      case "week":
-        return { start: startOfWeek(today), end: endOfWeek(today) };
-      case "month":
-        return { start: startOfMonth(today), end: endOfMonth(today) };
-      default:
-        return { start: startOfWeek(today), end: endOfWeek(today) };
-    }
+    return {
+      start: today,
+      end: endOfDay(today),
+    };
   };
-
   const filteredJobs = useMemo(() => {
     const now = new Date();
     const upcomingRange = dateRanges.upcoming;
@@ -531,27 +524,24 @@ const Jobs = () => {
           </div>
 
           {/* Filter Chips */}
-          <div className="px-5 mt-4 flex gap-2">
-            {(["today", "week", "month"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => {
-                  setActiveFilter(filter);
-                  setDateRanges((prev) => ({ ...prev, active: undefined }));
-                }}
-                className={`flex-1 py-2 px-3 text-[11px] font-bold rounded-lg transition-all ${activeFilter === filter
-                  ? "bg-amber-500 text-white shadow-md"
-                  : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
-                  }`}
-              >
-                {filter === "today" && "Today"}
-                {filter === "week" && "This Week"}
-                {filter === "month" && "This Month"}
-              </button>
-            ))}
-          </div>
 
-          <DateRangeControl label="Active Jobs" />
+
+          <div className="px-5 mt-3">
+            <div className="w-full min-h-14 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <span className="h-10 w-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center text-amber-700">
+                <Calendar size={18} />
+              </span>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-600">
+                  Active Jobs
+                </p>
+                <p className="text-sm font-extrabold text-amber-700">
+                  Today
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Legend */}
           <div ref={resultsRef} className="px-5 mt-3 flex items-center gap-2 scroll-mt-24">
