@@ -65,9 +65,9 @@ const BookService = () => {
 
   const isDescriptionLocked =
     typeof lockedDescription ===
-      "string" &&
+    "string" &&
     lockedDescription.trim().length >
-      0;
+    0;
 
   const [desc, setDesc] = useState(
     isDescriptionLocked
@@ -129,7 +129,7 @@ const BookService = () => {
                 },
               });
             }
-          } catch (_) {}
+          } catch (_) { }
         } finally {
           setLocating(false);
         }
@@ -319,7 +319,7 @@ const BookService = () => {
           uploadedUrl ||
           (showRestoredVoice
             ? bookingVoiceNoteUrl ??
-              undefined
+            undefined
             : undefined),
       });
 
@@ -353,13 +353,13 @@ const BookService = () => {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] font-sans pb-6">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="bg-white px-5 pt-6 pb-4 flex items-center shadow-sm sticky top-0 z-20"
       >
-        <motion.button 
+        <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => {
             if (isCancelled) {
@@ -379,7 +379,7 @@ const BookService = () => {
         </div>
         <AnimatePresence>
           {isCancelled && (
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -547,7 +547,7 @@ const BookService = () => {
                 className="w-14 h-14 rounded-2xl bg-[#FFF7E8] flex items-center justify-center"
               >
                 {locating ||
-                gpsLoading ? (
+                  gpsLoading ? (
                   <Loader2
                     size={20}
                     className="animate-spin text-[#D89B1D]"
@@ -601,11 +601,10 @@ const BookService = () => {
                   "now"
                 )
               }
-              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${
-                scheduleType === "now"
+              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType === "now"
                   ? "bg-[#17375E] text-white border-[#17375E]"
                   : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
-              }`}
+                }`}
             >
               <Zap
                 size={24}
@@ -628,18 +627,17 @@ const BookService = () => {
                   "later"
                 )
               }
-              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${
-                scheduleType ===
-                "later"
+              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType ===
+                  "later"
                   ? "bg-[#17375E] text-white border-[#17375E]"
                   : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
-              }`}
+                }`}
             >
               <Clock
                 size={24}
                 className={
                   scheduleType ===
-                  "later"
+                    "later"
                     ? "text-white"
                     : "text-[#17375E]"
                 }

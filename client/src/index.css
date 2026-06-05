@@ -7,38 +7,51 @@
 @layer base {
   :root {
     /* Light theme — Roundu */
-    --background: 213 31% 95%;          /* #EEF2F7 */
-    --foreground: 221 76% 5%;           /* #030916 */
+    --background: 213 31% 95%;
+    /* #EEF2F7 */
+    --foreground: 221 76% 5%;
+    /* #030916 */
 
-    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card: 0 0% 100%;
+    /* #FFFFFF */
     --card-foreground: 220 17% 17%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 220 17% 17%;
 
     /* Primary = Navy */
-    --primary: 215 71% 13%;             /* #0a1f33 */
+    --primary: 215 71% 13%;
+    /* #0a1f33 */
     --primary-foreground: 0 0% 100%;
 
     /* Secondary = Lighter Navy */
-    --secondary: 32 93% 34%;            /* #A95D06 */
+    --secondary: 32 93% 34%;
+    /* #A95D06 */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;               /* #F3F4F6 */
-    --muted-foreground: 220 9% 46%;     /* #6B7280 */
+    --muted: 220 14% 96%;
+    /* #F3F4F6 */
+    --muted-foreground: 220 9% 46%;
+    /* #6B7280 */
 
     /* Accent = Amber */
-    --accent: 38 91% 50%;               /* #F59E0B */
-    --accent-foreground: 220 17% 17%;   /* dark text on amber */
+    --accent: 38 91% 50%;
+    /* #F59E0B */
+    --accent-foreground: 220 17% 17%;
+    /* dark text on amber */
 
-    --destructive: 0 84% 60%;           /* #EF4444 */
+    --destructive: 0 84% 60%;
+    /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;             /* #22C55E */
+    --success: 142 71% 45%;
+    /* #22C55E */
     --success-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;              /* #E5E7EB */
-    --input: 210 20% 98%;               /* #F9FAFB */
+    --border: 220 13% 91%;
+    /* #E5E7EB */
+    --input: 210 20% 98%;
+    /* #F9FAFB */
     --ring: 213 55% 19%;
 
     --radius: 1rem;
@@ -95,8 +108,16 @@
     @apply bg-card border border-border shadow-sm;
   }
 
-  .scrollbar-hide::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar { display: none; }
-  .scrollbar-hide, .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide,
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   .gradient-primary {
     @apply bg-primary;
