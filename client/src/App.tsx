@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -99,13 +99,18 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 // Provider Route Guard
 const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, role, user, dispatch } = useApp();
+
+  // Auto-switch back to provider role — done in an effect, NOT during render,
+  // to avoid "Cannot update a component while rendering a different component".
+  useEffect(() => {
+    if (isAuthenticated && user.accountType === "provider" && role !== "provider") {
+      dispatch({ type: "SET_ROLE", role: "provider" });
+    }
+  }, [isAuthenticated, user.accountType, role, dispatch]);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user.accountType !== "provider") {
     return <Navigate to="/home" replace />;
-  }
-  // Auto-switch back to provider role when accessing provider dashboard/profile/pages
-  if (role !== "provider") {
-    dispatch({ type: "SET_ROLE", role: "provider" });
   }
   return children;
 };
@@ -132,8 +137,15 @@ const SmartRoleRoute = () => {
   const phone = user.phone || "";
   const savedRole = phone ? getSavedRoleForPhone(phone) : null;
 
+  // Persist the saved role in an effect — calling dispatch during render here
+  // was the cause of the "Maximum update depth exceeded" infinite loop.
+  useEffect(() => {
+    if (savedRole) {
+      dispatch({ type: "SET_ROLE", role: savedRole });
+    }
+  }, [savedRole, dispatch]);
+
   if (savedRole) {
-    dispatch({ type: "SET_ROLE", role: savedRole });
     return savedRole === "provider"
       ? <Navigate to="/provider" replace />
       : <Navigate to="/home" replace />;
