@@ -7,6 +7,13 @@ import ProviderBottomNav from "@/components/ProviderBottomNav";
 import EmptyState from "@/components/EmptyState";
 import { Calendar as DateRangeCalendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
+
+const formatRupees = (amount: number): string => {
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 import {
   isWithinInterval,
   parseISO,
@@ -388,11 +395,11 @@ const Jobs = () => {
   const completedJobsList = filteredJobs.completed;
 
   // Calculate statistics
-  const upcomingEarnings = upcomingJobs.reduce((sum, job) => sum + (job.price || 0), 0);
+  const upcomingEarnings = upcomingJobs.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
   const activeTodayEarnings = activeJobs
     .filter((job) => isSameDay(parseJobDate(job.date), today))
-    .reduce((sum, job) => sum + (job.price || 0), 0);
-  const completedEarnings = completedJobsList.reduce((sum, job) => sum + (job.price || 0), 0);
+    .reduce((sum, job) => sum + (Number(job.price) || 0), 0);
+  const completedEarnings = completedJobsList.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
 
 
   return (
@@ -443,7 +450,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Expected Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{upcomingEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(upcomingEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Job Count</p>
@@ -498,7 +505,7 @@ const Jobs = () => {
                           <MapPin size={12} /> {job.address}
                         </span>
                       </div>
-                      <p className="text-sm font-bold text-amber-700 mt-3">₹{job.price}</p>
+                      <p className="text-sm font-bold text-amber-700 mt-3">₹{formatRupees(Number(job.price) || 0)}</p>
                     </button>
                   );
                 })}
@@ -515,7 +522,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Today's Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{activeTodayEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(activeTodayEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Active Jobs</p>
@@ -612,7 +619,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Total Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{completedEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(completedEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Completed</p>
@@ -656,7 +663,7 @@ const Jobs = () => {
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">{job.customerName}</p>
                       <p className="text-[11px] text-muted-foreground mb-2">{job.date}</p>
-                      <p className="text-sm font-extrabold text-amber-700">+₹{job.price}</p>
+                      <p className="text-sm font-extrabold text-amber-700">+₹{formatRupees(Number(job.price) || 0)}</p>
                     </div>
                   );
                 })}
