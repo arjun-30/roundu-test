@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, ChevronRight, ShieldCheck, CheckCircle2, ChevronDown, Building2, Loader2, Landmark } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL as API_URL } from '@/config/env';
 
 const DigiLockerKYC = () => {
   const navigate = useNavigate();
