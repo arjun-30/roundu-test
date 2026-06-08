@@ -72,12 +72,21 @@ const Earnings = () => {
   });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
   const platformFee = walletBalance * 0.15;
 
 =======
   const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
 >>>>>>> ab0f15e4b8289bcb0c30876d3395c757aab2c03d
+=======
+  const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
+=======
+  const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
+  const platformFee = walletBalance * 0.15;
+
+>>>>>>> 4d0288c (Update provider wallet and payment flow)
+>>>>>>> 9606af1 (Update provider wallet and payment flow)
   const withdrawableAmount =
     Math.max(
       0,

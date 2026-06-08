@@ -441,12 +441,16 @@ function reducer(state: State, action: Action): State {
             const enrichedReq = {
               ...targetReq,
               status: status as any
+<<<<<<< HEAD
             };
 
             updatedRequests = state.providerRequests.filter(
               r => r.id !== targetReq.id
             );
 
+=======
+            }; updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
+>>>>>>> 9606af1 (Update provider wallet and payment flow)
             if (!updatedCompleted.some(c => c.id === targetReq.id)) {
               updatedCompleted = [enrichedReq, ...updatedCompleted];
             } else {
@@ -462,7 +466,11 @@ function reducer(state: State, action: Action): State {
             );
           }
         } else {
+<<<<<<< HEAD
           updatedRequests = state.providerRequests.map(r =>
+=======
+          updatedRequests = state.providerRequests.map((r) =>
+>>>>>>> 9606af1 (Update provider wallet and payment flow)
             (r.id === normalizedId || r.id === bookingId)
               ? { ...r, status: status as any }
               : r
