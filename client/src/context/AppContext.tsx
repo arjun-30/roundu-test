@@ -286,10 +286,19 @@ function reducer(state: State, action: Action): State {
         return state;
       }
 
-      if (state.onboardingData?.serviceIds?.length > 0) {
-        if (!state.onboardingData.serviceIds.includes(request.serviceId)) {
-          return state;
-        }
+      const providerServices =
+        state.onboardingData?.serviceIds ||
+        state.providerRegistrationDraft?.serviceIds ||
+        [];
+
+      console.log("Provider Services:", providerServices);
+      console.log("Incoming Service:", request.serviceId);
+
+      if (
+        providerServices.length === 0 ||
+        !providerServices.includes(request.serviceId)
+      ) {
+        return state;
       }
 
       if (request.lat && request.lng && state.currentLocation) {
@@ -1233,7 +1242,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       const { reverseGeocode } = await import("@/lib/mapProvider");
       const result = await reverseGeocode(lat, lng);
-      
+
       const formattedAddress = result.address;
 
       dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
