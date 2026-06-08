@@ -220,9 +220,12 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
-    role: (savedRole as "customer" | "provider") || parsedUser.role || "customer",
-    accountType: parsedUser.accountType || "customer",
-    profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
+    role:
+      (savedRole as "customer" | "provider") ||
+      (parsedUser.role as "customer" | "provider") ||
+      "customer", accountType:
+      (parsedUser.accountType as "customer" | "provider") ||
+      "customer", profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
     avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
@@ -286,10 +289,19 @@ function reducer(state: State, action: Action): State {
         return state;
       }
 
-      if (state.onboardingData?.serviceIds?.length > 0) {
-        if (!state.onboardingData.serviceIds.includes(request.serviceId)) {
-          return state;
-        }
+      const providerServices =
+        state.onboardingData?.serviceIds ||
+        state.providerRegistrationDraft?.serviceIds ||
+        [];
+
+      console.log("Provider Services:", providerServices);
+      console.log("Incoming Service:", request.serviceId);
+
+      if (
+        providerServices.length === 0 ||
+        !providerServices.includes(request.serviceId)
+      ) {
+        return state;
       }
 
       if (request.lat && request.lng && state.currentLocation) {
@@ -423,8 +435,10 @@ function reducer(state: State, action: Action): State {
         if (isCompleted) {
           const targetReq = state.providerRequests.find(r => r.id === normalizedId || r.id === bookingId);
           if (targetReq) {
-            const enrichedReq = { ...targetReq, status: status as any, paid: action.data.paid ?? targetReq.paid };
-            updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
+            const enrichedReq = {
+              ...targetReq,
+              status: status as any
+            }; updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
             if (!updatedCompleted.some(c => c.id === targetReq.id)) {
               updatedCompleted = [enrichedReq, ...updatedCompleted];
             } else {
@@ -432,12 +446,16 @@ function reducer(state: State, action: Action): State {
             }
           } else {
             updatedCompleted = updatedCompleted.map(c =>
-              (c.id === normalizedId || c.id === bookingId) ? { ...c, status: status as any, paid: action.data.paid ?? c.paid } : c
+              (c.id === normalizedId || c.id === bookingId)
+                ? { ...c, status: status as any }
+                : c
             );
           }
         } else {
           updatedRequests = state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
+            (r.id === normalizedId || r.id === bookingId)
+              ? { ...r, status: status as any }
+              : r
           );
         }
 
@@ -1233,7 +1251,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       const { reverseGeocode } = await import("@/lib/mapProvider");
       const result = await reverseGeocode(lat, lng);
-      
+
       const formattedAddress = result.address;
 
       dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });

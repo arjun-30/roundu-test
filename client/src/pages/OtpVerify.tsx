@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
 import { API_BASE_URL } from "@/config/env";
@@ -163,75 +163,89 @@ const OtpVerify = () => {
   };
 
   return (
-    <div className="min-h-full flex flex-col px-6 py-8 bg-background">
-      <button
-        onClick={() => navigate(-1)}
-        className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center text-foreground active:scale-95"
-      >
-        <ArrowLeft size={20} />
-      </button>
+    <div className="min-h-screen flex flex-col px-6 py-8 bg-[#F8FAFC] relative overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] pointer-events-none" />
 
-      <div className="mt-10 mb-8 animate-fade-in">
-        <h1 className="text-3xl font-extrabold text-foreground leading-tight">
-          Enter your verification code
+      <div className="relative z-10">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-11 h-11 rounded-[16px] bg-white border-2 border-transparent hover:border-primary/10 flex items-center justify-center text-primary hover:bg-primary/5 transition-all active:scale-90 shadow-sm"
+        >
+          <ArrowLeft size={22} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <div className="mt-12 mb-10 relative z-10 animate-fade-in">
+        <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
+          Enter your <br />
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">verification code</span>
         </h1>
-        <p className="text-muted-foreground mt-3 text-sm">
-          We sent a 6-digit code to{" "}
-          <span className="font-semibold text-foreground">+91 {phone}</span>
+        <p className="text-muted-foreground mt-4 text-[15px] leading-relaxed">
+          We sent a 6-digit code to <span className="font-bold text-foreground whitespace-nowrap">+91 {phone}</span>
         </p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold mb-4">
-          {error}
-        </div>
-      )}
-
-      {devOtp && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center">
-          <span className="font-semibold">Dev OTP:</span>{" "}
-          <span className="font-mono tracking-widest">{devOtp}</span>
-        </div>
-      )}
-
-      <div
-        className="flex gap-2 justify-center mb-6 animate-fade-in-up"
-        style={{ animationDelay: "0.15s", opacity: 1 }}
-      >
-        {otp.map((d, i) => (
-          <input
-            key={i}
-            ref={(el) => (refs.current[i] = el)}
-            value={d}
-            onChange={(e) => handleChange(i, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(i, e)}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            className="w-11 h-14 text-center text-xl font-extrabold rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
-        ))}
-      </div>
-
-      <p className="text-center text-xs text-muted-foreground mb-6">
-        Didn't get a code?{" "}
-        <button className="font-semibold text-primary">Resend</button>
-      </p>
-
-      <button
-        onClick={handleVerify}
-        disabled={otp.join("").length < 6 || loading}
-        className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base hover:bg-secondary active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        ) : (
-          "Verify & Continue"
+      <div className="relative z-10 flex-1 flex flex-col">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-red-100 shadow-sm animate-fade-in">
+            {error}
+          </div>
         )}
-      </button>
 
-      <div className="mt-8 flex items-center gap-2 justify-center text-xs text-muted-foreground">
-        <ShieldCheck size={14} className="text-success" />
-        Secured with end-to-end encryption
+        {devOtp && (
+          <div className="mb-6 px-4 py-3 rounded-2xl bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm text-center shadow-sm">
+            <span className="font-bold">Dev OTP:</span>{" "}
+            <span className="font-mono tracking-widest">{devOtp}</span>
+          </div>
+        )}
+
+        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+          <label className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-3 block ml-1">
+            Verification Code
+          </label>
+          <div className="flex gap-2 sm:gap-3 justify-between">
+            {otp.map((d, i) => (
+              <input
+                key={i}
+                ref={(el) => (refs.current[i] = el)}
+                value={d}
+                onChange={(e) => handleChange(i, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(i, e)}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="w-full h-14 sm:h-16 text-center text-xl font-bold rounded-[16px] bg-white border-2 border-white text-primary focus:outline-none focus:border-accent shadow-sm transition-all placeholder:text-primary/30"
+              />
+            ))}
+          </div>
+          <p className="mt-4 text-[13px] text-muted-foreground ml-1">
+            Didn't get a code?{" "}
+            <button className="font-bold text-primary hover:text-accent transition-colors">Resend</button>
+          </p>
+        </div>
+
+        <div className="mt-auto pb-4">
+          <button
+            onClick={handleVerify}
+            disabled={otp.join("").length < 6 || loading}
+            className="w-full py-5 rounded-[20px] font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-white flex items-center justify-center gap-3 shadow-[0_8px_30px_rgb(21,46,75,0.25)] relative overflow-hidden group"
+          >
+            {loading ? (
+              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
+            ) : (
+              <>
+                <span className="relative z-10">Verify</span>
+                <ArrowRight size={20} strokeWidth={2.5} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+              </>
+            )}
+          </button>
+          
+          <div className="mt-6 flex items-center gap-2 justify-center text-[13px] font-medium text-muted-foreground">
+            <ShieldCheck size={16} className="text-emerald-500" />
+            Secured with end-to-end encryption
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -22,9 +22,9 @@ const PaymentCancelled = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 relative z-10 -mt-10">
+      <div className="flex-1 flex flex-col items-center justify-center px-8 relative z-10 mt-12">
         {/* Animated Icon */}
-        <div className="relative mb-8 animate-scale-in">
+        <div className="relative mb-8 animate-scale-in overflow-hidden">
           <div className="w-32 h-32 rounded-full bg-red-500/10 flex items-center justify-center">
             <div className="w-24 h-24 rounded-full bg-red-500/15 flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-xl shadow-red-500/30">

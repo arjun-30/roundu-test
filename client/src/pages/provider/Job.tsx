@@ -55,8 +55,11 @@ const Job = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id = "" } = useParams();
-  const { providerRequests, dispatch } = useApp();
-
+  const {
+    providerRequests,
+    dispatch,
+    walletBalance
+  } = useApp() as any;
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -314,10 +317,16 @@ const Job = () => {
                   amount: commission
                 });
 
+                if (walletBalance <= 0) {
+                  dispatch({
+                    type: "UPDATE_WALLET",
+                    amount: -commission
+                  });
+                }
+
                 dispatch({
                   type: "INCREMENT_COD_COUNT"
                 });
-
                 emitStatus("paid");
 
                 showNotification(
