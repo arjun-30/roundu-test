@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, User, ChevronLeft } from "lucide-react";
+import { ArrowRight, User, Sparkles } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { updateUser } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,159 +34,125 @@ const OnboardingName = () => {
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
-  } as any;
-
   return (
-    <div 
-      className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden font-sans"
-      style={{
-        backgroundImage: 'radial-gradient(circle, rgba(148, 163, 184, 0.05) 1px, transparent 1px)',
-        backgroundSize: '20px 20px'
-      }}
-    >
-      {/* Premium background ambient glows */}
-      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-gradient-to-br from-primary/10 to-accent/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col px-6 py-8 bg-[#F8FAFC] relative overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] pointer-events-none" />
 
-      {/* Main Container - Centered Content */}
-      <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 py-8 justify-between relative z-10">
-        
-        {/* Header Navigation/Indicator */}
-        <div className="flex items-center justify-between mb-12 flex-shrink-0">
-        {/* Back Arrow */}
-        <button
-  onClick={() => navigate(-1)}
-  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shadow-sm mr-2"
->
-  <ChevronLeft size={18} className="text-white" />
-</button>
-          
-          {/* Subtle Segmented Progress */}
-          <div className="flex items-center gap-1.5 bg-slate-200/50 p-1.5 rounded-full border border-slate-100">
-            {[1, 2, 3].map(s => (
-              <div 
-                key={s} 
-                className={`h-1.5 rounded-full transition-all duration-300 ${s === 1 ? "w-8 bg-primary" : "w-2 bg-slate-400/50"}`}
-              />
-            ))}
-          </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-12 mb-10 relative z-10"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-primary/10 shadow-sm mb-6">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <span className="text-xs font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wider">
+            Let's get started
+          </span>
         </div>
+        <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
+          What should we<br />
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">call you?</span>
+        </h1>
+        <p className="text-muted-foreground mt-4 text-[15px] max-w-[260px] leading-relaxed">
+          Enter your name to personalize your RoundU experience.
+        </p>
+      </motion.div>
 
-        {/* Form Body - Centered Card */}
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex-1 flex flex-col justify-center"
-        >
-          {/* Typography Header */}
-          <motion.div variants={itemVariants} className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight sm:text-4xl">
-              What should we <br />
-              <span className="bg-gradient-to-r from-primary via-indigo-600 to-accent bg-clip-text text-transparent">
-                call you?
-              </span>
-            </h1>
-            <p className="text-slate-500 font-medium text-[15px] mt-3 leading-relaxed max-w-sm mx-auto">
-              Enter your name to personalize your RoundU experience.
-            </p>
-          </motion.div>
-
-          {/* Feedback Messages */}
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="bg-rose-50 text-rose-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-rose-100 shadow-[0_4px_12px_rgba(244,63,94,0.05)] text-center"
-              >
-                {error}
-              </motion.div>
-            )}
-            {success && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-[0_4px_12px_rgba(16,185,129,0.05)] flex items-center justify-center gap-2"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                {success}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Input Section */}<motion.div variants={itemVariants} className="space-y-6">
-          
-            <div className="relative">
-              <div className="flex flex-col">
-                <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Full Name</label>
-            </div>
-              <div className="relative">
-                <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-slate-400'}`}>
-                  <User size={20} strokeWidth={2.2} />
-                </div>
-                <input
-                  id="fullName"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleContinue();
-                  }}
-                  placeholder="e.g. John Doe"
-                  autoFocus
-                  className={`w-full pl-14 pr-5 py-4 rounded-3xl bg-white text-slate-800 font-semibold placeholder:text-slate-400 focus:outline-none transition-all text-[15px] border ${isFocused ? 'border-primary ring-4 ring-primary/20 shadow-[0_12px_30px_rgba(59,130,246,0.12)]' : 'border-slate-200 hover:border-slate-300'}`}
-                />
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Action Button & Info */}
-        <div className="mt-8 flex-shrink-0">
-          <motion.button
-            whileHover={name.trim().length >= 2 ? { scale: 1.01 } : {}}
-            whileTap={name.trim().length >= 2 ? { scale: 0.99 } : {}}
-            onClick={handleContinue}
-            disabled={name.trim().length < 2 || loading}
-            className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
-              name.trim().length >= 2
-                ? "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-[0_8px_25px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_30px_rgba(37,99,235,0.3)] cursor-pointer"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
-            }`}
+      <AnimatePresence mode="wait">
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-red-100 shadow-sm relative z-10"
           >
-            <span>{loading ? "Saving..." : "Continue"}</span>
-            {!loading && (
-              <motion.div 
-                className="relative"
-                animate={name.trim().length >= 2 ? { x: [0, 4, 0] } : {}}
-                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-              >
-                <ArrowRight size={18} strokeWidth={2.5} />
-              </motion.div>
-            )}
-          </motion.button>
-          
-          <p className="text-center text-xs font-semibold text-slate-400 mt-4">
-            You can always change this later in your profile.
-          </p>
-        </div>
+            {error}
+          </motion.div>
+        )}
+        {success && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-sm relative z-10 flex items-center justify-center gap-2"
+          >
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {success}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10"
+      >
+        <label className="text-xs font-bold text-primary/70 uppercase tracking-widest mb-3 block ml-1">
+          Full Name
+        </label>
+        <motion.div 
+          className="relative group"
+          animate={{
+            scale: isFocused ? 1.02 : 1,
+            boxShadow: isFocused ? "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" : "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)"
+          }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-accent' : 'text-primary/40'}`}>
+            <User size={20} strokeWidth={2.5} />
+          </div>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleContinue();
+            }}
+            placeholder="e.g. Arjun Kumar"
+            autoFocus
+            className={`w-full pl-14 pr-5 py-5 rounded-[20px] bg-white text-primary font-semibold placeholder:text-primary/30 focus:outline-none transition-all text-lg border-2 ${isFocused ? 'border-accent' : 'border-white'}`}
+          />
+        </motion.div>
+      </motion.div>
+
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleContinue}
+        disabled={name.trim().length < 2 || loading}
+        className="mt-8 w-full py-5 rounded-[20px] font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-white flex items-center justify-center gap-3 shadow-[0_8px_30px_rgb(21,46,75,0.25)] relative overflow-hidden group z-10"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <span className="relative z-10">{loading ? "Saving..." : "Continue"}</span>
+        {!loading && (
+          <motion.div 
+            className="relative z-10"
+            animate={{ x: [0, 4, 0] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+          >
+            <ArrowRight size={20} strokeWidth={2.5} />
+          </motion.div>
+        )}
+      </motion.button>
+
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.6 }}
+        className="mt-auto pt-10 text-center relative z-10 pb-4"
+      >
+        <p className="text-[13px] font-medium text-primary/40">
+          You can always change this later in your profile.
+        </p>
+      </motion.div>
     </div>
   );
 };

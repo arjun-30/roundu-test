@@ -12,9 +12,44 @@ async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
   const db = getPool();
   try {
+    // ── Column migrations ───────────────────────────────────────────────────
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
+
+    // ── Wallets table (needed by WalletModel / provider dashboard) ──────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        balance     BIGINT NOT NULL DEFAULT 0,
+        currency    VARCHAR(8) NOT NULL DEFAULT 'INR',
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);`);
+
+    // ── Ensure all services used by the app exist in the services table ────
+    // This prevents FK violations on bookings.service_id when providers
+    // register with service IDs that aren't in the base schema seed.
+    await db.query(`
+      INSERT INTO services (id, label, description, price_per_hr) VALUES
+        ('plumber',                'Plumber',         'Pipes & drainage',            299),
+        ('electrician',            'Electrician',      'Wiring & fixtures',           299),
+        ('carwash',                'Car Wash',         'At your doorstep',            199),
+        ('drivers',                'Acting Drivers',   'Expert chauffeurs',           399),
+        ('housekeeping',           'House Keeping',    'Deep & regular',              499),
+        ('ac-cleaning',            'AC Cleaning',      'AC service & filter clean',   499),
+        ('ac-repair',              'AC Repair',        'AC diagnosis & repair',       599),
+        ('appliance-repair',       'Appliance Repair', 'Home appliance repair',       399),
+        ('pest-control',           'Pest Control',     'Home pest treatment',         699),
+        ('painting',               'Painting',         'Home & office painting',      499),
+        ('carpentry',              'Carpentry',        'Furniture & woodwork',        399),
+        ('srv-d7orcli8qa3s738r9qe0','Expert Services', 'Premium customized services', 599)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
