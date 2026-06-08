@@ -14,6 +14,7 @@ import { getStoredMembership, setStoredMembership } from "@/lib/membership";
 import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
 import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
+import { Geolocation } from '@capacitor/geolocation';
 
 
 type Role = "customer" | "provider" | null;
@@ -842,6 +843,7 @@ interface Ctx extends State {
   dispatch: React.Dispatch<Action>;
   selectedProvider: Provider | null;
   addBooking: (booking: Booking) => void;
+  refreshLocation: () => Promise<void>;
 }
 
 const AppContext = createContext<Ctx | null>(null);
@@ -1201,6 +1203,69 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [state.isAuthenticated, state.user.id, state.role, state.onboardingData.serviceIds]);
 
+  const refreshLocation = useCallback(async () => {
+    try {
+      let perm;
+      try {
+        perm = await Geolocation.checkPermissions();
+      } catch (e) {
+        perm = { location: "prompt" };
+      }
+      if (perm.location !== "granted") {
+        try {
+          perm = await Geolocation.requestPermissions();
+        } catch (e) {
+          perm = { location: "denied" };
+        }
+      }
+      if (perm.location !== "granted") {
+        console.warn("[refreshLocation] GPS permission not granted");
+        return;
+      }
+
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      const { reverseGeocode } = await import("@/lib/mapProvider");
+      const result = await reverseGeocode(lat, lng);
+      
+      const formattedAddress = result.address;
+
+      dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+      dispatch({ type: "UPDATE_USER", user: { address: formattedAddress, lat, lng, display_location: formattedAddress } as any });
+
+      localStorage.setItem(
+        "roundu_last_location",
+        JSON.stringify({ lat, lng, address: formattedAddress, ts: Date.now() })
+      );
+
+      const currentUser = stateRef.current.user;
+      if (currentUser?.id) {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(currentUser.id, {
+          lat,
+          lng,
+          display_location: formattedAddress,
+          address: formattedAddress
+        });
+        console.log("[refreshLocation] Location successfully refreshed and saved to DB");
+      }
+    } catch (err) {
+      console.error("[refreshLocation] Error refreshing location:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.isAuthenticated) {
+      refreshLocation();
+    }
+  }, [state.isAuthenticated, refreshLocation]);
+
   const addBooking = useCallback((booking: Booking) => {
     dispatch({ type: "ADD_BOOKING", booking });
     socket.emit("new_booking", {
@@ -1222,7 +1287,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   return (
-    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking }}>
+    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation }}>
       {children}
     </AppContext.Provider>
   );

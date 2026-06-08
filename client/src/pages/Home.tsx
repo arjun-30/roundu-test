@@ -170,7 +170,7 @@ const recommendedDescriptions: Record<string, string> = {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, dispatch, notifications, bookings } = useApp();
+  const { user, dispatch, notifications, bookings, currentLocation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -183,7 +183,13 @@ const Home = () => {
   useEffect(() => {
     const fetchRealProviders = async () => {
       try {
-        const res = await api.get("/providers/search");
+        const params: any = {};
+        if (user?.id) params.userId = user.id;
+        if (currentLocation?.lat != null && currentLocation?.lng != null) {
+          params.lat = currentLocation.lat;
+          params.lng = currentLocation.lng;
+        }
+        const res = await api.get("/providers/search", { params });
         if (res.data.success && res.data.data) {
           setRealNearbyProviders(res.data.data.slice(0, 8));
         }
@@ -192,7 +198,7 @@ const Home = () => {
       }
     };
     fetchRealProviders();
-  }, []);
+  }, [user?.id, currentLocation]);
 
   useEffect(() => {
     const fetchLatestBookings = async () => {

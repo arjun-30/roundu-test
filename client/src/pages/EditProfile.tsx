@@ -10,7 +10,7 @@ import { services } from "@/data/mockData";
 const EditProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, providerRegistrationDraft, dispatch } = useApp();
+  const { user, providerRegistrationDraft, dispatch, refreshLocation } = useApp();
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -177,6 +177,11 @@ const EditProfile = () => {
           type: "UPDATE_REGISTRATION_DRAFT", 
           patch: { serviceIds: [serviceId] } 
         });
+      }
+      try {
+        await refreshLocation();
+      } catch (locErr) {
+        console.warn("Auto location refresh failed during profile save:", locErr);
       }
       toast.success("Profile saved successfully!");
       navigate(-1);

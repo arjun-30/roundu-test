@@ -75,9 +75,9 @@ const PersonalDetails = () => {
         if (result.address) setAddress(result.address);
         if (result.city) setCity(result.city);
         if (result.pincode) setPincode(result.pincode);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Reverse geocoding error:", err);
-        setDetectError("Failed to resolve address. Please enter manually.");
+        setDetectError(err.message || "Failed to resolve address. Please enter manually.");
       } finally {
         setIsDetecting(false);
       }

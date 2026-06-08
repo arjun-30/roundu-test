@@ -12,6 +12,7 @@ import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
+import { formatDistance } from "@/lib/utils";
 
 /**
  * MODERN SEARCHING EXPERIENCE
@@ -378,22 +379,15 @@ const SearchingProviders = () => {
         provider_id: String(quote.providerId || ""),
         service_id: String(serviceId || ""),
         status: "assigned",
-
         scheduled_at: new Date().toISOString(),
-
-        address:
-          user?.address ||
-            currentLocation
-            ? `${currentLocation?.lat},${currentLocation?.lng}`
-            : "Customer Location",
-
+        address: user?.address || (currentLocation ? `${currentLocation?.lat},${currentLocation?.lng}` : "Customer Location"),
         price: Number(quote.price || 0),
-
         notes: bookingNotes || "",
-
         voice_note: bookingVoiceNote || false,
         voice_note_url: bookingVoiceNoteUrl || null,
         paid: false,
+        lat: currentLocation?.lat || null,
+        lng: currentLocation?.lng || null
       };
 
       console.log("BOOKING PAYLOAD", bookingData);
@@ -403,6 +397,20 @@ const SearchingProviders = () => {
       console.log("BOOKING RESPONSE", res);
 
       if (res?.success && res?.data?.id) {
+        // Emit accept_quote to socket so winning provider gets notified
+        socket.emit("accept_quote", {
+          broadcastId,
+          bookingId: res.data.id,
+          acceptedProviderId: quote.providerId,
+          price: Number(quote.price || 0),
+          serviceId: serviceId || "",
+          customerName: user.name,
+          customerPhone: user.phone || null,
+          address: user.address || "Client Address",
+          lat: currentLocation?.lat || null,
+          lng: currentLocation?.lng || null
+        });
+
         // Add booking to context and navigate to tracking page
         dispatch({ type: "ADD_BOOKING", booking: res.data });
         navigate(`/tracking/${res.data.id}`);
@@ -410,50 +418,15 @@ const SearchingProviders = () => {
       }
 
       throw new Error(res?.message || "Booking creation failed");
-    } catch (error: any) {
-      console.error("ACCEPT QUOTE ERROR", error);
-
+    } catch (err: any) {
+      console.error("ACCEPT QUOTE ERROR", err);
       setError(
-        error?.response?.data?.message ||
-        error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
         "Failed to confirm booking"
       );
     } finally {
       setAcceptingQuoteId(null);
-    }
-    const bookingData = {
-      customer_id: user.id,
-      provider_id: quote.providerId,
-      service_id: serviceId,
-      status: "assigned",
-      scheduled_at: new Date(
-        Date.now() + quote.etaMin * 60000
-      ).toISOString(),
-      address: user.address || "Client Address",
-      lat: currentLocation?.lat,
-      lng: currentLocation?.lng,
-      price: quote.price,
-      notes: bookingNotes || "Quick fix requested",
-      voice_note: bookingVoiceNote,
-      voice_note_url: bookingVoiceNoteUrl || null,
-    };
-
-    try {
-      const res = await createBooking(bookingData);
-
-      if (res.success) {
-        dispatch({
-          type: "ADD_BOOKING",
-          booking: res.data,
-        });
-        navigate(`/tracking/${res.data.id}`);
-      }
-    } catch (err) {
-      console.error(err);
-
-      setAcceptingQuoteId(null);
-
-      setError("Failed to confirm booking");
     }
   };
 
@@ -703,7 +676,7 @@ const SearchingProviders = () => {
                         </span>
 
                         <span>
-                          {q.distanceKm} km away
+                          {formatDistance(q.distanceKm)}
                         </span>
                       </div>
                     </div>

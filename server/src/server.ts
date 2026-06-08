@@ -15,7 +15,21 @@ async function main() {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
-    console.log('[server] Database schema up to date.');
+    
+    // Add location storage columns to users and providers tables
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
+    
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
+    
+    // Set service_radius default to 20
+    await db.query('ALTER TABLE providers ALTER COLUMN service_radius SET DEFAULT 20;');
+    await db.query('UPDATE providers SET service_radius = 20 WHERE service_radius = 5 OR service_radius IS NULL;');
+    
+    console.log('[server] Database schema up to date with location fields.');
   } catch (err) {
     console.error('[server] Migration error:', err);
   }
@@ -54,6 +68,24 @@ async function main() {
     socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
+      socket.data.lat = data.lat != null ? Number(data.lat) : null;
+      socket.data.lng = data.lng != null ? Number(data.lng) : null;
+      socket.data.displayLocation = data.displayLocation || null;
+
+      // Persist coordinates to database on registration/connect
+      if (data.userId && data.lat != null && data.lng != null) {
+        try {
+          const { UserModel } = require('./models/user.model');
+          await UserModel.update(data.userId, {
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            display_location: data.displayLocation || null
+          });
+          console.log(`[socket] saved location coordinates for user ${data.userId} on registration`);
+        } catch (err) {
+          console.error(`[socket] failed to save location for user ${data.userId}:`, err);
+        }
+      }
 
       // Join user-specific room
       if (data.userId) {
@@ -151,6 +183,32 @@ async function main() {
         const sockets = await io.in('providers').fetchSockets();
         const target = sockets.find((s: any) => s.data.userId === data.providerId);
         if (target) {
+          if (data.lat != null && data.lng != null) {
+            let plat = target.data.lat;
+            let plng = target.data.lng;
+            if (plat == null || plng == null) {
+              try {
+                const { getPool } = require('./config/database');
+                const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [target.data.userId]);
+                if (pRes.rows[0]) {
+                  plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
+                  plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
+                  target.data.lat = plat;
+                  target.data.lng = plng;
+                  target.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
+                }
+              } catch (_) {}
+            }
+            if (plat != null && plng != null) {
+              const { getDistanceKm } = require('./utils/locationHelper');
+              const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
+              const maxRadius = target.data.serviceRadius || 20;
+              if (dist > maxRadius) {
+                console.log(`[socket] direct request to provider ${data.providerId} skipped (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
+                return;
+              }
+            }
+          }
           target.emit('incoming_request', payload);
           console.log(`[socket] direct request sent to provider ${data.providerId}`);
           return;
@@ -159,11 +217,37 @@ async function main() {
 
       // 2. Room-based Broadcast
       const roomName = `service:${data.serviceId}`;
-      console.log(`[socket] broadcasting request to room: ${roomName}`);
-      io.to(roomName).emit('incoming_request', payload);
-
-      // 3. Optional: broadcast to 'providers' room as well if roomName might be empty
-      // but to avoid double notification we rely on service room.
+      console.log(`[socket] broadcasting request to room: ${roomName} filtered by radius`);
+      const targetSockets = await io.in(roomName).fetchSockets();
+      for (const s of targetSockets) {
+        if (data.lat != null && data.lng != null) {
+          let plat = s.data.lat;
+          let plng = s.data.lng;
+          if (plat == null || plng == null) {
+            try {
+              const { getPool } = require('./config/database');
+              const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [s.data.userId]);
+              if (pRes.rows[0]) {
+                plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
+                plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
+                s.data.lat = plat;
+                s.data.lng = plng;
+                s.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
+              }
+            } catch (_) {}
+          }
+          if (plat != null && plng != null) {
+            const { getDistanceKm } = require('./utils/locationHelper');
+            const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
+            const maxRadius = s.data.serviceRadius || 20;
+            if (dist > maxRadius) {
+              console.log(`[socket] skipping broadcast for provider ${s.data.userId} (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
+              continue;
+            }
+          }
+        }
+        s.emit('incoming_request', payload);
+      }
     });
 
     socket.on('broadcast_job', (data: any) => {
@@ -205,11 +289,51 @@ async function main() {
         return;
       }
 
-      // Emit to service room + all providers room on every call
-      // Chaining .to() ensures socket.io deduplicates if a provider is in both rooms
+      // Emit to service room + all providers room filtered by matching radius
       const roomName = `service:${data.serviceId}`;
-      io.to(roomName).to('providers').emit('incoming_broadcast', broadcastPayload);
-      console.log(`[socket] broadcast sent to ${roomName} + providers room (isNew=${isNew})`);
+      console.log(`[socket] broadcasting job to room: ${roomName} + providers filtered by radius`);
+      
+      const broadcastAndFilter = async () => {
+        try {
+          const targetSockets = await io.in(roomName).in('providers').fetchSockets();
+          for (const s of targetSockets) {
+            // Skip the customer themselves
+            if (s.data.userId === data.customerId) continue;
+
+            if (data.lat != null && data.lng != null) {
+              let plat = s.data.lat;
+              let plng = s.data.lng;
+              if (plat == null || plng == null) {
+                try {
+                  const { getPool } = require('./config/database');
+                  const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [s.data.userId]);
+                  if (pRes.rows[0]) {
+                    plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
+                    plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
+                    s.data.lat = plat;
+                    s.data.lng = plng;
+                    s.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
+                  }
+                } catch (_) {}
+              }
+              if (plat != null && plng != null) {
+                const { getDistanceKm } = require('./utils/locationHelper');
+                const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
+                const maxRadius = s.data.serviceRadius || 20;
+                if (dist > maxRadius) {
+                  console.log(`[socket] skipping broadcast for provider ${s.data.userId} (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
+                  continue;
+                }
+              }
+            }
+            s.emit('incoming_broadcast', broadcastPayload);
+          }
+        } catch (err) {
+          console.error('[socket] error in broadcast_job filtering:', err);
+        }
+      };
+      
+      broadcastAndFilter();
     });
 
     socket.on('accept_quote', (data: any) => {
@@ -435,9 +559,24 @@ async function main() {
       }
     });
 
-    socket.on('provider_location_update', (data: { jobId: string; lat: number; lng: number }) => {
+    socket.on('provider_location_update', async (data: { jobId: string; lat: number; lng: number }) => {
       const room = `job:${data.jobId}`;
       socket.to(room).emit('provider_location_update', { lat: data.lat, lng: data.lng });
+
+      const userId = socket.data.userId;
+      if (userId && data.lat != null && data.lng != null) {
+        try {
+          socket.data.lat = Number(data.lat);
+          socket.data.lng = Number(data.lng);
+          const { UserModel } = require('./models/user.model');
+          await UserModel.update(userId, {
+            lat: Number(data.lat),
+            lng: Number(data.lng)
+          });
+        } catch (err) {
+          console.error('[socket] failed to update coordinates in database during tracking:', err);
+        }
+      }
     });
 
     socket.on('update_job_status', async (data: any) => {

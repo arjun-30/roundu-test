@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS users (
     address TEXT,
     avatar_url TEXT,
     role VARCHAR(20) DEFAULT 'customer',
+    lat NUMERIC(10, 7),
+    lng NUMERIC(10, 7),
+    display_location VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,9 +28,12 @@ CREATE TABLE IF NOT EXISTS providers (
     rating DECIMAL(3, 2) DEFAULT 0.00,
     response_rate INTEGER DEFAULT 100,
     is_online BOOLEAN DEFAULT false,
-    service_radius INTEGER DEFAULT 5,
+    service_radius INTEGER DEFAULT 20,
     working_hours TEXT,
     is_verified BOOLEAN DEFAULT false,
+    lat NUMERIC(10, 7),
+    lng NUMERIC(10, 7),
+    display_location VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -125,4 +125,28 @@ describe("PersonalDetails location auto-detection", () => {
       expect(screen.getByText(/Location access denied/i)).toBeInTheDocument();
     });
   });
+
+  it("should show meaningful error message if reverse geocoding fails", async () => {
+    mockGetCurrentPosition.mockResolvedValue({
+      coords: {
+        latitude: 10.0,
+        longitude: 20.0,
+      },
+    });
+
+    (reverseGeocode as any).mockRejectedValue(new Error("Reverse geocoding API failure: Invalid API key or unauthorized request."));
+
+    render(
+      <BrowserRouter>
+        <PersonalDetails />
+      </BrowserRouter>
+    );
+
+    const autoDetectBtn = screen.getByRole("button", { name: /Auto-detect/i });
+    fireEvent.click(autoDetectBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Invalid API key or unauthorized request/i)).toBeInTheDocument();
+    });
+  });
 });

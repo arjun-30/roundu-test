@@ -36,7 +36,24 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
 
 export const searchProviders = async (req: Request, res: Response) => {
   try {
-    const { serviceId } = req.query;
+    const { serviceId, lat, lng, userId } = req.query;
+
+    let customerLat = lat ? Number(lat) : null;
+    let customerLng = lng ? Number(lng) : null;
+
+    // Fallback: If no lat/lng passed in query, try to get from database using userId
+    if ((customerLat == null || customerLng == null) && userId) {
+      try {
+        const pool = getPool();
+        const userRes = await pool.query('SELECT lat, lng FROM users WHERE id = $1', [userId]);
+        if (userRes.rows[0]) {
+          customerLat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
+          customerLng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
+        }
+      } catch (err) {
+        console.error('Failed to get customer coordinates from database:', err);
+      }
+    }
 
     let providers;
     if (serviceId) {
@@ -49,9 +66,43 @@ export const searchProviders = async (req: Request, res: Response) => {
     const filteredProviders = [];
     for (const p of providers) {
       const busy = await isProviderBusy(p.id);
-      if (!busy) {
-        filteredProviders.push(p);
+      if (busy) continue;
+
+      // Filter by distance if customer coordinates are available
+      if (customerLat != null && customerLng != null) {
+        let plat = p.lat ? Number(p.lat) : null;
+        let plng = p.lng ? Number(p.lng) : null;
+
+        // Fallback: Check user table if not on provider profile
+        if (plat == null || plng == null) {
+          try {
+            const pool = getPool();
+            const userRes = await pool.query('SELECT lat, lng FROM users WHERE id = $1', [p.user_id]);
+            if (userRes.rows[0]) {
+              plat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
+              plng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
+            }
+          } catch (_) {}
+        }
+
+        if (plat != null && plng != null) {
+          const { getDistanceKm } = require('../utils/locationHelper');
+          const dist = getDistanceKm(
+            { lat: customerLat, lng: customerLng },
+            { lat: plat, lng: plng }
+          );
+
+          const maxRadius = p.service_radius || 20;
+          if (dist > maxRadius) {
+            console.log(`[Search] Provider ${p.id} filtered out (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
+            continue; // Skip provider because they are outside of the service radius
+          }
+          // Enrich with calculated distance
+          p.distanceKm = Math.round(dist * 10) / 10;
+        }
       }
+
+      filteredProviders.push(p);
     }
 
     res.json({ success: true, data: filteredProviders });

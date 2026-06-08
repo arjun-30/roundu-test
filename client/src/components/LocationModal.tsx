@@ -90,8 +90,8 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
       try {
         const result = await reverseGeocode(lat, lng);
         handleSelectLocation(lat, lng, result.address);
-      } catch (err) {
-        setError("Failed to resolve address. Please enter manually.");
+      } catch (err: any) {
+        setError(err.message || "Failed to resolve address. Please enter manually.");
         setIsDetecting(false);
       }
     } catch (err: any) {
