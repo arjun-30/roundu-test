@@ -30,7 +30,12 @@ const ProvidersPage = () => {
     const fetchProviders = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/providers/search?serviceId=${serviceId}`);
+        let url = `/providers/search?serviceId=${serviceId}`;
+        if (user?.id) url += `&userId=${user.id}`;
+        if (currentLocation?.lat != null && currentLocation?.lng != null) {
+          url += `&lat=${currentLocation.lat}&lng=${currentLocation.lng}`;
+        }
+        const res = await api.get(url);
         if (res.data.success) {
           setProviders(res.data.data);
         }
@@ -41,7 +46,7 @@ const ProvidersPage = () => {
       }
     };
     fetchProviders();
-  }, [serviceId]);
+  }, [serviceId, user?.id, currentLocation]);
 
   const list = useMemo(() => {
     let l = providers;

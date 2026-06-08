@@ -10,6 +10,9 @@ export interface Provider {
   is_online: boolean;
   service_radius: number;
   working_hours: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  display_location?: string | null;
 }
 
 export const ProviderModel = {
@@ -104,8 +107,8 @@ export const ProviderModel = {
 
       // 2. Insert provider profile (auto-verify for now since they passed DigiLocker)
       const providerRes = await client.query(
-        `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating) 
-         VALUES ($1, $2, $3, $4, $5, true, true, 5.0) 
+        `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating, lat, lng, display_location) 
+         SELECT $1, $2, $3, $4, $5, true, true, 5.0, lat, lng, display_location FROM users WHERE id = $1
          RETURNING *`,
         [userId, data.bio, data.experienceYears, data.workingHours, data.serviceRadius]
       );

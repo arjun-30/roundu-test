@@ -65,9 +65,22 @@ const BookService = () => {
 
   const isDescriptionLocked =
     typeof lockedDescription ===
-      "string" &&
+    "string" &&
     lockedDescription.trim().length >
-      0;
+    0;
+
+  // Selected problem areas passed from ServiceSelection
+  const selectedIssue: string =
+    (routerLocation.state as any)
+      ?.issue || "";
+
+  const selectedProblems: string[] =
+    selectedIssue
+      ? selectedIssue
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      : [];
 
   const [desc, setDesc] = useState(
     isDescriptionLocked
@@ -129,7 +142,7 @@ const BookService = () => {
                 },
               });
             }
-          } catch (_) {}
+          } catch (_) { }
         } finally {
           setLocating(false);
         }
@@ -319,7 +332,7 @@ const BookService = () => {
           uploadedUrl ||
           (showRestoredVoice
             ? bookingVoiceNoteUrl ??
-              undefined
+            undefined
             : undefined),
       });
 
@@ -353,13 +366,13 @@ const BookService = () => {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F8FAFC] font-sans pb-6">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="bg-white px-5 pt-6 pb-4 flex items-center shadow-sm sticky top-0 z-20"
       >
-        <motion.button 
+        <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => {
             if (isCancelled) {
@@ -379,7 +392,7 @@ const BookService = () => {
         </div>
         <AnimatePresence>
           {isCancelled && (
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -394,6 +407,58 @@ const BookService = () => {
 
       {/* CONTENT */}
       <div className="px-5 pt-5 space-y-5">
+
+        {/* SELECTED PROBLEM AREAS */}
+        {selectedProblems.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="rounded-[28px] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+          >
+            <div className="p-5">
+              {/* Header row */}
+              <div className="flex items-center gap-2 mb-4">
+                <div
+                  className="w-1.5 h-5 rounded-full"
+                  style={{ background: "linear-gradient(180deg, #F59E0B, #D97706)" }}
+                />
+                <span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#92400E]">
+                  Problem Areas
+                </span>
+              </div>
+
+              {/* Issue chips */}
+              <div className="flex flex-wrap gap-2">
+                {selectedProblems.map((problem, idx) => (
+                  <motion.span
+                    key={problem}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.06, type: "spring", stiffness: 300, damping: 22 }}
+                    className="inline-flex items-center gap-2 rounded-[14px] text-[13px] font-bold"
+                    style={{
+                      background: "rgba(255,255,255,0.75)",
+                      backdropFilter: "blur(8px)",
+                      border: "1.5px solid rgba(245,158,11,0.4)",
+                      color: "#78350F",
+                      padding: "6px 14px",
+                      boxShadow: "0 2px 8px rgba(245,158,11,0.12)",
+                    }}
+                  >
+                    <span
+                      className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black text-white flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}
+                    >
+                      {idx + 1}
+                    </span>
+                    {problem}
+                  </motion.span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* DESCRIPTION */}
         <div className="bg-white rounded-[28px] border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
@@ -547,7 +612,7 @@ const BookService = () => {
                 className="w-14 h-14 rounded-2xl bg-[#FFF7E8] flex items-center justify-center"
               >
                 {locating ||
-                gpsLoading ? (
+                  gpsLoading ? (
                   <Loader2
                     size={20}
                     className="animate-spin text-[#D89B1D]"
@@ -601,11 +666,10 @@ const BookService = () => {
                   "now"
                 )
               }
-              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${
-                scheduleType === "now"
+              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType === "now"
                   ? "bg-[#17375E] text-white border-[#17375E]"
                   : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
-              }`}
+                }`}
             >
               <Zap
                 size={24}
@@ -628,18 +692,17 @@ const BookService = () => {
                   "later"
                 )
               }
-              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${
-                scheduleType ===
-                "later"
+              className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType ===
+                  "later"
                   ? "bg-[#17375E] text-white border-[#17375E]"
                   : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
-              }`}
+                }`}
             >
               <Clock
                 size={24}
                 className={
                   scheduleType ===
-                  "later"
+                    "later"
                     ? "text-white"
                     : "text-[#17375E]"
                 }

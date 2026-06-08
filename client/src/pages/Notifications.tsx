@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, CalendarCheck, Gift, CheckCircle2, Star, Clock, Chevro
 import { useApp } from "@/context/AppContext";
 import { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
+import { formatDistance } from "@/lib/utils";
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -188,7 +189,7 @@ const Notifications = () => {
                             </span>
                           )}
                           <span>•</span>
-                          <span>{quote.distanceKm}km away</span>
+                          <span>{formatDistance(quote.distanceKm)}</span>
                           <span>•</span>
                           <span className="lowercase">{formatTime(n.ts)}</span>
                         </div>

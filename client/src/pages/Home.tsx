@@ -170,7 +170,7 @@ const recommendedDescriptions: Record<string, string> = {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, dispatch, notifications, bookings } = useApp();
+  const { user, dispatch, notifications, bookings, currentLocation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -183,7 +183,13 @@ const Home = () => {
   useEffect(() => {
     const fetchRealProviders = async () => {
       try {
-        const res = await api.get("/providers/search");
+        const params: any = {};
+        if (user?.id) params.userId = user.id;
+        if (currentLocation?.lat != null && currentLocation?.lng != null) {
+          params.lat = currentLocation.lat;
+          params.lng = currentLocation.lng;
+        }
+        const res = await api.get("/providers/search", { params });
         if (res.data.success && res.data.data) {
           setRealNearbyProviders(res.data.data.slice(0, 8));
         }
@@ -192,7 +198,7 @@ const Home = () => {
       }
     };
     fetchRealProviders();
-  }, []);
+  }, [user?.id, currentLocation]);
 
   useEffect(() => {
     const fetchLatestBookings = async () => {
@@ -222,13 +228,15 @@ const Home = () => {
     const bookedServiceIds = new Set(
       (bookings || []).map((b: any) => b.serviceId || b.service_id)
     );
-    const scored = smartSuggestions.map((s) => {
-      let score = s.priority;
-      if (s.season === currentSeason) score += 5;
-      if (s.season === "all") score += 1;
-      if (bookedServiceIds.has(s.serviceId)) score += 2;
-      return { ...s, score };
-    });
+    const scored = smartSuggestions
+      .filter((s) => s.id !== "sug-plumb-2")
+      .map((s) => {
+        let score = s.priority;
+        if (s.season === currentSeason) score += 5;
+        if (s.season === "all") score += 1;
+        if (bookedServiceIds.has(s.serviceId)) score += 2;
+        return { ...s, score };
+      });
     scored.sort((a, b) => b.score - a.score);
     const seen = new Set<string>();
     const deduped: typeof scored = [];
@@ -272,7 +280,7 @@ const Home = () => {
           const parsed = JSON.parse(cached);
           dispatch({ type: "UPDATE_USER", user: { address: parsed.address } });
         }
-      } catch (_) {}
+      } catch (_) { }
     } finally {
       setLocating(false);
     }
@@ -362,10 +370,10 @@ const Home = () => {
                 {user.profilePicture ? (
                   <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <img 
-                    src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`} 
-                    alt="Default Avatar" 
-                    className="w-full h-full object-cover" 
+                  <img
+                    src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233B82F6"/><stop offset="100%" stop-color="%232563EB"/></linearGradient></defs><rect width="100" height="100" rx="50" fill="url(%23g)"/><path d="M50 25c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12zm-24 45c0-11.046 8.954-20 20-20h8c11.046 0 20 8.954 20 20v2H26v-2z" fill="white" fill-opacity="0.95"/></svg>`}
+                    alt="Default Avatar"
+                    className="w-full h-full object-cover"
                   />
                 )}
               </div>
@@ -398,14 +406,14 @@ const Home = () => {
                     }
                   }}
                   className={`w-full flex items-center gap-3.5 px-5 py-4 transition-colors text-left group ${isLogout
-                      ? "hover:bg-red-50 active:bg-red-100"
-                      : "hover:bg-slate-50 active:bg-slate-100"
+                    ? "hover:bg-red-50 active:bg-red-100"
+                    : "hover:bg-slate-50 active:bg-slate-100"
                     }`}
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${isLogout
-                        ? "bg-red-50 group-hover:bg-red-100"
-                        : "bg-[#F1F4F8] group-hover:bg-primary/10"
+                      ? "bg-red-50 group-hover:bg-red-100"
+                      : "bg-[#F1F4F8] group-hover:bg-primary/10"
                       }`}
                   >
                     <item.icon
@@ -535,18 +543,18 @@ const Home = () => {
                 <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center animate-pulse">
                   <span className="text-xl">
                     {activeBooking.status === "on_the_way" ? "🛵" :
-                     activeBooking.status === "arrived" ? "📍" :
-                     activeBooking.status === "in_progress" ? "🔧" :
-                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "💳" : "👤"}
+                      activeBooking.status === "arrived" ? "📍" :
+                        activeBooking.status === "in_progress" ? "🔧" :
+                          (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "💳" : "👤"}
                   </span>
                 </div>
                 <div>
                   <h4 className="font-bold text-sm leading-tight text-white">
                     {activeBooking.status === "on_the_way" ? "Provider is on the way" :
-                     activeBooking.status === "arrived" ? "Provider has arrived!" :
-                     activeBooking.status === "in_progress" ? "Service in progress..." :
-                     (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Service Completed — Pay Now" :
-                     "Active Booking Tracking"}
+                      activeBooking.status === "arrived" ? "Provider has arrived!" :
+                        activeBooking.status === "in_progress" ? "Service in progress..." :
+                          (activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Service Completed — Pay Now" :
+                            "Active Booking Tracking"}
                   </h4>
                   <p className="text-[11px] text-white/90 mt-0.5 font-medium">
                     {(activeBooking.status === "completed" || activeBooking.status === "payment_pending") && !activeBooking.paid ? "Tap to view tracking & complete payment" : "Tap to track live location & status"}
@@ -616,7 +624,7 @@ const Home = () => {
                 key={fix.id}
                 onClick={() =>
                   goToProviders(
-                    fix.id === "pipe" || fix.id === "drain" ? "plumber"
+                    fix.id === "pipe" || fix.id === "drain" || fix.id === "water" ? "plumber"
                       : fix.id === "fan" || fix.id === "switch" ? "electrician"
                         : fix.id === "cleaning" ? "housekeeping"
                           : fix.id === "driver" ? "drivers"
@@ -624,7 +632,7 @@ const Home = () => {
                               : "security"
                   )
                 }
-                className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-full whitespace-nowrap hover:bg-primary/90 transition-colors flex-shrink-0 shadow-[0_4px_12px_rgba(21,46,75,0.15)] border border-primary/20"
+                className={`flex items-center gap-2 ${fix.bgClass} ${fix.textClass} px-4 py-2.5 rounded-full whitespace-nowrap hover:brightness-95 transition-all flex-shrink-0 shadow-sm border ${fix.borderClass}`}
               >
                 <fix.icon size={16} strokeWidth={2.5} />
                 <span className="text-[14px] font-semibold">{fix.label}</span>

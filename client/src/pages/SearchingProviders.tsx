@@ -12,6 +12,7 @@ import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
+import { formatDistance } from "@/lib/utils";
 
 /**
  * MODERN SEARCHING EXPERIENCE
@@ -80,6 +81,35 @@ const SearchingProviders = () => {
   const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(
     null
   );
+
+  // Timer state for provider search timeout
+  const [searchStartTime, setSearchStartTime] = useState<number>(() => {
+    const stored = localStorage.getItem('search_start_time');
+    if (stored) return Number(stored);
+    const now = Date.now();
+    localStorage.setItem('search_start_time', String(now));
+    return now;
+  });
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(120);
+  const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
+  const [showTimeoutModal, setShowTimeoutModal] = useState<boolean>(false);
+
+  // Effect to update countdown every second
+  useEffect(() => {
+    const update = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - searchStartTime) / 1000);
+      const secs = Math.max(120 - elapsed, 0);
+      setRemainingSeconds(secs);
+      if (secs <= 0 && !hasTimedOut) {
+        setHasTimedOut(true);
+        setShowTimeoutModal(true);
+      }
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [searchStartTime, hasTimedOut]);
 
   const {
     user,
@@ -225,6 +255,26 @@ const SearchingProviders = () => {
     isLongWait,
   ]);
 
+  // Reset timer when a new service search starts (serviceId changes)
+  useEffect(() => {
+    // If we are not restoring from cached state or the serviceId differs, start fresh timer
+    if (!cachedState || cachedState.serviceId !== serviceId) {
+      const now = Date.now();
+      localStorage.setItem('search_start_time', String(now));
+      setSearchStartTime(now);
+      setRemainingSeconds(120);
+      setHasTimedOut(false);
+      setShowTimeoutModal(false);
+    }
+  }, [serviceId, cachedState]);
+
+  // Cleanup timer on component unmount
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('search_start_time');
+    };
+  }, []);
+
   // CACHE QUOTES
   useEffect(() => {
     if (receivedQuotes.length > 0) {
@@ -329,22 +379,15 @@ const SearchingProviders = () => {
         provider_id: String(quote.providerId || ""),
         service_id: String(serviceId || ""),
         status: "assigned",
-
         scheduled_at: new Date().toISOString(),
-
-        address:
-          user?.address ||
-            currentLocation
-            ? `${currentLocation?.lat},${currentLocation?.lng}`
-            : "Customer Location",
-
+        address: user?.address || (currentLocation ? `${currentLocation?.lat},${currentLocation?.lng}` : "Customer Location"),
         price: Number(quote.price || 0),
-
         notes: bookingNotes || "",
-
         voice_note: bookingVoiceNote || false,
         voice_note_url: bookingVoiceNoteUrl || null,
         paid: false,
+        lat: currentLocation?.lat || null,
+        lng: currentLocation?.lng || null
       };
 
       console.log("BOOKING PAYLOAD", bookingData);
@@ -354,6 +397,20 @@ const SearchingProviders = () => {
       console.log("BOOKING RESPONSE", res);
 
       if (res?.success && res?.data?.id) {
+        // Emit accept_quote to socket so winning provider gets notified
+        socket.emit("accept_quote", {
+          broadcastId,
+          bookingId: res.data.id,
+          acceptedProviderId: quote.providerId,
+          price: Number(quote.price || 0),
+          serviceId: serviceId || "",
+          customerName: user.name,
+          customerPhone: user.phone || null,
+          address: user.address || "Client Address",
+          lat: currentLocation?.lat || null,
+          lng: currentLocation?.lng || null
+        });
+
         // Add booking to context and navigate to tracking page
         dispatch({ type: "ADD_BOOKING", booking: res.data });
         navigate(`/tracking/${res.data.id}`);
@@ -361,55 +418,60 @@ const SearchingProviders = () => {
       }
 
       throw new Error(res?.message || "Booking creation failed");
-    } catch (error: any) {
-      console.error("ACCEPT QUOTE ERROR", error);
-
+    } catch (err: any) {
+      console.error("ACCEPT QUOTE ERROR", err);
       setError(
-        error?.response?.data?.message ||
-        error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
         "Failed to confirm booking"
       );
     } finally {
       setAcceptingQuoteId(null);
     }
-    const bookingData = {
-      customer_id: user.id,
-      provider_id: quote.providerId,
-      service_id: serviceId,
-      status: "assigned",
-      scheduled_at: new Date(
-        Date.now() + quote.etaMin * 60000
-      ).toISOString(),
-      address: user.address || "Client Address",
-      lat: currentLocation?.lat,
-      lng: currentLocation?.lng,
-      price: quote.price,
-      notes: bookingNotes || "Quick fix requested",
-      voice_note: bookingVoiceNote,
-      voice_note_url: bookingVoiceNoteUrl || null,
-    };
-
-    try {
-      const res = await createBooking(bookingData);
-
-      if (res.success) {
-        dispatch({
-          type: "ADD_BOOKING",
-          booking: res.data,
-        });
-        navigate(`/tracking/${res.data.id}`);
-      }
-    } catch (err) {
-      console.error(err);
-
-      setAcceptingQuoteId(null);
-
-      setError("Failed to confirm booking");
-    }
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF3F8] overflow-hidden flex flex-col relative font-['DM_Sans',sans-serif]">
+    <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
+ 
+
+  {/* TIMEOUT MODAL */}
+  {showTimeoutModal && (
+    <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">No Providers Available</h2>
+        <p className="text-gray-600 mb-6">
+          We couldn't find an available provider within 5 km of your location right now.
+          Please try again later or schedule the service for another time.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => {
+              // Reset timer for a new attempt
+              const now = Date.now();
+              localStorage.setItem('search_start_time', String(now));
+              setSearchStartTime(now);
+              setRemainingSeconds(120);
+              setHasTimedOut(false);
+              setShowTimeoutModal(false);
+            }}
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => {
+              // Clear timer data when exiting
+              localStorage.removeItem('search_start_time');
+              navigate(-1);
+            }}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
       {/* TOP BAR */}
       <div className="px-5 pt-6 pb-3 flex items-center gap-4 z-20 relative">
@@ -422,7 +484,7 @@ const SearchingProviders = () => {
       </div>
 
       {/* MAP */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="h-[320px] w-full flex-shrink-0 relative overflow-hidden">
 
         {/* GRID BACKGROUND */}
         <div
@@ -558,6 +620,12 @@ const SearchingProviders = () => {
               ? "Searching nearby providers"
               : "Providers available nearby"}
           </h2>
+          <div className="text-center mt-2">
+            <p className="text-sm font-medium text-slate-600">Time Remaining</p>
+            <p className={remainingSeconds <= 30 ? "text-2xl font-bold text-red-600" : "text-2xl font-bold text-amber-500"}>
+              {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
+            </p>
+          </div>
 
           {/* STATUS TEXT */}
           <div className="h-8 flex items-center justify-center overflow-hidden relative mb-6">
@@ -579,7 +647,7 @@ const SearchingProviders = () => {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex flex-col gap-3 max-h-[300px] overflow-y-auto mb-6"
+            className="flex flex-col gap-3 mb-6"
           >
             {receivedQuotes.map((q) => (
               <div
@@ -608,7 +676,7 @@ const SearchingProviders = () => {
                         </span>
 
                         <span>
-                          {q.distanceKm} km away
+                          {formatDistance(q.distanceKm)}
                         </span>
                       </div>
                     </div>
@@ -663,7 +731,7 @@ const SearchingProviders = () => {
 
         {/* CANCEL BUTTON */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => { localStorage.removeItem('search_start_time'); navigate(-1); }}
           className="w-full h-14 rounded-2xl border border-red-100 bg-red-50 text-red-500 font-bold active:scale-95 transition"
         >
           Cancel Request

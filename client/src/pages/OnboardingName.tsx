@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, User } from "lucide-react";
+import { ArrowRight, User, ChevronLeft } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { updateUser } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,140 +38,135 @@ const OnboardingName = () => {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.08 }
+      transition: { staggerChildren: 0.1 }
     }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 15 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } }
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
   } as any;
 
   return (
     <div 
-      className="min-h-screen flex flex-col px-7 py-8 bg-background relative overflow-hidden"
+      className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden font-sans"
       style={{
-        backgroundImage: 'radial-gradient(circle, rgba(21, 46, 75, 0.03) 1.5px, transparent 1.5px)',
-        backgroundSize: '24px 24px'
+        backgroundImage: 'radial-gradient(circle, rgba(148, 163, 184, 0.05) 1px, transparent 1px)',
+        backgroundSize: '20px 20px'
       }}
     >
-      {/* Ambient Glow */}
-      <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[10%] left-[-15%] w-[300px] h-[300px] bg-accent/5 rounded-full blur-[80px] pointer-events-none" />
+      {/* Premium background ambient glows */}
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-gradient-to-br from-primary/10 to-accent/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Header Logo & Center-aligned minimal dots */}
-      <div className="flex items-center justify-between mb-6 relative z-10 flex-shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" className="opacity-30" />
-            <path d="M12 6a6 6 0 0 1 6 6v1a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5v-1a6 6 0 0 1 6-6z" />
-            <circle cx="12" cy="12" r="2.5" className="fill-accent stroke-accent" />
-          </svg>
-        </div>
+      {/* Main Container - Centered Content */}
+      <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 py-8 justify-between relative z-10">
         
-        {/* Onboarding dots - Step 1 active */}
-        <div className="flex justify-center gap-2">
-          {[1, 2, 3].map(s => (
-            <div 
-              key={s} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${s === 1 ? "w-6 bg-primary" : "w-1.5 bg-slate-300"}`}
-            />
-          ))}
-        </div>
-        
-        {/* Spacer */}
-        <div className="w-9 h-9" />
-      </div>
-
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="flex-1 flex flex-col relative z-10"
-      >
-        <motion.div variants={itemVariants} className="mt-2 mb-8">
-          <h1 className="text-[28px] font-extrabold text-slate-900 leading-[1.2] tracking-tight">
-            What should we<br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">call you?</span>
-          </h1>
-          <p className="text-[14px] text-slate-500 font-medium leading-relaxed mt-2">
-            Enter your name to personalize your RoundU experience.
-          </p>
-        </motion.div>
-
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-red-100 shadow-sm relative z-10"
-            >
-              {error}
-            </motion.div>
-          )}
-          {success && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-sm relative z-10 flex items-center justify-center gap-2"
-            >
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {success}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <motion.div 
-          variants={itemVariants}
-          className="relative z-10 flex-1 flex flex-col gap-6"
-        >
-          <div className="space-y-3">
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block ml-1">
-              Full Name
-            </label>
-            <motion.div 
-              className="relative group"
-              animate={{
-                scale: isFocused ? 1.01 : 1,
-                boxShadow: isFocused ? "0 12px 25px -5px rgba(59,130,246,0.06)" : "0 4px 6px -1px rgba(0, 0, 0, 0.01)"
-              }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-[#3B82F6]' : 'text-slate-400'}`}>
-                <User size={20} strokeWidth={2.5} />
-              </div>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleContinue();
-                }}
-                placeholder="e.g. John Doe"
-                autoFocus
-                className={`w-full pl-14 pr-5 py-4.5 rounded-[20px] bg-white/70 backdrop-blur-sm text-slate-800 font-semibold placeholder:text-slate-300 focus:outline-none transition-all text-base border ${
-                  isFocused ? 'border-[#3B82F6]' : 'border-slate-100'
-                }`}
+        {/* Header Navigation/Indicator */}
+        <div className="flex items-center justify-between mb-12 flex-shrink-0">
+        {/* Back Arrow */}
+        <button
+  onClick={() => navigate(-1)}
+  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shadow-sm mr-2"
+>
+  <ChevronLeft size={18} className="text-white" />
+</button>
+          
+          {/* Subtle Segmented Progress */}
+          <div className="flex items-center gap-1.5 bg-slate-200/50 p-1.5 rounded-full border border-slate-100">
+            {[1, 2, 3].map(s => (
+              <div 
+                key={s} 
+                className={`h-1.5 rounded-full transition-all duration-300 ${s === 1 ? "w-8 bg-primary" : "w-2 bg-slate-400/50"}`}
               />
-            </motion.div>
+            ))}
           </div>
+        </div>
+
+        {/* Form Body - Centered Card */}
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex-1 flex flex-col justify-center"
+        >
+          {/* Typography Header */}
+          <motion.div variants={itemVariants} className="text-center mb-8">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight sm:text-4xl">
+              What should we <br />
+              <span className="bg-gradient-to-r from-primary via-indigo-600 to-accent bg-clip-text text-transparent">
+                call you?
+              </span>
+            </h1>
+            <p className="text-slate-500 font-medium text-[15px] mt-3 leading-relaxed max-w-sm mx-auto">
+              Enter your name to personalize your RoundU experience.
+            </p>
+          </motion.div>
+
+          {/* Feedback Messages */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="bg-rose-50 text-rose-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-rose-100 shadow-[0_4px_12px_rgba(244,63,94,0.05)] text-center"
+              >
+                {error}
+              </motion.div>
+            )}
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-[0_4px_12px_rgba(16,185,129,0.05)] flex items-center justify-center gap-2"
+              >
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {success}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Input Section */}<motion.div variants={itemVariants} className="space-y-6">
+          
+            <div className="relative">
+              <div className="flex flex-col">
+                <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Full Name</label>
+            </div>
+              <div className="relative">
+                <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-slate-400'}`}>
+                  <User size={20} strokeWidth={2.2} />
+                </div>
+                <input
+                  id="fullName"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleContinue();
+                  }}
+                  placeholder="e.g. John Doe"
+                  autoFocus
+                  className={`w-full pl-14 pr-5 py-4 rounded-3xl bg-white text-slate-800 font-semibold placeholder:text-slate-400 focus:outline-none transition-all text-[15px] border ${isFocused ? 'border-primary ring-4 ring-primary/20 shadow-[0_12px_30px_rgba(59,130,246,0.12)]' : 'border-slate-200 hover:border-slate-300'}`}
+                />
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
 
-        {/* Action Footer */}
-        <motion.div variants={itemVariants} className="mt-auto pt-8 relative z-10 flex-shrink-0">
+        {/* Action Button & Info */}
+        <div className="mt-8 flex-shrink-0">
           <motion.button
             whileHover={name.trim().length >= 2 ? { scale: 1.01 } : {}}
             whileTap={name.trim().length >= 2 ? { scale: 0.99 } : {}}
             onClick={handleContinue}
             disabled={name.trim().length < 2 || loading}
-            className={`w-full py-4 rounded-[18px] font-bold text-base flex items-center justify-center gap-2 transition-all duration-300 ${
+            className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
               name.trim().length >= 2
-                ? "bg-gradient-to-r from-primary to-primary/95 text-white shadow-[0_8px_20px_rgba(21,46,75,0.15)] hover:shadow-[0_12px_25px_rgba(21,46,75,0.25)] cursor-pointer"
-                : "bg-muted-foreground/10 text-muted-foreground/40 cursor-not-allowed border border-muted-foreground/5"
+                ? "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-[0_8px_25px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_30px_rgba(37,99,235,0.3)] cursor-pointer"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
             }`}
           >
             <span>{loading ? "Saving..." : "Continue"}</span>
@@ -186,11 +181,12 @@ const OnboardingName = () => {
             )}
           </motion.button>
           
-          <p className="text-center text-[12px] font-medium text-slate-400 mt-5 mb-2">
+          <p className="text-center text-xs font-semibold text-slate-400 mt-4">
             You can always change this later in your profile.
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+
+      </div>
     </div>
   );
 };

@@ -8,6 +8,13 @@ import AvailableBalanceCard from '@/components/AvailableBalanceCard';
 
 import axios from "axios";
 
+const formatRupees = (amount: number): string => {
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 const Earnings = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,9 +71,13 @@ const Earnings = () => {
     return now - jobDate < 30 * 86400000;
   });
 
+<<<<<<< HEAD
   const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
   const platformFee = walletBalance * 0.15;
 
+=======
+  const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
+>>>>>>> ab0f15e4b8289bcb0c30876d3395c757aab2c03d
   const withdrawableAmount =
     Math.max(
       0,
@@ -114,7 +125,7 @@ const Earnings = () => {
           />
           <Stat
             label="Earned"
-            value={`₹${timeframeTotal}`}
+            value={`₹${formatRupees(timeframeTotal)}`}
             color="text-emerald-600"
           />
         </div>
@@ -146,7 +157,7 @@ const Earnings = () => {
                       <Calendar size={10} /> {j.date}
                     </p>
                   </div>
-                  <span className="text-sm font-extrabold text-success">+₹{j.price}</span>
+                  <span className="text-sm font-extrabold text-success">+₹{formatRupees(Number(j.price) || 0)}</span>
                 </div>
               );
             })}
