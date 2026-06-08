@@ -5,8 +5,9 @@ import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
 import { ChatModel } from './models/chat.model';
-import { ProviderModel } from './models/provider.model';
+import { ProviderModel, mapProvider, matchesServiceCategory } from './models/provider.model';
 import { isProviderBusy, checkScheduleConflict, parseDateTime } from './utils/bookingHelper';
+import { logProviderDecision } from './utils/logger';
 
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
@@ -28,8 +29,25 @@ async function main() {
     // Set service_radius default to 20
     await db.query('ALTER TABLE providers ALTER COLUMN service_radius SET DEFAULT 20;');
     await db.query('UPDATE providers SET service_radius = 20 WHERE service_radius = 5 OR service_radius IS NULL;');
+
+    // Add service_category column to providers table
+    await db.query("ALTER TABLE providers ADD COLUMN IF NOT EXISTS service_category VARCHAR(255)[] DEFAULT '{}';");
+    // Seed/populate service_category for existing providers if it's empty
+    await db.query(`
+      UPDATE providers p 
+      SET service_category = COALESCE(
+        (
+          SELECT array_agg(s.label) 
+          FROM provider_services ps 
+          JOIN services s ON ps.service_id = s.id 
+          WHERE ps.provider_id = p.id
+        ), 
+        '{}'::VARCHAR[]
+      ) 
+      WHERE service_category IS NULL OR service_category = '{}';
+    `);
     
-    console.log('[server] Database schema up to date with location fields.');
+    console.log('[server] Database schema up to date with location and service category fields.');
   } catch (err) {
     console.error('[server] Migration error:', err);
   }
@@ -183,34 +201,62 @@ async function main() {
         const sockets = await io.in('providers').fetchSockets();
         const target = sockets.find((s: any) => s.data.userId === data.providerId);
         if (target) {
-          if (data.lat != null && data.lng != null) {
-            let plat = target.data.lat;
-            let plng = target.data.lng;
-            if (plat == null || plng == null) {
-              try {
-                const { getPool } = require('./config/database');
-                const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [target.data.userId]);
-                if (pRes.rows[0]) {
-                  plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
-                  plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
-                  target.data.lat = plat;
-                  target.data.lng = plng;
-                  target.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
-                }
-              } catch (_) {}
-            }
-            if (plat != null && plng != null) {
-              const { getDistanceKm } = require('./utils/locationHelper');
-              const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
-              const maxRadius = target.data.serviceRadius || 20;
-              if (dist > maxRadius) {
-                console.log(`[socket] direct request to provider ${data.providerId} skipped (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
-                return;
+          try {
+            const { getPool } = require('./config/database');
+            const pRes = await getPool().query(
+              'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+              [target.data.userId]
+            );
+            const providerRow = pRes.rows[0];
+            if (providerRow) {
+              const provider = mapProvider(providerRow);
+              // Get service label
+              const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+              const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+              // Calculate distance
+              let dist = 0;
+              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+                const { getDistanceKm } = require('./utils/locationHelper');
+                dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
+              }
+
+              const isOnline = provider.isOnline === true;
+              const isApproved = providerRow.is_verified === true;
+              const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+              const inRadius = dist <= (provider.serviceRadius || 20);
+
+              let decision = "ACCEPTED";
+              if (!isOnline) {
+                decision = "REJECTED (Offline)";
+              } else if (!isApproved) {
+                decision = "REJECTED (Unverified)";
+              } else if (!matchesCategory) {
+                decision = "REJECTED (Category mismatch)";
+              } else if (!inRadius) {
+                decision = "REJECTED (Outside radius)";
+              }
+
+              logProviderDecision({
+                requestedCategory: serviceLabel,
+                providerId: provider.id,
+                providerName: providerRow.name || "Unknown",
+                providerCategories: provider.serviceCategory || [],
+                onlineStatus: isOnline,
+                distance: dist,
+                verificationStatus: isApproved,
+                decision
+              });
+
+              if (isOnline && isApproved && matchesCategory && inRadius) {
+                target.emit('incoming_request', payload);
+                console.log(`[socket] direct request sent to provider ${data.providerId}`);
               }
             }
+          } catch (err) {
+            console.error('[socket] error validating direct request provider:', err);
           }
-          target.emit('incoming_request', payload);
-          console.log(`[socket] direct request sent to provider ${data.providerId}`);
           return;
         }
       }
@@ -220,33 +266,62 @@ async function main() {
       console.log(`[socket] broadcasting request to room: ${roomName} filtered by radius`);
       const targetSockets = await io.in(roomName).fetchSockets();
       for (const s of targetSockets) {
-        if (data.lat != null && data.lng != null) {
-          let plat = s.data.lat;
-          let plng = s.data.lng;
-          if (plat == null || plng == null) {
-            try {
-              const { getPool } = require('./config/database');
-              const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [s.data.userId]);
-              if (pRes.rows[0]) {
-                plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
-                plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
-                s.data.lat = plat;
-                s.data.lng = plng;
-                s.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
-              }
-            } catch (_) {}
-          }
-          if (plat != null && plng != null) {
+        try {
+          const { getPool } = require('./config/database');
+          const pRes = await getPool().query(
+            'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+            [s.data.userId]
+          );
+          const providerRow = pRes.rows[0];
+          if (!providerRow) continue;
+
+          const provider = mapProvider(providerRow);
+          // Get service label
+          const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+          const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+          // Calculate distance
+          let dist = 0;
+          if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
             const { getDistanceKm } = require('./utils/locationHelper');
-            const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
-            const maxRadius = s.data.serviceRadius || 20;
-            if (dist > maxRadius) {
-              console.log(`[socket] skipping broadcast for provider ${s.data.userId} (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
-              continue;
-            }
+            dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
           }
+
+          const isOnline = provider.isOnline === true;
+          const isApproved = providerRow.is_verified === true;
+          const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                  matchesServiceCategory(provider.serviceCategory, serviceLabel);
+          const inRadius = dist <= (provider.serviceRadius || 20);
+
+          let decision = "ACCEPTED";
+          if (!isOnline) {
+            decision = "REJECTED (Offline)";
+          } else if (!isApproved) {
+            decision = "REJECTED (Unverified)";
+          } else if (!matchesCategory) {
+            decision = "REJECTED (Category mismatch)";
+          } else if (!inRadius) {
+            decision = "REJECTED (Outside radius)";
+          }
+
+          logProviderDecision({
+            requestedCategory: serviceLabel,
+            providerId: provider.id,
+            providerName: providerRow.name || "Unknown",
+            providerCategories: provider.serviceCategory || [],
+            onlineStatus: isOnline,
+            distance: dist,
+            verificationStatus: isApproved,
+            decision
+          });
+
+          if (isOnline && isApproved && matchesCategory && inRadius) {
+            s.emit('incoming_request', payload);
+            console.log(`[socket] request sent to provider ${s.data.userId}`);
+          }
+        } catch (err) {
+          console.error('[socket] error validating room broadcast provider:', err);
         }
-        s.emit('incoming_request', payload);
       }
     });
 
@@ -296,37 +371,70 @@ async function main() {
       const broadcastAndFilter = async () => {
         try {
           const targetSockets = await io.in(roomName).in('providers').fetchSockets();
-          for (const s of targetSockets) {
+          
+          // Deduplicate sockets in case a socket is in both rooms
+          const uniqueSockets = Array.from(new Map(targetSockets.map((s: any) => [s.id, s])).values());
+
+          for (const s of uniqueSockets) {
             // Skip the customer themselves
             if (s.data.userId === data.customerId) continue;
 
-            if (data.lat != null && data.lng != null) {
-              let plat = s.data.lat;
-              let plng = s.data.lng;
-              if (plat == null || plng == null) {
-                try {
-                  const { getPool } = require('./config/database');
-                  const pRes = await getPool().query('SELECT lat, lng, service_radius FROM providers WHERE user_id = $1', [s.data.userId]);
-                  if (pRes.rows[0]) {
-                    plat = pRes.rows[0].lat ? Number(pRes.rows[0].lat) : null;
-                    plng = pRes.rows[0].lng ? Number(pRes.rows[0].lng) : null;
-                    s.data.lat = plat;
-                    s.data.lng = plng;
-                    s.data.serviceRadius = pRes.rows[0].service_radius ? Number(pRes.rows[0].service_radius) : 20;
-                  }
-                } catch (_) {}
-              }
-              if (plat != null && plng != null) {
+            try {
+              const { getPool } = require('./config/database');
+              const pRes = await getPool().query(
+                'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+                [s.data.userId]
+              );
+              const providerRow = pRes.rows[0];
+              if (!providerRow) continue;
+
+              const provider = mapProvider(providerRow);
+              // Get service label
+              const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+              const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+              // Calculate distance
+              let dist = 0;
+              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
                 const { getDistanceKm } = require('./utils/locationHelper');
-                const dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: Number(plat), lng: Number(plng) });
-                const maxRadius = s.data.serviceRadius || 20;
-                if (dist > maxRadius) {
-                  console.log(`[socket] skipping broadcast for provider ${s.data.userId} (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
-                  continue;
-                }
+                dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
               }
+
+              const isOnline = provider.isOnline === true;
+              const isApproved = providerRow.is_verified === true;
+              const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+              const inRadius = dist <= (provider.serviceRadius || 20);
+
+              let decision = "ACCEPTED";
+              if (!isOnline) {
+                decision = "REJECTED (Offline)";
+              } else if (!isApproved) {
+                decision = "REJECTED (Unverified)";
+              } else if (!matchesCategory) {
+                decision = "REJECTED (Category mismatch)";
+              } else if (!inRadius) {
+                decision = "REJECTED (Outside radius)";
+              }
+
+              logProviderDecision({
+                requestedCategory: serviceLabel,
+                providerId: provider.id,
+                providerName: providerRow.name || "Unknown",
+                providerCategories: provider.serviceCategory || [],
+                onlineStatus: isOnline,
+                distance: dist,
+                verificationStatus: isApproved,
+                decision
+              });
+
+              if (isOnline && isApproved && matchesCategory && inRadius) {
+                s.emit('incoming_broadcast', broadcastPayload);
+                console.log(`[socket] job broadcast sent to provider ${s.data.userId}`);
+              }
+            } catch (err) {
+              console.error('[socket] error validating job broadcast provider:', err);
             }
-            s.emit('incoming_broadcast', broadcastPayload);
           }
         } catch (err) {
           console.error('[socket] error in broadcast_job filtering:', err);

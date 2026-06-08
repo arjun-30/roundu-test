@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config({ path: 'server/.env' });
+require('dotenv').config({ path: '.env' });
 
 async function main() {
   const pool = new Pool({

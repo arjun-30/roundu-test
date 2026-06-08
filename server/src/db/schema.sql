@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS providers (
     lat NUMERIC(10, 7),
     lng NUMERIC(10, 7),
     display_location VARCHAR(255),
+    service_category VARCHAR(255)[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

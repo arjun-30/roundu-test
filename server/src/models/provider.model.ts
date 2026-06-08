@@ -13,12 +13,57 @@ export interface Provider {
   lat?: number | null;
   lng?: number | null;
   display_location?: string | null;
+  
+  // camelCase fields for client matching & verification
+  serviceCategory?: string[];
+  isOnline?: boolean;
+  serviceRadius?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export function mapProvider(dbRow: any): any {
+  if (!dbRow) return null;
+  return {
+    ...dbRow,
+    id: dbRow.id,
+    serviceCategory: dbRow.service_category || [],
+    service_category: dbRow.service_category || [],
+    isOnline: dbRow.is_online,
+    is_online: dbRow.is_online,
+    serviceRadius: dbRow.service_radius,
+    service_radius: dbRow.service_radius,
+    latitude: dbRow.lat != null ? Number(dbRow.lat) : null,
+    lat: dbRow.lat != null ? Number(dbRow.lat) : null,
+    longitude: dbRow.lng != null ? Number(dbRow.lng) : null,
+    lng: dbRow.lng != null ? Number(dbRow.lng) : null,
+  };
+}
+
+export function matchesServiceCategory(providerCategory: any, requestedService: string): boolean {
+  if (!providerCategory) return false;
+  if (!requestedService) return false;
+  
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const reqNorm = normalize(requestedService);
+
+  if (Array.isArray(providerCategory)) {
+    return providerCategory.some(cat => normalize(cat) === reqNorm);
+  }
+  if (typeof providerCategory === 'string') {
+    return normalize(providerCategory) === reqNorm;
+  }
+  return false;
 }
 
 export const ProviderModel = {
-  async findByUserId(userId: string): Promise<Provider | null> {
+  async findByUserId(userId: string): Promise<any | null> {
     const res = await getPool().query('SELECT * FROM providers WHERE user_id = $1', [userId]);
-    return res.rows[0] || null;
+    if (!res.rows[0]) return null;
+    const provider = mapProvider(res.rows[0]);
+    const sRes = await getPool().query('SELECT service_id FROM provider_services WHERE provider_id = $1', [provider.id]);
+    provider.serviceIds = sRes.rows.map((r: any) => r.service_id);
+    return provider;
   },
 
   async findById(providerId: string): Promise<any | null> {
@@ -29,7 +74,11 @@ export const ProviderModel = {
        WHERE p.id = $1`,
       [providerId]
     );
-    return res.rows[0] || null;
+    if (!res.rows[0]) return null;
+    const provider = mapProvider(res.rows[0]);
+    const sRes = await getPool().query('SELECT service_id FROM provider_services WHERE provider_id = $1', [provider.id]);
+    provider.serviceIds = sRes.rows.map((r: any) => r.service_id);
+    return provider;
   },
 
   async updateServiceRadiusByUserId(userId: string, radius: number): Promise<boolean> {
@@ -72,7 +121,7 @@ export const ProviderModel = {
        WHERE ps.service_id = $1`,
       [serviceId]
     );
-    return res.rows;
+    return res.rows.map(mapProvider);
   },
 
   async findAllOnline(): Promise<any[]> {
@@ -84,7 +133,7 @@ export const ProviderModel = {
        ORDER BY p.rating DESC
        LIMIT 20`
     );
-    return res.rows;
+    return res.rows.map(mapProvider);
   },
 
   async register(
@@ -105,12 +154,21 @@ export const ProviderModel = {
       // 1. Update user role to provider
       await client.query("UPDATE users SET role = 'provider' WHERE id = $1", [userId]);
 
+      let serviceCategories: string[] = [];
+      if (data.serviceIds && data.serviceIds.length > 0) {
+        const sRes = await client.query(
+          'SELECT label FROM services WHERE id = ANY($1)',
+          [data.serviceIds]
+        );
+        serviceCategories = sRes.rows.map((r: any) => r.label);
+      }
+
       // 2. Insert provider profile (auto-verify for now since they passed DigiLocker)
       const providerRes = await client.query(
-        `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating, lat, lng, display_location) 
-         SELECT $1, $2, $3, $4, $5, true, true, 5.0, lat, lng, display_location FROM users WHERE id = $1
+        `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating, lat, lng, display_location, service_category) 
+         SELECT $1, $2, $3, $4, $5, true, true, 5.0, lat, lng, display_location, $6 FROM users WHERE id = $1
          RETURNING *`,
-        [userId, data.bio, data.experienceYears, data.workingHours, data.serviceRadius]
+        [userId, data.bio, data.experienceYears, data.workingHours, data.serviceRadius, serviceCategories]
       );
       const provider = providerRes.rows[0];
 
@@ -125,7 +183,7 @@ export const ProviderModel = {
       }
 
       await client.query('COMMIT');
-      return provider;
+      return mapProvider(provider);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

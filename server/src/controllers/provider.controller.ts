@@ -68,6 +68,11 @@ export const searchProviders = async (req: Request, res: Response) => {
       const busy = await isProviderBusy(p.id);
       if (busy) continue;
 
+      // Enforce that candidate providers are currently online and verified/approved
+      if (!p.is_online || !p.is_verified) {
+        continue;
+      }
+
       // Filter by distance if customer coordinates are available
       if (customerLat != null && customerLng != null) {
         let plat = p.lat ? Number(p.lat) : null;

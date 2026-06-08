@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { BookingModel } from '../models/booking.model';
-import { ProviderModel } from '../models/provider.model';
+import { ProviderModel, matchesServiceCategory } from '../models/provider.model';
 import { NotificationModel } from '../models/notification.model';
 import { isProviderBusy, checkScheduleConflict } from '../utils/bookingHelper';
+import { logProviderDecision } from '../utils/logger';
 
 
 export const createBooking = async (req: Request, res: Response) => {
@@ -49,15 +50,6 @@ export const createBooking = async (req: Request, res: Response) => {
       const providerId = provider ? provider.id : bookingData.provider_id;
       bookingData.provider_id = providerId;
 
-      // 1. Check if provider is currently busy
-      /* const isBusy = await isProviderBusy(providerId);
-       if (isBusy) {
-         return res.status(400).json({
-           success: false,
-           message: 'Provider is currently busy on an active job.'
-         });
-       }
- */
       // 2. Check if provider has a schedule conflict
       if (bookingData.scheduled_at) {
         const proposedStart = new Date(bookingData.scheduled_at);
@@ -83,7 +75,79 @@ export const createBooking = async (req: Request, res: Response) => {
     if (booking.service_id) {
       const providers = await ProviderModel.findByServiceId(booking.service_id);
 
-      const notifications = providers.map(p => ({
+      // Get service label
+      const { getPool } = require('../config/database');
+      const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [booking.service_id]);
+      const serviceLabel = sRes.rows[0]?.label || booking.service_id;
+
+      // Get customer coordinates
+      let customerLat = req.body.lat ?? null;
+      let customerLng = req.body.lng ?? null;
+      if (customerLat == null || customerLng == null) {
+        const cRes = await getPool().query('SELECT lat, lng FROM users WHERE id = $1', [booking.customer_id]);
+        if (cRes.rows[0]) {
+          customerLat = cRes.rows[0].lat ? Number(cRes.rows[0].lat) : null;
+          customerLng = cRes.rows[0].lng ? Number(cRes.rows[0].lng) : null;
+        }
+      }
+
+      const matchingProviders = [];
+      for (const p of providers) {
+        const isOnline = p.is_online === true;
+        const isApproved = p.is_verified === true;
+        const matchesCategory = matchesServiceCategory(p.serviceCategory, booking.service_id) || 
+                                matchesServiceCategory(p.serviceCategory, serviceLabel);
+
+        let inRadius = true;
+        let dist = 0;
+        let plat = p.lat ? Number(p.lat) : null;
+        let plng = p.lng ? Number(p.lng) : null;
+
+        if (plat == null || plng == null) {
+          const uRes = await getPool().query('SELECT lat, lng FROM users WHERE id = $1', [p.user_id]);
+          if (uRes.rows[0]) {
+            plat = uRes.rows[0].lat ? Number(uRes.rows[0].lat) : null;
+            plng = uRes.rows[0].lng ? Number(uRes.rows[0].lng) : null;
+          }
+        }
+
+        if (customerLat != null && customerLng != null && plat != null && plng != null) {
+          const { getDistanceKm } = require('../utils/locationHelper');
+          dist = getDistanceKm({ lat: customerLat, lng: customerLng }, { lat: plat, lng: plng });
+          const maxRadius = p.serviceRadius || 20;
+          inRadius = dist <= maxRadius;
+        } else {
+          inRadius = false;
+        }
+
+        let decision = "ACCEPTED";
+        if (!isOnline) {
+          decision = "REJECTED (Offline)";
+        } else if (!isApproved) {
+          decision = "REJECTED (Unverified)";
+        } else if (!matchesCategory) {
+          decision = "REJECTED (Category mismatch)";
+        } else if (!inRadius) {
+          decision = "REJECTED (Outside radius)";
+        }
+
+        logProviderDecision({
+          requestedCategory: serviceLabel,
+          providerId: p.id,
+          providerName: p.name || "Unknown",
+          providerCategories: p.serviceCategory || [],
+          onlineStatus: isOnline,
+          distance: dist,
+          verificationStatus: isApproved,
+          decision
+        });
+
+        if (isOnline && isApproved && matchesCategory && inRadius) {
+          matchingProviders.push(p);
+        }
+      }
+
+      const notifications = matchingProviders.map(p => ({
         user_id: p.user_id,
         title: 'New Job Request',
         message: `New job request for ${booking.service_id} at ${booking.address}`,
