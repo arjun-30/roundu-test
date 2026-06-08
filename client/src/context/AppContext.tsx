@@ -219,9 +219,12 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
-    role: (savedRole as "customer" | "provider") || parsedUser.role || "customer",
-    accountType: parsedUser.accountType || "customer",
-    profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
+    role:
+      (savedRole as "customer" | "provider") ||
+      (parsedUser.role as "customer" | "provider") ||
+      "customer", accountType:
+      (parsedUser.accountType as "customer" | "provider") ||
+      "customer", profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
     avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
@@ -418,8 +421,9 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           providerRequests: state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
-          ),
+            r.id === bookingId
+              ? { ...r, status: status as any }
+              : r),
           notifications: newNotifications,
         };
       }
