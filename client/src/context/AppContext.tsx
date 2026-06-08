@@ -433,30 +433,16 @@ function reducer(state: State, action: Action): State {
         let updatedCompleted = state.completedJobs;
 
         if (isCompleted) {
-          const targetReq = state.providerRequests.find(
-            r => r.id === normalizedId || r.id === bookingId
-          );
-
+          const targetReq = state.providerRequests.find(r => r.id === normalizedId || r.id === bookingId);
           if (targetReq) {
             const enrichedReq = {
               ...targetReq,
               status: status as any
-<<<<<<< HEAD
-            };
-
-            updatedRequests = state.providerRequests.filter(
-              r => r.id !== targetReq.id
-            );
-
-=======
             }; updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
->>>>>>> 9606af1 (Update provider wallet and payment flow)
             if (!updatedCompleted.some(c => c.id === targetReq.id)) {
               updatedCompleted = [enrichedReq, ...updatedCompleted];
             } else {
-              updatedCompleted = updatedCompleted.map(c =>
-                c.id === targetReq.id ? enrichedReq : c
-              );
+              updatedCompleted = updatedCompleted.map(c => c.id === targetReq.id ? enrichedReq : c);
             }
           } else {
             updatedCompleted = updatedCompleted.map(c =>
@@ -466,11 +452,7 @@ function reducer(state: State, action: Action): State {
             );
           }
         } else {
-<<<<<<< HEAD
-          updatedRequests = state.providerRequests.map(r =>
-=======
           updatedRequests = state.providerRequests.map((r) =>
->>>>>>> 9606af1 (Update provider wallet and payment flow)
             (r.id === normalizedId || r.id === bookingId)
               ? { ...r, status: status as any }
               : r
