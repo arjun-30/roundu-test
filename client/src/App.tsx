@@ -128,15 +128,21 @@ const MobileRoutesLayout = () => (
 
 // Smart Role Routing Logic
 const SmartRoleRoute = () => {
-  const { user, dispatch } = useApp();
+  const { user, dispatch, providerRegistrationDraft } = useApp();
   const phone = user.phone || "";
   const savedRole = phone ? getSavedRoleForPhone(phone) : null;
 
   if (savedRole) {
     dispatch({ type: "SET_ROLE", role: savedRole });
-    return savedRole === "provider"
-      ? <Navigate to="/provider" replace />
-      : <Navigate to="/home" replace />;
+    if (savedRole === "provider") {
+      // If provider has completed service selection, go to dashboard; otherwise, go to service selection
+      const hasSelectedServices = providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0;
+      return hasSelectedServices
+        ? <Navigate to="/provider" replace />
+        : <Navigate to="/provider/select-service" replace />;
+    } else {
+      return <Navigate to="/home" replace />;
+    }
   }
 
   return <RoleSelect />;
