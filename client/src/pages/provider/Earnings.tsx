@@ -71,27 +71,16 @@ const Earnings = () => {
     return now - jobDate < 30 * 86400000;
   });
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-  const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
-  const platformFee = walletBalance * 0.15;
+  const timeframeTotal = filteredJobs.reduce(
+    (s, j) => s + (Number(j.price) || 0),
+    0
+  );
 
-=======
-  const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
->>>>>>> ab0f15e4b8289bcb0c30876d3395c757aab2c03d
-=======
-  const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
-=======
-  const timeframeTotal = filteredJobs.reduce((s, j) => s + (j.price || 0), 0);
-  const platformFee = walletBalance * 0.15;
+  const withdrawableAmount = Math.max(
+    0,
+    walletBalance - commissionDue
+  );
 
->>>>>>> 4d0288c (Update provider wallet and payment flow)
->>>>>>> 9606af1 (Update provider wallet and payment flow)
-  const withdrawableAmount =
-    Math.max(
-      0,
-      walletBalance - platformFee - commissionDue
-    );
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">

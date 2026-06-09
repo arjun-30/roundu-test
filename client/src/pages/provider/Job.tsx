@@ -299,7 +299,6 @@ const Job = () => {
             {/* CASH PAYMENT */}
             <button
               onClick={() => {
-
                 const confirmed = window.confirm(
                   "Confirm cash has been received?"
                 );
@@ -312,25 +311,31 @@ const Job = () => {
 
                 const commission = amount * 0.15;
 
-                dispatch({
-                  type: "ADD_COMMISSION_DUE",
-                  amount: commission
-                });
-
-                if (walletBalance <= 0) {
+                if (walletBalance > 0) {
                   dispatch({
                     type: "UPDATE_WALLET",
                     amount: -commission
+                  });
+                } else {
+                  dispatch({
+                    type: "UPDATE_WALLET",
+                    amount: -commission
+                  });
+
+                  dispatch({
+                    type: "ADD_COMMISSION_DUE",
+                    amount: commission
                   });
                 }
 
                 dispatch({
                   type: "INCREMENT_COD_COUNT"
                 });
+
                 emitStatus("paid");
 
                 showNotification(
-                  `₹${commission.toFixed(0)} commission added to dues`,
+                  "Cash payment confirmed",
                   "success"
                 );
               }}

@@ -122,6 +122,9 @@ const BookingPayment = () => {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
+
+                  providerId: provider?.id || selectedProvider?.id,
+                  amount: total
                 });
 
                 if (!verifyRes.data.success) {
@@ -129,9 +132,21 @@ const BookingPayment = () => {
                   return;
                 }
 
+
                 dispatch({ type: "PAY_BOOKING", id: bookingId });
-                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
-                socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
+
+                dispatch({
+                  type: "UPDATE_BOOKING_STATUS",
+                  bookingId: bookingId,
+                  status: "paid"
+                });
+
+                socket.emit("update_job_status", {
+                  bookingId: bookingId,
+                  status: "paid",
+                  paid: true
+                });
+
                 navigate(`/rating/${bookingId}`, { replace: true });
               } catch (err) {
                 console.error("Verification error:", err);
@@ -258,6 +273,9 @@ const BookingPayment = () => {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
+
+                  providerId: provider?.id || selectedProvider?.id,
+                  amount: total
                 });
 
                 if (!verifyRes.data.success) {
