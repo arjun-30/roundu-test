@@ -322,7 +322,7 @@ class DatabasePoolWrapper {
   }
 
   on(event: string, listener: (...args: any[]) => void) {
-    this.realPool.on(event, listener);
+    this.realPool.on(event as any, listener);
     return this;
   }
 
