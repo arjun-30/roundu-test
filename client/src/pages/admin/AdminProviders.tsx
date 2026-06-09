@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { updateProviderVerification } from "@/lib/adminService";
+import { createProviderApprovalNotification, createProviderRejectionNotification } from "@/lib/notificationService";
 import { Search, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -9,7 +11,7 @@ interface Provider {
     phone: string;
     service_type: string;
     rating: number;
-    verified: boolean;
+    is_verified: boolean;
     is_online: boolean;
     total_earnings: number;
     created_at: string;
@@ -24,9 +26,35 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
     const handleVerify = async (e: React.MouseEvent, val: boolean) => {
         e.stopPropagation();
         setUpdating(true);
-        await supabase.from("providers").update({ verified: val }).eq("id", provider.id);
-        onVerify(provider.id, val);
-        setUpdating(false);
+        try {
+            console.log(`[AdminProviders] ${val ? "Approving" : "Rejecting"} provider ${provider.id}`);
+            
+            // Update provider verification status
+            const result = await updateProviderVerification(provider.id, val);
+            
+            if (!result.success) {
+                console.error("[AdminProviders] Failed to update provider:", result.error);
+                setUpdating(false);
+                return;
+            }
+
+            // Create notification
+            if (val) {
+                await createProviderApprovalNotification(provider.id, provider.full_name);
+                console.log(`[AdminProviders] Approval notification created for ${provider.id}`);
+            } else {
+                await createProviderRejectionNotification(provider.id, provider.full_name, "Admin review");
+                console.log(`[AdminProviders] Rejection notification created for ${provider.id}`);
+            }
+
+            // Update local state
+            onVerify(provider.id, val);
+            console.log(`[AdminProviders] Provider ${provider.id} ${val ? "approved" : "rejected"} successfully`);
+        } catch (error) {
+            console.error("[AdminProviders] Exception during verification:", error);
+        } finally {
+            setUpdating(false);
+        }
     };
 
     const initials = (provider.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -59,7 +87,7 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
                     </span>
                 </td>
                 <td className="px-4 py-3">
-                    {provider.verified
+                    {provider.is_verified
                         ? <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700"><CheckCircle className="w-3 h-3" />Verified</span>
                         : <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><XCircle className="w-3 h-3" />Pending</span>
                     }
@@ -68,7 +96,7 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
                 <td className="px-4 py-3 text-sm text-slate-500">{new Date(provider.created_at).toLocaleDateString("en-IN")}</td>
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                        {!provider.verified ? (
+                        {!provider.is_verified ? (
                             <button
                                 onClick={e => handleVerify(e, true)}
                                 disabled={updating}
@@ -146,7 +174,7 @@ export default function AdminProviders() {
         setError("");
         const { data, error: err } = await supabase
             .from("providers")
-            .select("id,full_name,phone,service_type,rating,verified,is_online,total_earnings,created_at,kyc_status,booking_count")
+            .select("id,full_name,phone,service_type,rating,is_verified,is_online,total_earnings,created_at,kyc_status,booking_count")
             .order("created_at", { ascending: false });
         if (err) setError("Failed to load providers.");
         setProviders(data ?? []);
@@ -156,7 +184,7 @@ export default function AdminProviders() {
     useEffect(() => { fetchProviders(); }, [fetchProviders]);
 
     const handleVerify = (id: string, val: boolean) => {
-        setProviders(prev => prev.map(p => p.id === id ? { ...p, verified: val } : p));
+        setProviders(prev => prev.map(p => p.id === id ? { ...p, is_verified: val } : p));
     };
 
     const serviceTypes = ["all", ...Array.from(new Set(providers.map(p => p.service_type).filter(Boolean)))];
@@ -164,7 +192,7 @@ export default function AdminProviders() {
     const filtered = providers.filter(p => {
         const matchSearch = (p.full_name ?? "").toLowerCase().includes(search.toLowerCase()) || (p.phone ?? "").includes(search);
         const matchService = filterService === "all" || p.service_type === filterService;
-        const matchVerified = filterVerified === "all" || (filterVerified === "verified" ? p.verified : !p.verified);
+        const matchVerified = filterVerified === "all" || (filterVerified === "verified" ? p.is_verified : !p.is_verified);
         return matchSearch && matchService && matchVerified;
     });
 
@@ -187,14 +215,14 @@ export default function AdminProviders() {
                     <div className="bg-white rounded-2xl border border-slate-100 p-4">
                         <p className="text-slate-500 text-sm">Verified</p>
                         <h2 className="text-3xl font-bold text-green-500">
-                            {providers.filter(p => p.verified).length}
+                            {providers.filter(p => p.is_verified).length}
                         </h2>
                     </div>
 
                     <div className="bg-white rounded-2xl border border-slate-100 p-4">
                         <p className="text-slate-500 text-sm">Pending</p>
                         <h2 className="text-3xl font-bold text-orange-500">
-                            {providers.filter(p => !p.verified).length}
+                            {providers.filter(p => !p.is_verified).length}
                         </h2>
                     </div>
 

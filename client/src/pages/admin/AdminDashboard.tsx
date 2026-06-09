@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet } from "react-router-dom";
+import { fetchAdminStats } from "@/lib/adminService";
+import { useProviderRealtimeUpdates, useBookingRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { supabase } from "@/lib/supabase";
+import { updateProviderVerification } from "@/lib/adminService";
+import { createProviderApprovalNotification, createProviderRejectionNotification } from "@/lib/notificationService";
+import ProviderRegistrationModal from "@/components/admin/ProviderRegistrationModal";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminTopBar from "@/components/admin/AdminTopBar";
 import StatCard from "@/components/admin/StatCard";
@@ -92,108 +97,138 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // Notification modal state
+    const [pendingProvider, setPendingProvider] = useState<any>(null);
+    const [showModal, setShowModal] = useState(false);
+    const [approveLoading, setApproveLoading] = useState(false);
+
     const fetchAll = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
-            const today = new Date().toISOString().split("T")[0];
-            const since14 = new Date(Date.now() - 14 * 864e5).toISOString();
-
-            const [
-                { count: totalUsers },
-                { count: totalProviders },
-                { count: totalBookings },
-                { count: activeBookings },
-                { count: pendingVerifications },
-                { count: cancelledBookings },
-                { data: completedBookings },
-                { data: todayBookingsRaw },
-                { data: last14Bookings },
-                { data: recentRaw },
-            ] = await Promise.all([
-                supabase.from("users").select("*", { count: "exact", head: true }),
-                supabase.from("providers").select("*", { count: "exact", head: true }),
-                supabase.from("bookings").select("*", { count: "exact", head: true }),
-                supabase.from("bookings").select("*", { count: "exact", head: true }).in("status", ACTIVE_STATUSES),
-                supabase.from("providers").select("*", { count: "exact", head: true }).eq("verified", false),
-                supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "cancelled"),
-                supabase.from("bookings").select("price").eq("status", "completed"),
-                supabase.from("bookings").select("price").gte("created_at", today).eq("status", "completed"),
-                supabase.from("bookings").select("created_at,price,status,service_type").gte("created_at", since14),
-                supabase.from("bookings").select("id,status,price,created_at,service_type,users(full_name),providers(full_name)").order("created_at", { ascending: false }).limit(10),
-            ]);
-
-            const totalRevenue = (completedBookings ?? []).reduce((s: number, b: { price?: number }) => s + (b.price ?? 0), 0);
-            const todayRevenue = (todayBookingsRaw ?? []).reduce((s: number, b: { price?: number }) => s + (b.price ?? 0), 0);
-
-            setStats({
-                totalUsers: totalUsers ?? 0,
-                totalProviders: totalProviders ?? 0,
-                totalBookings: totalBookings ?? 0,
-                activeBookings: activeBookings ?? 0,
-                totalRevenue,
-                todayRevenue,
-                pendingVerifications: pendingVerifications ?? 0,
-                cancelledBookings: cancelledBookings ?? 0,
-            });
-
-            // Daily data
-            const dayMap: Record<string, DailyPoint> = {};
-            for (let i = 13; i >= 0; i--) {
-                const d = new Date(Date.now() - i * 864e5).toISOString().split("T")[0];
-                dayMap[d] = { date: d.slice(5), bookings: 0, revenue: 0 };
+            const result = await fetchAdminStats();
+            
+            if (result.error) {
+                setError(result.error);
+                console.warn("[Dashboard] Error from service:", result.error);
             }
-            (last14Bookings ?? []).forEach((b: { created_at: string; price?: number }) => {
-                const d = b.created_at.split("T")[0];
-                if (dayMap[d]) {
-                    dayMap[d].bookings++;
-                    dayMap[d].revenue += b.price ?? 0;
-                }
-            });
-            setDailyData(Object.values(dayMap));
 
-            // Status breakdown
-            const statusCount: Record<string, number> = {};
-            (last14Bookings ?? []).forEach((b: { status: string }) => {
-                const grp = ACTIVE_STATUSES.includes(b.status) ? "active" : b.status;
-                statusCount[grp] = (statusCount[grp] ?? 0) + 1;
-            });
-            setStatusData(Object.entries(statusCount).map(([name, value]) => ({ name, value })));
-
-            // Service breakdown
-            const svcCount: Record<string, number> = {};
-            (last14Bookings ?? []).forEach((b: { service_type?: string }) => {
-                const s = b.service_type ?? "Unknown";
-                svcCount[s] = (svcCount[s] ?? 0) + 1;
-            });
-            setServiceData(
-                Object.entries(svcCount)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5)
-                    .map(([service, count]) => ({ service, count }))
-            );
-
-            // Recent bookings
-            setRecentBookings(
-                (recentRaw ?? []).map((b: Record<string, unknown>) => ({
-                    id: String(b.id ?? ""),
-                    customer_name: (b.users as { full_name?: string } | null)?.full_name ?? "—",
-                    provider_name: (b.providers as { full_name?: string } | null)?.full_name ?? "—",
-                    service_type: String(b.service_type ?? "—"),
-                    status: String(b.status ?? ""),
-                    price: Number(b.price ?? 0),
-                    created_at: String(b.created_at ?? ""),
-                }))
-            );
+            setStats(result.stats);
+            setDailyData(result.dailyData);
+            setStatusData(result.statusData);
+            setServiceData(result.serviceData);
+            setRecentBookings(result.recentBookings);
         } catch (e) {
             setError("Failed to load dashboard data. Please retry.");
-            console.error(e);
+            console.error("[Dashboard] Unhandled error:", e);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
+
+    // Subscribe to real-time provider updates
+    useProviderRealtimeUpdates((provider) => {
+        console.log("[Dashboard] Provider update received, refreshing stats");
+        // If provider is not verified, show modal
+        if (!provider.is_verified) {
+            console.log("[Dashboard] New unverified provider detected:", provider);
+            setPendingProvider(provider);
+            setShowModal(true);
+        }
+        fetchAll();
+    });
+
+    // Subscribe to real-time booking updates
+    useBookingRealtimeUpdates((booking) => {
+        console.log("[Dashboard] Booking update received, refreshing stats");
+        fetchAll();
+    });
+
+    // Subscribe to new provider registration notifications
+    useEffect(() => {
+        console.log("[Dashboard] Setting up notification subscription for provider registrations");
+        
+        const subscription = supabase
+            .channel("dashboard-notifications")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "notifications",
+                    filter: `type=eq.provider_registration`
+                },
+                async (payload) => {
+                    console.log("[Dashboard] New provider registration notification received:", payload);
+                    
+                    const notification = payload.new;
+                    const providerId = notification.provider_id;
+                    
+                    // Fetch provider details
+                    const { data: provider, error } = await supabase
+                        .from("providers")
+                        .select("id,full_name,phone,service_type,created_at")
+                        .eq("id", providerId)
+                        .single();
+                    
+                    if (provider && !error) {
+                        console.log("[Dashboard] Showing registration modal for provider:", provider.full_name);
+                        setPendingProvider(provider);
+                        setShowModal(true);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            console.log("[Dashboard] Unsubscribing from notification channel");
+            supabase.removeChannel(subscription);
+        };
+    }, []);
+
+    // Handle approve action
+    const handleApproveProvider = async (providerId: string) => {
+        setApproveLoading(true);
+        try {
+            console.log("[Dashboard] Approving provider:", providerId);
+            const result = await updateProviderVerification(providerId, true);
+            
+            if (result.success) {
+                await createProviderApprovalNotification(providerId, pendingProvider.full_name);
+                console.log("[Dashboard] Provider approved and notification sent");
+                setShowModal(false);
+                setPendingProvider(null);
+                fetchAll();
+            }
+        } catch (e) {
+            console.error("[Dashboard] Error approving provider:", e);
+        } finally {
+            setApproveLoading(false);
+        }
+    };
+
+    // Handle reject action
+    const handleRejectProvider = async (providerId: string) => {
+        setApproveLoading(true);
+        try {
+            console.log("[Dashboard] Rejecting provider:", providerId);
+            const result = await updateProviderVerification(providerId, false);
+            
+            if (result.success) {
+                await createProviderRejectionNotification(providerId, pendingProvider.full_name, "Admin rejected");
+                console.log("[Dashboard] Provider rejected and notification sent");
+                setShowModal(false);
+                setPendingProvider(null);
+                fetchAll();
+            }
+        } catch (e) {
+            console.error("[Dashboard] Error rejecting provider:", e);
+        } finally {
+            setApproveLoading(false);
+        }
+    };
 
     // ── Stat cards config
     const statCards = stats
@@ -210,9 +245,19 @@ export default function AdminDashboard() {
         : [];
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+        <>
+            <ProviderRegistrationModal
+                provider={pendingProvider}
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onApprove={handleApproveProvider}
+                onReject={handleRejectProvider}
+                isLoading={approveLoading}
+            />
+            
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
             className="max-w-[1600px] mx-auto w-full"
         >
@@ -477,6 +522,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
             </div>
-        </motion.div>
+            </motion.div>
+        </>
     );
 }

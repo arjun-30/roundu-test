@@ -161,13 +161,24 @@ export default function AdminUsers() {
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         setError("");
-        const { data, error: err } = await supabase
-            .from("users")
-            .select("id,full_name,phone,email,address,role,created_at,wallet_balance")
-            .order("created_at", { ascending: false });
-        if (err) setError("Failed to load users.");
-        setUsers(data ?? []);
-        setLoading(false);
+        try {
+            const { data, error: err } = await supabase
+                .from("users")
+                .select("id,full_name,phone,email,address,role,created_at,wallet_balance")
+                .order("created_at", { ascending: false });
+            if (err) {
+                console.error('Error loading users:', err);
+                setError(`Failed to load users: ${err.message}`);
+            } else {
+                console.log('Users loaded:', data?.length ?? 0);
+                setUsers(data ?? []);
+            }
+        } catch (e: any) {
+            console.error('Exception loading users:', e);
+            setError(`Exception: ${e.message ?? 'Unknown error'}`);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => { fetchUsers(); }, [fetchUsers]);

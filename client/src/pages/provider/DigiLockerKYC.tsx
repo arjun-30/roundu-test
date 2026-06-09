@@ -156,6 +156,11 @@ const DigiLockerKYC = () => {
     }
   };
 
+  const handleDemoMode = () => {
+    dispatch({ type: 'UPDATE_KYC', patch: { aadhaarVerified: true, bankVerified: true, panVerified: true } });
+    showNotification('Demo Mode: All verifications passed. Proceeding...');
+  };
+
   const allVerified = kyc.aadhaarVerified && kyc.bankVerified;
 
   const handleNext = () => {
@@ -340,6 +345,14 @@ const DigiLockerKYC = () => {
 
       {/* Footer / Continue button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex flex-col gap-2">
+        {!allVerified && (
+          <button
+            onClick={handleDemoMode}
+            className="w-full py-3 rounded-2xl transition-all text-sm font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300"
+          >
+            📝 Demo Mode - Skip Verification
+          </button>
+        )}
 
         <button
           onClick={handleNext}
