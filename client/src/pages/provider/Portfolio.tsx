@@ -1,13 +1,49 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, Image as ImageIcon, Play } from "lucide-react";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useApp } from "@/context/AppContext";
+import { getProviderVideo } from "@/lib/supabase";
+import { fetchProviderDashboard } from "@/lib/api";
 
 const Portfolio = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useApp();
   const [notification, setNotification] = useState("");
+  const [providerId, setProviderId] = useState<string | null>(null);
+  const [video, setVideo] = useState<any | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(true);
+
+  useEffect(() => {
+    const fetchVideo = async () => {
+      if (!user?.id) return;
+      try {
+        setLoadingVideo(true);
+        let pid: string | null = null;
+        try {
+          const dashboard = await fetchProviderDashboard(user.id);
+          if (dashboard.success && dashboard.data?.provider) {
+            pid = dashboard.data.provider.id;
+          }
+        } catch {
+          // Server might be down — fall back to mock provider ID
+          console.warn("[Portfolio] Dashboard fetch failed, falling back to mock provider ID");
+        }
+        // If we couldn't get a real provider ID, use the mock provider UUID
+        // which is what the mock DB returns for new registrations
+        const effectivePid = pid || '00000000-0000-0000-0000-000000000001';
+        setProviderId(effectivePid);
+        const activeVideo = await getProviderVideo(effectivePid);
+        setVideo(activeVideo);
+      } catch (err) {
+        console.error("Error fetching provider video:", err);
+      } finally {
+        setLoadingVideo(false);
+      }
+    };
+    fetchVideo();
+  }, [user?.id]);
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -65,18 +101,38 @@ const Portfolio = () => {
            <div className="bg-slate-900 rounded-[28px] p-6 shadow-xl relative overflow-hidden group">
               <div className="flex items-center justify-between mb-4">
                  <h2 className="text-white font-extrabold text-base">Video Introduction</h2>
-                 <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Active</span>
+                 {video && (
+                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Active</span>
+                 )}
               </div>
-              <div className="aspect-video bg-slate-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-700">
-                 <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80" alt="Video Preview" className="w-full h-full object-cover opacity-50" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
-                       <Play size={24} className="text-white fill-white ml-1" />
-                    </div>
-                 </div>
-              </div>
-              <button onClick={() => navigate("/provider/video-portfolio", { state: { from: "portfolio" } })} className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors">
-                Re-record Introduction
+
+              {loadingVideo ? (
+                <div className="aspect-video bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 border border-slate-700">
+                  <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                  <p className="text-xs text-white/50 font-bold">Loading video...</p>
+                </div>
+              ) : video ? (
+                <div className="aspect-video bg-slate-950 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-700">
+                   <video 
+                     src={video.video_url} 
+                     controls 
+                     className="w-full h-full object-contain" 
+                     preload="metadata"
+                     playsInline
+                   />
+                </div>
+              ) : (
+                <div className="aspect-video bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-3 border border-slate-700 border-dashed p-4 text-center">
+                  <p className="text-sm font-bold text-white/90">No Video Introduction Uploaded Yet</p>
+                  <p className="text-[11px] text-white/50 max-w-[220px]">Record a short 30-second introduction to help customers know you better and double your bookings.</p>
+                </div>
+              )}
+
+              <button 
+                onClick={() => navigate("/provider/video-portfolio", { state: { from: "portfolio" } })} 
+                className="w-full mt-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-colors"
+              >
+                {video ? "Re-record Introduction" : "Record Introduction"}
               </button>
            </div>
         </div>

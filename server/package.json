@@ -6,6 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "migrate": "tsx src/db/migrate.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src/ --ext .ts",

@@ -5,6 +5,9 @@ import {
   CheckCircle2, ChevronRight, Clock, FileText, Upload,
   Trash2, Plus, Sparkles, AlertCircle, Image as ImageIcon
 } from 'lucide-react';
+import { uploadProviderVideo, replaceProviderVideo, getProviderVideo } from '@/lib/supabase';
+import { useApp } from '@/context/AppContext';
+import axios from 'axios';
 
 interface PhotoPair {
   id: string;
@@ -21,15 +24,28 @@ interface Certificate {
 
 const VideoPortfolio = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, providerRegistrationDraft, dispatch } = useApp();
 
   // Video state
   const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>('idle');
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [providerId, setProviderId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notification, setNotification] = useState("");
 
   const showError = (msg: string) => {
     setError(msg);
     setTimeout(() => setError(""), 3000);
+  };
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
   };
 
   const [isRecording, setIsRecording] = useState(false);
@@ -40,6 +56,38 @@ const VideoPortfolio = () => {
   const recordedChunksRef = useRef<BlobPart[]>([]);
 
   const videoGalleryRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const checkExistingVideo = async () => {
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        const res = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
+        if (res.data.success && res.data.data.provider) {
+          const pId = res.data.data.provider.id;
+          setProviderId(pId);
+          const activeVideo = await getProviderVideo(pId);
+          if (activeVideo) {
+            setVideoUri(activeVideo.video_url);
+            setVideoState('uploaded');
+          }
+        }
+      } catch (err) {
+        console.warn("Assuming onboarding mode, provider not registered yet");
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkExistingVideo();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (providerRegistrationDraft?.videoFile && !videoUri) {
+      setVideoFile(providerRegistrationDraft.videoFile);
+      setVideoUri(URL.createObjectURL(providerRegistrationDraft.videoFile));
+      setVideoState('recorded');
+    }
+  }, [providerRegistrationDraft?.videoFile, videoUri]);
 
   const startCamera = async () => {
     try {
@@ -78,7 +126,9 @@ const VideoPortfolio = () => {
 
       recorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        setVideoUri(URL.createObjectURL(blob));
+        const file = new File([blob], 'introduction_video.webm', { type: 'video/webm' });
+        setVideoFile(file);
+        setVideoUri(URL.createObjectURL(file));
         setVideoState('recorded');
       };
 
@@ -118,12 +168,12 @@ const VideoPortfolio = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ['video/mp4', 'video/quicktime', 'video/3gpp'];
+    const validTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
     const ext = file.name.split('.').pop()?.toLowerCase();
-    const validExts = ['mp4', 'mov', '3gp'];
+    const validExts = ['mp4', 'mov', 'webm'];
 
     if (!validTypes.includes(file.type) && !validExts.includes(ext || '')) {
-      showError('Invalid format. Only .mp4, .mov, .3gp are allowed.');
+      showError('Invalid format. Only .mp4, .mov, .webm are allowed.');
       e.target.value = '';
       return;
     }
@@ -134,15 +184,30 @@ const VideoPortfolio = () => {
       return;
     }
 
-    const uri = URL.createObjectURL(file);
-    setVideoUri(uri);
-    setVideoState('recorded');
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    tempVideo.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(tempVideo.src);
+      if (tempVideo.duration > 30) {
+        showError('Video must be 30 seconds or less.');
+        return;
+      }
+      setVideoFile(file);
+      const uri = URL.createObjectURL(file);
+      setVideoUri(uri);
+      setVideoState('recorded');
+    };
+    tempVideo.onerror = () => {
+      showError('Failed to load video file.');
+    };
+    tempVideo.src = URL.createObjectURL(file);
     e.target.value = '';
   };
 
   const resetRecording = () => {
     setVideoState('idle');
     setVideoUri(null);
+    setVideoFile(null);
     setRecordingTime(0);
     setIsRecording(false);
   };
@@ -263,30 +328,46 @@ const VideoPortfolio = () => {
   const removeCertificate = (id: string) => {
     setCertificates(certificates.filter((c) => c.id !== id));
   };
-  // TODO: Rollback this change. Uncomment the line below to enforce video upload before proceeding.
-  // const canProceed = videoState === 'uploaded';
-  const canProceed = true; // Temporary bypass
+  const canProceed = videoState === 'uploaded' || videoUri !== null || videoFile !== null;
 
-  const location = useLocation();
   const from = location.state?.from;
 
-  const handleNext = useCallback(() => {
-    if (from === "portfolio") {
-      navigate('/provider/portfolio');
+  const handleNext = useCallback(async () => {
+    if (providerId) {
+      if (!videoFile) {
+        // No new video recorded, just go back
+        navigate('/provider/portfolio');
+        return;
+      }
+      setIsUploading(true);
+      setUploadProgress(10);
+      try {
+        await replaceProviderVideo(providerId, videoFile, (p) => setUploadProgress(p));
+        showNotification("Video Introduction uploaded successfully.");
+        setTimeout(() => navigate('/provider/portfolio'), 1000);
+      } catch (err) {
+        showError("Upload failed. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
     } else {
+      // Onboarding flow: save to context draft and continue
+      if (videoFile) {
+        dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { videoFile } });
+      }
       navigate('/provider/gps-consent');
     }
-  }, [navigate, from]);
+  }, [navigate, from, providerId, videoFile, dispatch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && canProceed) {
+      if (e.key === 'Enter' && canProceed && !isUploading) {
         handleNext();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canProceed, handleNext]);
+  }, [canProceed, handleNext, isUploading]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -301,6 +382,7 @@ const VideoPortfolio = () => {
 
       <div className="flex-1 p-5 pb-20 space-y-8 overflow-y-auto">
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-semibold">{error}</div>}
+        {notification && <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl text-sm font-semibold">{notification}</div>}
         {/* ═══ SECTION 1: VIDEO INTRODUCTION ═══ */}
         <section>
           <div className="flex items-center gap-3 mb-3.5">
@@ -314,7 +396,12 @@ const VideoPortfolio = () => {
           </div>
 
           <div className="bg-white rounded-[20px] p-5 shadow-[0_4px_20px_rgba(3,9,22,0.06)]">
-            {videoState === 'idle' && (
+            {loading ? (
+              <div className="rounded-2xl overflow-hidden mb-4 h-[260px] bg-slate-50 flex flex-col items-center justify-center gap-3">
+                <div className="w-10 h-10 border-4 border-primary/25 border-t-primary rounded-full animate-spin" />
+                <p className="text-[13px] text-muted-foreground font-bold">Checking existing video...</p>
+              </div>
+            ) : videoState === 'idle' && (
               <>
                 <div className="rounded-2xl overflow-hidden mb-4 h-[260px] bg-[#1a1a1a] flex items-center justify-center">
                   <div className="flex flex-col items-center justify-center gap-3 w-full h-full bg-gray-100">
@@ -349,7 +436,7 @@ const VideoPortfolio = () => {
                     <span className="text-[14px] font-bold text-white">Gallery</span>
                   </button>
                 </div>
-                <input type="file" accept=".mp4,.mov,.3gp,video/mp4,video/quicktime,video/3gpp" ref={videoGalleryRef} className="hidden" onChange={handleVideoUpload} />
+                <input type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" ref={videoGalleryRef} className="hidden" onChange={handleVideoUpload} />
               </>
             )}
 
@@ -461,6 +548,18 @@ const VideoPortfolio = () => {
                   <RotateCcw size={14} className="text-primary" />
                   <span className="text-[13px] font-semibold text-primary">Re-record video</span>
                 </button>
+              </div>
+            )}
+
+            {isUploading && (
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-xs font-bold text-muted-foreground">
+                  <span>Uploading to Supabase...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all duration-300 animate-pulse" style={{ width: `${uploadProgress}%` }} />
+                </div>
               </div>
             )}
           </div>

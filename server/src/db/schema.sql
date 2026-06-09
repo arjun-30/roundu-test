@@ -267,3 +267,17 @@ CREATE TABLE IF NOT EXISTS penny_drop_queue (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_reason VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged_at TIMESTAMP;
+
+-- Provider Video Portfolios Table
+CREATE TABLE IF NOT EXISTS provider_video_portfolios (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    video_url TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'Active',
+    duration_seconds INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_video_portfolios_provider ON provider_video_portfolios(provider_id);

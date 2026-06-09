@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
+import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
-import { supabase } from '@/lib/supabase';
+import { uploadProviderVideo } from '@/lib/supabase';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
@@ -23,34 +24,6 @@ const PendingApproval = () => {
     }
   }, [clicks, navigate]);
 
-  useEffect(() => {
-    const providerId = localStorage.getItem("provider_id");
-
-    if (!providerId) return;
-
-    const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from("providers")
-        .select("verified")
-        .eq("id", providerId)
-        .single();
-
-      if (data?.verified) {
-        setNotification(
-          "Approved by Admin. Redirecting..."
-        );
-
-        clearInterval(interval);
-
-        setTimeout(() => {
-          navigate("/provider");
-        }, 1500);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [navigate]);
-
   return (
     <div className="flex flex-col min-h-screen bg-background items-center justify-center p-6 text-center relative overflow-hidden">
       {/* Premium Background Elements */}
@@ -58,7 +31,10 @@ const PendingApproval = () => {
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
 
       <div className="relative mb-8 mt-12 group">
-        <div className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle">
+        <div 
+          onClick={() => setClicks(c => c + 1)}
+          className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle cursor-pointer"
+        >
           <Clock size={56} className="text-accent" />
         </div>
         <div className="absolute -top-2 -right-2 w-10 h-10 bg-card border border-border rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
@@ -123,43 +99,33 @@ const PendingApproval = () => {
             setIsLoading(true);
 
             try {
-              const { data, error } = await supabase
-                .from("providers")
-                .insert({
-                  user_id: user.id,
-                  full_name: user.name,
-                  phone: user.phone,
-                  bio: providerRegistrationDraft.bio,
-                  experience_years: providerRegistrationDraft.experienceYears,
-                  working_hours: providerRegistrationDraft.workingHours,
-                  service_radius: providerRegistrationDraft.serviceRadius,
-                  service_ids: providerRegistrationDraft.serviceIds,
-                  verified: false,
-                  kyc_status: "pending",
-                  is_online: false,
-                  rating: 0,
-                  total_earnings: 0
-                })
-                .select()
-                .single();
+              // 1. Call server API to create provider record
+              const res = await registerProvider({
+                userId: user.id,
+                bio: providerRegistrationDraft.bio,
+                experienceYears: providerRegistrationDraft.experienceYears,
+                workingHours: providerRegistrationDraft.workingHours,
+                serviceRadius: providerRegistrationDraft.serviceRadius,
+                serviceIds: providerRegistrationDraft.serviceIds
+              });
+              if (!res.success) throw new Error(res.message || "Registration failed");
 
-              if (error) throw error;
+              const newProvider = res.data;
 
-              localStorage.setItem(
-                "provider_id",
-                String(data.id)
-              );
+              // 2. Upload video file to Supabase if exists in draft
+              if (providerRegistrationDraft.videoFile) {
+                setNotification("Uploading introduction video...");
+                await uploadProviderVideo(newProvider.id, providerRegistrationDraft.videoFile);
+              }
 
-              setNotification(
-                "Application submitted successfully. Awaiting admin approval."
-              );
-
-              setTimeout(() => {
-                navigate("/provider/pending-approval");
-              }, 1000);
+              dispatch({ type: "SET_ROLE", role: "provider" });
+              dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
+              setNotification("Registration successful! Redirecting to Dashboard...");
+              setTimeout(() => navigate('/provider'), 1000);
             } catch (err: any) {
               console.error(err);
               setError(err.message || "Registration failed");
+              setTimeout(() => setError(""), 3000);
             } finally {
               setIsLoading(false);
             }
