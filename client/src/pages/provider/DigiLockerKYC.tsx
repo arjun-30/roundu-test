@@ -370,6 +370,7 @@ const DigiLockerKYC = () => {
           <span className="text-[15px] font-bold">Continue to Portfolio</span>
           <ChevronRight size={18} />
         </button>
+
       </div>
     </div>
   );

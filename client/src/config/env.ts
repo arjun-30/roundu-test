@@ -11,8 +11,8 @@ const VERCEL_URL = "https://roundu-app.vercel.app"; // The proxy server
 // If running on the web, use a relative path so Vercel handles the proxying directly.
 export const API_BASE_URL = Capacitor.isNativePlatform()
   ? `${VERCEL_URL}/api`
-  : import.meta.env.PROD 
-    ? "/api" 
+  : import.meta.env.PROD
+    ? "/api"
     : import.meta.env.VITE_API_URL || `${RAILWAY_URL}/api`;
 
 // Socket connects directly to the backend to avoid Vercel's Serverless Proxy dropping WebSockets

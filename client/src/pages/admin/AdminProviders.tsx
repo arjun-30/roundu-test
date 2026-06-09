@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Search, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,8 +18,16 @@ interface Provider {
     booking_count: number;
 }
 
-function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id: string, val: boolean) => void }) {
-    const [open, setOpen] = useState(false);
+function ProviderRow({
+    provider,
+    onVerify,
+    highlight,
+}: {
+    provider: Provider;
+    onVerify: (id: string, val: boolean) => void;
+    highlight?: boolean;
+}) {
+    const [open, setOpen] = useState(highlight ?? false);
     const [updating, setUpdating] = useState(false);
 
     const handleVerify = async (e: React.MouseEvent, val: boolean) => {
@@ -35,7 +44,7 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
         <>
             <tr
                 onClick={() => setOpen(o => !o)}
-                className="border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors"
+                className={`border-b border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors ${highlight ? "bg-amber-50/60 ring-1 ring-inset ring-amber-200" : ""}`}
             >
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -74,7 +83,7 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
                                 disabled={updating}
                                 className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
                             >
-                                Approve
+                                {updating ? "…" : "Approve"}
                             </button>
                         ) : (
                             <button
@@ -82,7 +91,7 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
                                 disabled={updating}
                                 className="px-2.5 py-1 rounded-lg bg-red-100 text-red-600 text-xs font-semibold hover:bg-red-200 disabled:opacity-50 transition-colors"
                             >
-                                Revoke
+                                {updating ? "…" : "Revoke"}
                             </button>
                         )}
                     </div>
@@ -122,6 +131,27 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
                                         <p className="font-semibold text-slate-700 mt-0.5">{new Date(provider.created_at).toLocaleDateString("en-IN")}</p>
                                     </div>
                                 </div>
+
+                                {/* Inline approve/revoke inside the expanded panel too */}
+                                <div className="pb-3">
+                                    {!provider.verified ? (
+                                        <button
+                                            onClick={e => handleVerify(e, true)}
+                                            disabled={updating}
+                                            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                                        >
+                                            {updating ? "Approving…" : "Approve this provider"}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={e => handleVerify(e, false)}
+                                            disabled={updating}
+                                            className="px-4 py-2 rounded-xl bg-red-100 text-red-600 text-sm font-semibold hover:bg-red-200 disabled:opacity-50 transition-colors"
+                                        >
+                                            {updating ? "Revoking…" : "Revoke verification"}
+                                        </button>
+                                    )}
+                                </div>
                             </motion.div>
                         </td>
                     </tr>
@@ -132,14 +162,32 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
 }
 
 export default function AdminProviders() {
+    const [searchParams] = useSearchParams();
+    const highlightId = searchParams.get("highlight");
+
     const [providers, setProviders] = useState<Provider[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
     const [filterService, setFilterService] = useState("all");
-    const [filterVerified, setFilterVerified] = useState("all");
+    const [filterVerified, setFilterVerified] = useState(
+        searchParams.get("status") === "pending"
+            ? "pending"
+            : searchParams.get("status") === "verified"
+                ? "verified"
+                : "all"
+    );
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 20;
+
+    // Keep the filter in sync if the URL changes while already on this page
+    // (e.g. clicking a notification when Providers is already open).
+    useEffect(() => {
+        const status = searchParams.get("status");
+        if (status === "pending") setFilterVerified("pending");
+        else if (status === "verified") setFilterVerified("verified");
+        setPage(1);
+    }, [searchParams]);
 
     const fetchProviders = useCallback(async () => {
         setLoading(true);
@@ -191,12 +239,15 @@ export default function AdminProviders() {
                         </h2>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+                    <button
+                        onClick={() => { setFilterVerified("pending"); setPage(1); }}
+                        className="bg-white rounded-2xl border border-slate-100 p-4 text-left hover:border-amber-300 hover:shadow-sm transition-all"
+                    >
                         <p className="text-slate-500 text-sm">Pending</p>
                         <h2 className="text-3xl font-bold text-orange-500">
                             {providers.filter(p => !p.verified).length}
                         </h2>
-                    </div>
+                    </button>
 
                     <div className="bg-white rounded-2xl border border-slate-100 p-4">
                         <p className="text-slate-500 text-sm">Online</p>
@@ -271,7 +322,14 @@ export default function AdminProviders() {
                                     </div>
 
                                 </td></tr>
-                                : paginated.map(p => <ProviderRow key={p.id} provider={p} onVerify={handleVerify} />)
+                                : paginated.map(p => (
+                                    <ProviderRow
+                                        key={p.id}
+                                        provider={p}
+                                        onVerify={handleVerify}
+                                        highlight={p.id === highlightId}
+                                    />
+                                ))
                         }
                     </tbody>
                 </table>

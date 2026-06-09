@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Send, Phone, MoreVertical, MessageSquare,
-  Mic, Square, Trash2, Play, Pause, CheckCheck, MicOff,
-  Navigation, Minus, ChevronUp
+  Square, Trash2, Play, Pause, CheckCheck, MicOff,
+  Navigation, ChevronUp
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getProviderById } from "@/data/mockData";
@@ -327,16 +327,7 @@ const Chat = () => {
           </p>
         </div>
 
-        {/* Minimize button */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsMinimized(true)}
-          className="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-transparent hover:border-primary/10 flex items-center justify-center transition-colors"
-          title="Minimize chat"
-        >
-          <Minus size={16} className="text-muted-foreground" strokeWidth={2.5} />
-        </motion.button>
+
 
         <div className="flex gap-1">
           <motion.button
@@ -395,7 +386,7 @@ const Chat = () => {
               </div>
               <h3 className="text-[18px] font-extrabold text-foreground tracking-tight">Start the Conversation</h3>
               <p className="text-[14px] font-medium text-muted-foreground max-w-[220px] leading-relaxed">
-                Send a message or voice note to coordinate with your {role === 'customer' ? 'provider' : 'customer'}.
+                Send a message to coordinate with your {role === 'customer' ? 'provider' : 'customer'}.
               </p>
             </motion.div>
           ) : (
@@ -566,9 +557,6 @@ const Chat = () => {
             </motion.div>
           ) : (
             <div className="flex items-center gap-3">
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={startRecording} className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center text-primary transition-colors">
-                <Mic size={22} strokeWidth={2.5} />
-              </motion.button>
               <input
                 ref={inputRef}
                 value={message}

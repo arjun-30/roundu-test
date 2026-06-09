@@ -1,5 +1,5 @@
 import {
-  Zap, Droplets, Sparkles, Car, User, LucideIcon, SprayCan
+  Zap, Droplets, Sparkles, Car, User, LucideIcon, SprayCan, Wind, WashingMachine, Droplet, Wrench
 } from "lucide-react";
 
 export interface Service {
@@ -139,6 +139,41 @@ export const services: Service[] = [
     commonProblems: ["Custom requirement", "Technical fix", "General maintenance"],
     relatedServiceIds: ["plumber", "electrician"]
   },
+
+  {
+    id: "ac-cleaning",
+    label: "AC Repair",
+    icon: Wind,
+    desc: "AC Maintenance",
+    commonProblems: [
+      "AC Not Cooling",
+      "Gas Refill",
+      "Water Leakage",
+      "AC Making Noise",
+      "Low Airflow",
+      "Remote Not Working",
+      "AC Not Turning On",
+      "Other"
+    ],
+    relatedServiceIds: ["electrician", "housekeeping"]
+  },
+  {
+    id: "washing-machine-cleaning",
+    label: "Washing Machine Repair",
+    icon: WashingMachine,
+    desc: "Washing Machine Maintenance",
+    commonProblems: [
+      "Machine Not Starting",
+      "Water Not Draining",
+      "Excessive Vibration",
+      "Drum Not Spinning",
+      "Water Leakage",
+      "Door Lock Issue",
+      "Motor Problem",
+      "Other"
+    ],
+    relatedServiceIds: ["housekeeping", "plumber"]
+  },
 ];
 
 export const getServiceById = (id: string) => services.find((s) => s.id === id);
@@ -147,14 +182,18 @@ export interface QuickFix {
   id: string;
   label: string;
   icon: LucideIcon;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
 }
 
 export const quickFixes: QuickFix[] = [
-  { id: "pipe", label: "Pipe leakage", icon: Droplets },
-  { id: "switch", label: "Switch repair", icon: Zap },
-  { id: "carwash", label: "Car detailing", icon: Car },
-  { id: "cleaning", label: "Deep cleaning", icon: SprayCan },
-  { id: "driver", label: "Request drive", icon: User },
+  { id: "pipe", label: "Pipe Leakage", icon: Wrench, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
+  { id: "switch", label: "Switch Repair", icon: Zap, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
+  { id: "carwash", label: "Car Detailing", icon: Car, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
+  { id: "cleaning", label: "Deep Cleaning", icon: SprayCan, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
+  { id: "water", label: "Water Leakage", icon: Droplet, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
+  { id: "drain", label: "Drain Cleaning", icon: Droplets, bgClass: "bg-[#152E4B]", textClass: "text-white", borderClass: "border-transparent" },
 ];
 
 export interface PopularTask {
@@ -300,18 +339,6 @@ export const smartSuggestions: SmartSuggestion[] = [
     priority: 7,
   },
   // ── Plumbing ──────────────────────────────────────────────────
-  {
-    id: "sug-plumb-1",
-    title: "Water leakage check recommended",
-    subtitle: "Small leaks waste 1000s of litres monthly.",
-    serviceId: "plumber",
-    emoji: "💧",
-    accentColor: "bg-cyan-100",
-    textColor: "text-cyan-800",
-    season: "monsoon",
-    category: "Plumbing",
-    priority: 9,
-  },
   {
     id: "sug-plumb-2",
     title: "Kitchen drain cleaning due",

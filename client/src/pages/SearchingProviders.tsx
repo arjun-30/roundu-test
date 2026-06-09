@@ -81,6 +81,35 @@ const SearchingProviders = () => {
     null
   );
 
+  // Timer state for provider search timeout
+  const [searchStartTime, setSearchStartTime] = useState<number>(() => {
+    const stored = localStorage.getItem('search_start_time');
+    if (stored) return Number(stored);
+    const now = Date.now();
+    localStorage.setItem('search_start_time', String(now));
+    return now;
+  });
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(120);
+  const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
+  const [showTimeoutModal, setShowTimeoutModal] = useState<boolean>(false);
+
+  // Effect to update countdown every second
+  useEffect(() => {
+    const update = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - searchStartTime) / 1000);
+      const secs = Math.max(120 - elapsed, 0);
+      setRemainingSeconds(secs);
+      if (secs <= 0 && !hasTimedOut) {
+        setHasTimedOut(true);
+        setShowTimeoutModal(true);
+      }
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [searchStartTime, hasTimedOut]);
+
   const {
     user,
     nearbyProviders,
@@ -371,7 +400,46 @@ const SearchingProviders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF3F8] overflow-hidden flex flex-col relative font-['DM_Sans',sans-serif]">
+    <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
+  
+  {/* TIMER DISPLAY */}
+  <div className="px-5 mt-2 text-center text-sm text-amber-700 font-bold">
+    Time Remaining: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+  </div>
+
+  {/* TIMEOUT MODAL */}
+  {showTimeoutModal && (
+    <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">No Providers Available</h2>
+        <p className="text-gray-600 mb-6">
+          We couldn't find an available provider within 5 km of your location right now.
+          Please try again later or schedule the service for another time.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => {
+              localStorage.removeItem('search_start_time');
+              setHasTimedOut(false);
+              setShowTimeoutModal(false);
+              const now = Date.now();
+              localStorage.setItem('search_start_time', String(now));
+              setSearchStartTime(now);
+            }}
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
       {/* TOP BAR */}
       <div className="px-5 pt-6 pb-3 flex items-center gap-4 z-20 relative">
@@ -384,7 +452,7 @@ const SearchingProviders = () => {
       </div>
 
       {/* MAP */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="h-[320px] w-full flex-shrink-0 relative overflow-hidden">
 
         {/* GRID BACKGROUND */}
         <div
@@ -541,7 +609,7 @@ const SearchingProviders = () => {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex flex-col gap-3 max-h-[300px] overflow-y-auto mb-6"
+            className="flex flex-col gap-3 mb-6"
           >
             {receivedQuotes.map((q) => (
               <div

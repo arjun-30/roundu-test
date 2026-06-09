@@ -19,6 +19,13 @@ import { useCurrentLocation } from "@/hooks/useLocation";
 import { reverseGeocode } from "@/lib/mapProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
+const formatRupees = (amount: number): string => {
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, currentLocation } = useApp() as any;
@@ -90,7 +97,15 @@ const Dashboard = () => {
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
-  const earnings = completedJobs.reduce((s, j) => s + j.price, 0);
+  const earnings = completedJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
+  const todayDateStr = new Date().toDateString();
+  const todayEarnings = completedJobs
+    .filter((j: any) => {
+      if (!j.date || j.date === "Today") return true;
+      const d = new Date(j.date);
+      return !isNaN(d.getTime()) && d.toDateString() === todayDateStr;
+    })
+    .reduce((s: number, j: any) => s + (Number(j.price) || 0), 0);
 
   const isBusy = providerRequests.some((r: any) => {
     // Check if job is stale (older than 24 hours)
@@ -730,7 +745,7 @@ const Dashboard = () => {
                 </p>
 
                 <h2 className="text-3xl font-black mt-2">
-                  ₹{walletBalance}
+                  ₹{formatRupees(Number(walletBalance) || 0)}
                 </h2>
               </div>
 
@@ -740,7 +755,7 @@ const Dashboard = () => {
             <div className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Commission Due</span>
-                <span className="font-bold">₹{commissionDue}</span>
+                <span className="font-bold">₹{formatRupees(Number(commissionDue) || 0)}</span>
               </div>
 
               <div className="flex justify-between">
@@ -787,7 +802,7 @@ const Dashboard = () => {
                 <Wallet size={14} strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Earnings</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">₹{earnings}</p>
+              <p className="text-[24px] font-black text-foreground tracking-tight">₹{formatRupees(todayEarnings)}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Earned Today</p>
             </motion.div>
             <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
@@ -863,7 +878,7 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Earnings</p>
-                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">₹{earnings} earned</p>
+                <p className="text-[11px] font-bold text-muted-foreground mt-0.5">₹{formatRupees(earnings)} earned</p>
               </div>
             </motion.button>
 
@@ -1099,8 +1114,7 @@ const Dashboard = () => {
           </div>
           <div className="bg-white border-2 border-transparent rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
             {completedJobs.slice(0, 3).map((job, idx) => {
-              const req = providerRequests.find(r => r.id === job.id);
-              const service = req ? getServiceById(req.serviceId) : null;
+              const service = getServiceById(job.serviceId);
 
               return (
                 <div key={job.id} className={`p-5 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors cursor-pointer ${idx !== 0 ? 'border-t-2 border-[#F8FAFC]' : ''}`}>
@@ -1113,7 +1127,7 @@ const Dashboard = () => {
                       <p className="text-[12px] font-bold text-muted-foreground mt-0.5">{job.date || 'Today'}</p>
                     </div>
                   </div>
-                  <p className="text-[16px] font-black text-emerald-600">+₹{job.price}</p>
+                  <p className="text-[16px] font-black text-emerald-600">+₹{formatRupees(Number(job.price) || 0)}</p>
                 </div>
               );
             })}

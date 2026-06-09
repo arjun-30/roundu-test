@@ -101,6 +101,8 @@ interface State {
       panVerified: boolean;
       bankVerified: boolean;
     };
+    videoFile?: File | null;
+    videoUrl?: string | null;
   };
   // New Flow State
   isNewUser: boolean;
@@ -251,6 +253,8 @@ const initialState: State = {
     workingHours: "All day",
     serviceRadius: 5,
     kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
+    videoFile: null,
+    videoUrl: null,
   },
   isNewUser: true,
   walletBalance: 0,
@@ -415,17 +419,48 @@ function reducer(state: State, action: Action): State {
           ...state.notifications
         ].slice(0, 20) : state.notifications;
 
+        const isCompleted = status === "completed" || status === "paid";
+        let updatedRequests = state.providerRequests;
+        let updatedCompleted = state.completedJobs;
+
+        if (isCompleted) {
+          const targetReq = state.providerRequests.find(r => r.id === normalizedId || r.id === bookingId);
+          if (targetReq) {
+            const enrichedReq = { ...targetReq, status: status as any, paid: action.data.paid ?? targetReq.paid };
+            updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
+            if (!updatedCompleted.some(c => c.id === targetReq.id)) {
+              updatedCompleted = [enrichedReq, ...updatedCompleted];
+            } else {
+              updatedCompleted = updatedCompleted.map(c => c.id === targetReq.id ? enrichedReq : c);
+            }
+          } else {
+            updatedCompleted = updatedCompleted.map(c =>
+              (c.id === normalizedId || c.id === bookingId) ? { ...c, status: status as any, paid: action.data.paid ?? c.paid } : c
+            );
+          }
+        } else {
+          updatedRequests = state.providerRequests.map((r) =>
+            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
+          );
+        }
+
         return {
           ...state,
-          providerRequests: state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
-          ),
+          providerRequests: updatedRequests,
+          completedJobs: updatedCompleted,
           notifications: newNotifications,
         };
       }
     }
-    case "SET_PROVIDER_REQUESTS":
-      return { ...state, providerRequests: action.requests };
+    case "SET_PROVIDER_REQUESTS": {
+      const completed = action.requests.filter((r: any) => r.status === "completed" || r.status === "paid");
+      const activeOrUpcoming = action.requests.filter((r: any) => r.status !== "completed" && r.status !== "paid");
+      return {
+        ...state,
+        providerRequests: activeOrUpcoming,
+        completedJobs: completed,
+      };
+    }
     case "SET_PHONE":
       return { ...state, phone: action.phone, user: { ...state.user, phone: action.phone } };
     case "SET_USER_ID":

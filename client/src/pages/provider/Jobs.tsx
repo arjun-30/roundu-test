@@ -1,12 +1,19 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
 import ProviderBottomNav from "@/components/ProviderBottomNav";
 import EmptyState from "@/components/EmptyState";
 import { Calendar as DateRangeCalendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
+
+const formatRupees = (amount: number): string => {
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 import {
   isWithinInterval,
   parseISO,
@@ -37,11 +44,11 @@ const Jobs = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { providerRequests, completedJobs } = useApp();
-  const [tab, setTab] = useState<JobTab>("upcoming");
+  const [tab, setTab] = useState<JobTab>("active");
   const [dateRanges, setDateRanges] = useState<JobsDateRanges>(emptyDateRanges);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarClosing, setCalendarClosing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"today" | "week" | "month">("week");
+  const [activeFilter] = useState<"today">("today");
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const today = startOfToday();
@@ -172,6 +179,11 @@ const Jobs = () => {
       return (day: Date) => !isBefore(day, today);
     }
 
+    if (targetTab === "active") {
+      // Only allow selecting today; disable all other dates
+      return (day: Date) => !isSameDay(day, today);
+    }
+
     const { start, end } = getActiveFilterRange();
     return (day: Date) => isBefore(day, startOfDay(start)) || isAfter(day, endOfDay(end));
   };
@@ -238,11 +250,10 @@ const Jobs = () => {
 
         {shouldRenderCalendar && (
           <div
-            className={`mt-2 overflow-hidden rounded-xl border ${styles.border} bg-white shadow-sm origin-top ${
-              calendarClosing
-                ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-200"
-                : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
-            }`}
+            className={`mt-2 overflow-hidden rounded-xl border ${styles.border} bg-white shadow-sm origin-top ${calendarClosing
+              ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-200"
+              : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+              }`}
           >
             <DateRangeCalendar
               initialFocus
@@ -264,7 +275,18 @@ const Jobs = () => {
                 day_disabled: "text-muted-foreground opacity-25 cursor-not-allowed bg-transparent hover:bg-transparent",
                 day_range_middle: styles.middle,
                 day_outside: "day-outside text-muted-foreground opacity-20 aria-selected:opacity-30",
+                nav_button_previous: tab === "active" ? "opacity-30 cursor-not-allowed" : "",
+                nav_button_next: tab === "active" ? "opacity-30 cursor-not-allowed" : "",
+                nav_button: tab === "active" ? "pointer-events-none opacity-30" : undefined,
               }}
+              components={
+                tab === "active"
+                  ? {
+                    IconLeft: (props) => <ChevronLeft className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />,
+                    IconRight: (props) => <ChevronRight className="h-4 w-4 opacity-30 cursor-not-allowed" {...props} />,
+                  }
+                  : undefined
+              }
             />
           </div>
         )}
@@ -275,18 +297,11 @@ const Jobs = () => {
   // Get filter range for Active tab based on selected chip
   const getActiveFilterRange = (): { start: Date; end: Date } => {
     const today = startOfToday();
-    switch (activeFilter) {
-      case "today":
-        return { start: today, end: endOfDay(today) };
-      case "week":
-        return { start: startOfWeek(today), end: endOfWeek(today) };
-      case "month":
-        return { start: startOfMonth(today), end: endOfMonth(today) };
-      default:
-        return { start: startOfWeek(today), end: endOfWeek(today) };
-    }
+    return {
+      start: today,
+      end: endOfDay(today),
+    };
   };
-
   const filteredJobs = useMemo(() => {
     const now = new Date();
     const upcomingRange = dateRanges.upcoming;
@@ -380,11 +395,11 @@ const Jobs = () => {
   const completedJobsList = filteredJobs.completed;
 
   // Calculate statistics
-  const upcomingEarnings = upcomingJobs.reduce((sum, job) => sum + (job.price || 0), 0);
+  const upcomingEarnings = upcomingJobs.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
   const activeTodayEarnings = activeJobs
     .filter((job) => isSameDay(parseJobDate(job.date), today))
-    .reduce((sum, job) => sum + (job.price || 0), 0);
-  const completedEarnings = completedJobsList.reduce((sum, job) => sum + (job.price || 0), 0);
+    .reduce((sum, job) => sum + (Number(job.price) || 0), 0);
+  const completedEarnings = completedJobsList.reduce((sum, job) => sum + (Number(job.price) || 0), 0);
 
 
   return (
@@ -400,15 +415,6 @@ const Jobs = () => {
       {/* Tab Buttons */}
       <div className="px-5 mt-6 flex gap-2">
         <button
-          onClick={() => setTab("upcoming")}
-          className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "upcoming"
-            ? "bg-amber-500 text-white shadow-md"
-            : "bg-input text-muted-foreground hover:bg-input/80"
-            }`}
-        >
-          Upcoming ({upcomingJobs.length})
-        </button>
-        <button
           onClick={() => setTab("active")}
           className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "active"
             ? "bg-amber-500 text-white shadow-md"
@@ -416,6 +422,15 @@ const Jobs = () => {
             }`}
         >
           Active ({activeJobs.length})
+        </button>
+        <button
+          onClick={() => setTab("upcoming")}
+          className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all ${tab === "upcoming"
+            ? "bg-amber-500 text-white shadow-md"
+            : "bg-input text-muted-foreground hover:bg-input/80"
+            }`}
+        >
+          Upcoming ({upcomingJobs.length})
         </button>
         <button
           onClick={() => setTab("completed")}
@@ -435,7 +450,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Expected Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{upcomingEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(upcomingEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Job Count</p>
@@ -490,7 +505,7 @@ const Jobs = () => {
                           <MapPin size={12} /> {job.address}
                         </span>
                       </div>
-                      <p className="text-sm font-bold text-amber-700 mt-3">₹{job.price}</p>
+                      <p className="text-sm font-bold text-amber-700 mt-3">₹{formatRupees(Number(job.price) || 0)}</p>
                     </button>
                   );
                 })}
@@ -507,7 +522,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Today's Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{activeTodayEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(activeTodayEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Active Jobs</p>
@@ -516,27 +531,24 @@ const Jobs = () => {
           </div>
 
           {/* Filter Chips */}
-          <div className="px-5 mt-4 flex gap-2">
-            {(["today", "week", "month"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => {
-                  setActiveFilter(filter);
-                  setDateRanges((prev) => ({ ...prev, active: undefined }));
-                }}
-                className={`flex-1 py-2 px-3 text-[11px] font-bold rounded-lg transition-all ${activeFilter === filter
-                  ? "bg-amber-500 text-white shadow-md"
-                  : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
-                  }`}
-              >
-                {filter === "today" && "Today"}
-                {filter === "week" && "This Week"}
-                {filter === "month" && "This Month"}
-              </button>
-            ))}
-          </div>
 
-          <DateRangeControl label="Active Jobs" />
+
+          <div className="px-5 mt-3">
+            <div className="w-full min-h-14 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <span className="h-10 w-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center text-amber-700">
+                <Calendar size={18} />
+              </span>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-600">
+                  Active Jobs
+                </p>
+                <p className="text-sm font-extrabold text-amber-700">
+                  Today
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Legend */}
           <div ref={resultsRef} className="px-5 mt-3 flex items-center gap-2 scroll-mt-24">
@@ -607,7 +619,7 @@ const Jobs = () => {
           <div className="px-5 mt-4 flex gap-2">
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Total Earnings</p>
-              <p className="text-lg font-bold text-amber-700 mt-1">₹{completedEarnings}</p>
+              <p className="text-lg font-bold text-amber-700 mt-1">₹{formatRupees(completedEarnings)}</p>
             </div>
             <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-semibold">Completed</p>
@@ -651,7 +663,7 @@ const Jobs = () => {
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">{job.customerName}</p>
                       <p className="text-[11px] text-muted-foreground mb-2">{job.date}</p>
-                      <p className="text-sm font-extrabold text-amber-700">+₹{job.price}</p>
+                      <p className="text-sm font-extrabold text-amber-700">+₹{formatRupees(Number(job.price) || 0)}</p>
                     </div>
                   );
                 })}
