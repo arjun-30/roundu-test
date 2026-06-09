@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { uploadProviderVideo, replaceProviderVideo, getProviderVideo } from '@/lib/supabase';
 import { useApp } from '@/context/AppContext';
-import axios from 'axios';
+import { fetchProviderDashboard } from '@/lib/api';
 
 interface PhotoPair {
   id: string;
@@ -62,18 +62,28 @@ const VideoPortfolio = () => {
       if (!user?.id) return;
       try {
         setLoading(true);
-        const res = await axios.get(`/api/v1/providers/dashboard?userId=${user.id}`);
-        if (res.data.success && res.data.data.provider) {
-          const pId = res.data.data.provider.id;
+        console.log('[VideoPortfolio] Fetching provider dashboard for userId:', user.id);
+        const res = await fetchProviderDashboard(user.id);
+        if (res.success && res.data?.provider) {
+          const pId = res.data.provider.id;
+          console.log('[VideoPortfolio] Provider ID from dashboard:', pId);
           setProviderId(pId);
           const activeVideo = await getProviderVideo(pId);
           if (activeVideo) {
+            console.log('[VideoPortfolio] Existing video found:', activeVideo.video_url);
             setVideoUri(activeVideo.video_url);
             setVideoState('uploaded');
           }
+        } else {
+          // Provider not yet registered — use user.id as fallback key so video
+          // upload can still work during the registration flow
+          console.warn('[VideoPortfolio] No provider record found. Using user.id as fallback provider key.');
+          setProviderId(user.id);
         }
       } catch (err) {
-        console.warn("Assuming onboarding mode, provider not registered yet");
+        console.warn('[VideoPortfolio] Dashboard API failed. Using user.id as fallback provider key.', err);
+        // Fallback: use user.id so video upload still works
+        setProviderId(user.id);
       } finally {
         setLoading(false);
       }
@@ -333,31 +343,45 @@ const VideoPortfolio = () => {
   const from = location.state?.from;
 
   const handleNext = useCallback(async () => {
-    if (providerId) {
+    const isProviderMode = location.state?.from === 'portfolio' || !!providerId;
+    
+    if (isProviderMode || providerId) {
       if (!videoFile) {
-        // No new video recorded, just go back
+        // No new video recorded, just go back to portfolio
         navigate('/provider/portfolio');
         return;
       }
+      if (!providerId) {
+        showError('Could not identify provider. Please go back and try again.');
+        return;
+      }
       setIsUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(5);
       try {
-        await replaceProviderVideo(providerId, videoFile, (p) => setUploadProgress(p));
-        showNotification("Video Introduction uploaded successfully.");
+        console.log('[VideoPortfolio] Starting upload for providerId:', providerId);
+        console.log('[VideoPortfolio] Video file:', videoFile.name, 'size:', videoFile.size, 'type:', videoFile.type);
+        await replaceProviderVideo(providerId, videoFile, (p) => {
+          setUploadProgress(p);
+          console.log('[VideoPortfolio] Upload progress:', p + '%');
+        });
+        console.log('[VideoPortfolio] ✅ Upload complete!');
+        showNotification('Video Introduction uploaded successfully.');
         setTimeout(() => navigate('/provider/portfolio'), 1000);
-      } catch (err) {
-        showError("Upload failed. Please try again.");
+      } catch (err: any) {
+        console.error('[VideoPortfolio] ❌ Upload failed:', err);
+        const msg = err?.message || err?.error_description || 'Upload failed. Please try again.';
+        showError(msg);
       } finally {
         setIsUploading(false);
       }
     } else {
-      // Onboarding flow: save to context draft and continue
+      // Pure onboarding flow — no provider record yet, save to context draft
       if (videoFile) {
-        dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { videoFile } });
+        dispatch({ type: 'UPDATE_REGISTRATION_DRAFT', patch: { videoFile } });
       }
       navigate('/provider/gps-consent');
     }
-  }, [navigate, from, providerId, videoFile, dispatch]);
+  }, [navigate, location.state, providerId, videoFile, dispatch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

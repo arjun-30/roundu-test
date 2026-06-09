@@ -7,6 +7,16 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 
 const isMock = supabaseUrl.includes('placeholder') || supabaseKey === 'placeholder-key';
 
+// Startup diagnostic — visible in browser console in any environment
+if (isMock) {
+  console.warn(
+    '[Supabase] ⚠️ MOCK MODE ACTIVE — videos will be stored in localStorage, NOT Supabase.\n' +
+    'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment to enable real uploads.'
+  );
+} else {
+  console.info(`[Supabase] ✅ Real mode — connected to ${supabaseUrl.replace('https://', '').split('.')[0]}.***.supabase.co`);
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
