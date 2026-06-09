@@ -102,6 +102,8 @@ interface State {
       panVerified: boolean;
       bankVerified: boolean;
     };
+    videoFile?: File | null;
+    videoUrl?: string | null;
   };
   // New Flow State
   isNewUser: boolean;
@@ -255,6 +257,8 @@ const initialState: State = {
     workingHours: "All day",
     serviceRadius: 5,
     kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
+    videoFile: null,
+    videoUrl: null,
   },
   isNewUser: true,
   walletBalance: 0,

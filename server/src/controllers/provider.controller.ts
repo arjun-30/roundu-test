@@ -121,8 +121,8 @@ export const registerProvider = async (req: Request, res: Response) => {
   try {
     const { userId, bio, experienceYears, workingHours, serviceRadius, serviceIds } = req.body;
     
-    if (!userId || !serviceIds || serviceIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
     const provider = await ProviderModel.register(userId, {
