@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -99,13 +99,16 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 // Provider Route Guard
 const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, role, user, dispatch } = useApp();
+
+  useEffect(() => {
+    if (isAuthenticated && user?.accountType === "provider" && role !== "provider") {
+      dispatch({ type: "SET_ROLE", role: "provider" });
+    }
+  }, [isAuthenticated, user?.accountType, role, dispatch]);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user.accountType !== "provider") {
     return <Navigate to="/home" replace />;
-  }
-  // Auto-switch back to provider role when accessing provider dashboard/profile/pages
-  if (role !== "provider") {
-    dispatch({ type: "SET_ROLE", role: "provider" });
   }
   return children;
 };
@@ -128,12 +131,17 @@ const MobileRoutesLayout = () => (
 
 // Smart Role Routing Logic
 const SmartRoleRoute = () => {
-  const { user, dispatch, providerRegistrationDraft } = useApp();
+  const { user, role, dispatch, providerRegistrationDraft } = useApp();
   const phone = user.phone || "";
   const savedRole = phone ? getSavedRoleForPhone(phone) : null;
 
+  useEffect(() => {
+    if (savedRole && savedRole !== role) {
+      dispatch({ type: "SET_ROLE", role: savedRole });
+    }
+  }, [savedRole, role, dispatch]);
+
   if (savedRole) {
-    dispatch({ type: "SET_ROLE", role: savedRole });
     if (savedRole === "provider") {
       // If provider has completed service selection, go to dashboard; otherwise, go to service selection
       const hasSelectedServices = providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0;

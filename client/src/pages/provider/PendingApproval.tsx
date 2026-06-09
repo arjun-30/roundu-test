@@ -96,11 +96,13 @@ const PendingApproval = () => {
             try {
               const res = await registerProvider({
                 userId: user.id,
-                bio: providerRegistrationDraft.bio,
-                experienceYears: providerRegistrationDraft.experienceYears,
-                workingHours: providerRegistrationDraft.workingHours,
-                serviceRadius: providerRegistrationDraft.serviceRadius,
-                serviceIds: providerRegistrationDraft.serviceIds
+                bio: providerRegistrationDraft.bio || "Professional Service Provider",
+                experienceYears: providerRegistrationDraft.experienceYears || 2,
+                workingHours: providerRegistrationDraft.workingHours || "9 AM - 6 PM",
+                serviceRadius: providerRegistrationDraft.serviceRadius || 15,
+                serviceIds: providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0 
+                  ? providerRegistrationDraft.serviceIds 
+                  : ['plumber']
               });
               if (!res.success) throw new Error(res.message || "Registration failed");
               dispatch({ type: "SET_ROLE", role: "provider" });
