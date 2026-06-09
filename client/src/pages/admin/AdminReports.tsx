@@ -1,12 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import StatCard from "@/components/admin/StatCard";
-import { BarChart2, RefreshCw, Star, Percent, TrendingUp, Users } from "lucide-react";
+import { RefreshCw, Star, Percent, TrendingUp } from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer
 } from "recharts";
 import { motion } from "framer-motion";
+
+// Confirmed schema:
+//   bookings: status, price, service_id, address, customer_id, created_at
+//   users (via users!customer_id): name
+//   providers: rating
+//   users: id, created_at (for signup tracking)
+//   providers: id, created_at (for signup tracking)
 
 interface ServiceStat { service: string; count: number; }
 interface CustomerStat { name: string; count: number; }
@@ -40,7 +47,8 @@ export default function AdminReports() {
                 { data: thisWeekProviders },
                 { data: lastWeekProviders },
             ] = await Promise.all([
-                supabase.from("bookings").select("status,price,service_type,address,user_id,users(full_name)"),
+                // customer name via users!customer_id; service via service_id
+                supabase.from("bookings").select("status,price,service_id,address,customer_id,users!customer_id(name)"),
                 supabase.from("providers").select("rating"),
                 supabase.from("users").select("id").gte("created_at", thisWeekStart.toISOString()),
                 supabase.from("users").select("id").gte("created_at", lastWeekStart.toISOString()).lt("created_at", thisWeekStart.toISOString()),
@@ -50,37 +58,37 @@ export default function AdminReports() {
 
             const bkgs = allBookings ?? [];
             const total = bkgs.length;
-            const cancelled = bkgs.filter((b: { status: string }) => b.status === "cancelled").length;
-            const completed = bkgs.filter((b: { status: string }) => b.status === "completed");
-            const totalRev = completed.reduce((s: number, b: { price?: number }) => s + (b.price ?? 0), 0);
+            const cancelled = bkgs.filter((b: any) => b.status === "cancelled").length;
+            const completed = bkgs.filter((b: any) => b.status === "completed");
+            const totalRev = completed.reduce((s: number, b: any) => s + (b.price ?? 0), 0);
 
             setCancellationRate(total > 0 ? Math.round((cancelled / total) * 100) : 0);
             setAvgBookingValue(completed.length > 0 ? Math.round(totalRev / completed.length) : 0);
 
-            const ratings = (providers ?? []).map((p: { rating?: number }) => p.rating).filter(Boolean) as number[];
+            const ratings = (providers ?? []).map((p: any) => p.rating).filter(Boolean) as number[];
             setAvgRating(ratings.length > 0 ? parseFloat((ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)) : 0);
 
-            // Top services
+            // Top services by service_id
             const svcMap: Record<string, number> = {};
-            bkgs.forEach((b: { service_type?: string }) => {
-                const s = b.service_type ?? "Unknown";
+            bkgs.forEach((b: any) => {
+                const s = b.service_id ?? "Unknown";
                 svcMap[s] = (svcMap[s] ?? 0) + 1;
             });
             setTopServices(Object.entries(svcMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([service, count]) => ({ service, count })));
 
-            // Top customers
+            // Top customers — name via users!customer_id join
             const custMap: Record<string, { name: string; count: number }> = {};
-            bkgs.forEach((b: { user_id?: string; users?: { full_name?: string } | null }) => {
-                const uid = b.user_id ?? "unknown";
-                const name = b.users?.full_name ?? "Unknown";
+            bkgs.forEach((b: any) => {
+                const uid = b.customer_id ?? "unknown";
+                const name = (b.users as { name?: string } | null)?.name ?? "Unknown";
                 if (!custMap[uid]) custMap[uid] = { name, count: 0 };
                 custMap[uid].count++;
             });
             setTopCustomers(Object.values(custMap).sort((a, b) => b.count - a.count).slice(0, 8).map(c => ({ name: c.name, count: c.count })));
 
-            // Geographic breakdown (extract area from address)
+            // Geographic breakdown
             const geoMap: Record<string, number> = {};
-            bkgs.forEach((b: { address?: string }) => {
+            bkgs.forEach((b: any) => {
                 const parts = (b.address ?? "").split(",");
                 const area = parts[1]?.trim() || parts[0]?.trim() || "Unknown";
                 const label = area.slice(0, 20);
@@ -125,7 +133,6 @@ export default function AdminReports() {
 
             {/* Charts row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                {/* Top services */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                     <h2 className="text-sm font-extrabold text-slate-700 mb-4">Most Booked Services</h2>
                     {loading ? <div className="h-52 bg-slate-100 rounded-xl animate-pulse" />
@@ -143,7 +150,6 @@ export default function AdminReports() {
                             )}
                 </div>
 
-                {/* Top customers */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                     <h2 className="text-sm font-extrabold text-slate-700 mb-4">Most Active Customers</h2>
                     {loading ? <div className="h-52 bg-slate-100 rounded-xl animate-pulse" />
@@ -167,7 +173,6 @@ export default function AdminReports() {
 
             {/* Charts row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                {/* Geo breakdown */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                     <h2 className="text-sm font-extrabold text-slate-700 mb-4">Geographic Breakdown (Bookings by Area)</h2>
                     {loading ? <div className="h-44 bg-slate-100 rounded-xl animate-pulse" />
@@ -185,7 +190,6 @@ export default function AdminReports() {
                             )}
                 </div>
 
-                {/* Week over week */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                     <h2 className="text-sm font-extrabold text-slate-700 mb-4">New Signups — This Week vs Last Week</h2>
                     {loading ? <div className="h-44 bg-slate-100 rounded-xl animate-pulse" />
@@ -201,8 +205,6 @@ export default function AdminReports() {
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
-
-                    {/* Week summary cards */}
                     <div className="grid grid-cols-2 gap-3 mt-4">
                         {weekData.map(w => (
                             <div key={w.label} className="bg-slate-50 rounded-xl p-3">
@@ -232,7 +234,7 @@ export default function AdminReports() {
                         </thead>
                         <tbody>
                             {topServices.map((s, i) => {
-                                const total = topServices.reduce((a, b) => a + b.count, 0);
+                                const totalCount = topServices.reduce((a, b) => a + b.count, 0);
                                 return (
                                     <tr key={s.service} className={`border-b border-slate-50 last:border-0 ${i % 2 === 0 ? "" : "bg-slate-50/40"}`}>
                                         <td className="px-2 py-2 text-slate-400 font-mono text-xs">#{i + 1}</td>
@@ -241,9 +243,9 @@ export default function AdminReports() {
                                         <td className="px-2 py-2">
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1 bg-slate-100 rounded-full h-1.5 max-w-[80px]">
-                                                    <div className="bg-[#17375E] h-1.5 rounded-full" style={{ width: `${(s.count / total) * 100}%` }} />
+                                                    <div className="bg-[#17375E] h-1.5 rounded-full" style={{ width: `${(s.count / totalCount) * 100}%` }} />
                                                 </div>
-                                                <span className="text-xs text-slate-500">{Math.round((s.count / total) * 100)}%</span>
+                                                <span className="text-xs text-slate-500">{Math.round((s.count / totalCount) * 100)}%</span>
                                             </div>
                                         </td>
                                     </tr>

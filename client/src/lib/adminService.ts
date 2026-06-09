@@ -1,9 +1,12 @@
 import { supabase } from "./supabase";
 
-/**
- * Admin Service - Handles all admin-related database operations
- * Provides centralized, reusable functions for admin dashboard and management pages
- */
+// ── Confirmed schema ────────────────────────────────────────────────────────
+// users:     id, phone, name, email, address, role, created_at, kyc_status
+// providers: id, user_id, rating, is_online, is_verified, created_at
+//            + joins: users!user_id(name,phone), provider_services(service_id,services(label))
+// bookings:  id, customer_id, provider_id, service_id, status, price, created_at, address, scheduled_at, notes, voice_note
+//            + joins: users!customer_id(name,phone), providers!provider_id(users!user_id(name))
+// wallets:   id, user_id, balance
 
 export interface AdminStats {
   totalUsers: number;
@@ -44,10 +47,6 @@ export interface RecentBooking {
 
 const ACTIVE_STATUSES = ["assigned", "on_the_way", "arrived", "in_progress"];
 
-/**
- * Fetch comprehensive admin dashboard statistics
- * Includes: users, providers, bookings, revenue, verifications
- */
 export async function fetchAdminStats(): Promise<{
   stats: AdminStats;
   dailyData: DailyBookingData[];
@@ -59,8 +58,6 @@ export async function fetchAdminStats(): Promise<{
   try {
     const today = new Date().toISOString().split("T")[0];
     const since14 = new Date(Date.now() - 14 * 864e5).toISOString();
-
-    console.log("[AdminService] Fetching stats for date:", today);
 
     const [
       { count: totalUsers, error: usersErr },
@@ -82,29 +79,32 @@ export async function fetchAdminStats(): Promise<{
       supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "cancelled"),
       supabase.from("bookings").select("price").eq("status", "completed"),
       supabase.from("bookings").select("price").gte("created_at", today).eq("status", "completed"),
-      supabase.from("bookings").select("created_at,price,status,service_type").gte("created_at", since14),
-      supabase.from("bookings").select("id,status,price,created_at,service_type,users(full_name),providers(full_name)").order("created_at", { ascending: false }).limit(10),
+      // bookings use service_id (string like "plumber") — not service_type
+      supabase.from("bookings").select("created_at,price,status,service_id").gte("created_at", since14),
+      // customer join uses customer_id FK; provider name via nested users
+      supabase
+        .from("bookings")
+        .select("id,status,price,created_at,service_id,users!customer_id(name),providers!provider_id(users!user_id(name))")
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
 
-    // Log any errors encountered
-    if (usersErr) console.warn("[AdminService] Users error:", usersErr);
-    if (providersErr) console.warn("[AdminService] Providers error:", providersErr);
-    if (bookingsErr) console.warn("[AdminService] Bookings error:", bookingsErr);
-    if (activeErr) console.warn("[AdminService] Active bookings error:", activeErr);
-    if (pendingErr) console.warn("[AdminService] Pending verifications error:", pendingErr);
-    if (cancelledErr) console.warn("[AdminService] Cancelled bookings error:", cancelledErr);
-    if (completedErr) console.warn("[AdminService] Completed bookings error:", completedErr);
-    if (todayErr) console.warn("[AdminService] Today bookings error:", todayErr);
-    if (last14Err) console.warn("[AdminService] Last 14 days error:", last14Err);
-    if (recentErr) console.warn("[AdminService] Recent bookings error:", recentErr);
+    if (usersErr) console.warn("[AdminService] Users error:", usersErr.message);
+    if (providersErr) console.warn("[AdminService] Providers error:", providersErr.message);
+    if (bookingsErr) console.warn("[AdminService] Bookings error:", bookingsErr.message);
+    if (activeErr) console.warn("[AdminService] Active bookings error:", activeErr.message);
+    if (pendingErr) console.warn("[AdminService] Pending verifications error:", pendingErr.message);
+    if (cancelledErr) console.warn("[AdminService] Cancelled bookings error:", cancelledErr.message);
+    if (completedErr) console.warn("[AdminService] Completed bookings error:", completedErr.message);
+    if (todayErr) console.warn("[AdminService] Today bookings error:", todayErr.message);
+    if (last14Err) console.warn("[AdminService] Last 14 days error:", last14Err.message);
+    if (recentErr) console.warn("[AdminService] Recent bookings error:", recentErr.message);
 
     const totalRevenue = (completedBookings ?? []).reduce(
-      (s: number, b: { price?: number }) => s + (b.price ?? 0),
-      0
+      (s: number, b: { price?: number }) => s + (b.price ?? 0), 0
     );
     const todayRevenue = (todayBookingsRaw ?? []).reduce(
-      (s: number, b: { price?: number }) => s + (b.price ?? 0),
-      0
+      (s: number, b: { price?: number }) => s + (b.price ?? 0), 0
     );
 
     const stats: AdminStats = {
@@ -118,9 +118,7 @@ export async function fetchAdminStats(): Promise<{
       cancelledBookings: cancelledBookings ?? 0,
     };
 
-    console.log("[AdminService] Stats calculated:", stats);
-
-    // Daily data
+    // Daily data (last 14 days)
     const dayMap: Record<string, DailyBookingData> = {};
     for (let i = 13; i >= 0; i--) {
       const d = new Date(Date.now() - i * 864e5).toISOString().split("T")[0];
@@ -128,10 +126,7 @@ export async function fetchAdminStats(): Promise<{
     }
     (last14Bookings ?? []).forEach((b: { created_at: string; price?: number }) => {
       const d = b.created_at.split("T")[0];
-      if (dayMap[d]) {
-        dayMap[d].bookings++;
-        dayMap[d].revenue += b.price ?? 0;
-      }
+      if (dayMap[d]) { dayMap[d].bookings++; dayMap[d].revenue += b.price ?? 0; }
     });
     const dailyData = Object.values(dayMap);
 
@@ -143,10 +138,10 @@ export async function fetchAdminStats(): Promise<{
     });
     const statusData = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
 
-    // Service breakdown
+    // Service breakdown — use service_id which is a string like "plumber"
     const svcCount: Record<string, number> = {};
-    (last14Bookings ?? []).forEach((b: { service_type?: string }) => {
-      const s = b.service_type ?? "Unknown";
+    (last14Bookings ?? []).forEach((b: { service_id?: string }) => {
+      const s = b.service_id ?? "Unknown";
       svcCount[s] = (svcCount[s] ?? 0) + 1;
     });
     const serviceData = Object.entries(svcCount)
@@ -154,12 +149,12 @@ export async function fetchAdminStats(): Promise<{
       .slice(0, 5)
       .map(([service, count]) => ({ service, count }));
 
-    // Recent bookings
-    const recentBookings: RecentBooking[] = (recentRaw ?? []).map((b: Record<string, unknown>) => ({
+    // Recent bookings — provider name is nested under providers.users.name
+    const recentBookings: RecentBooking[] = (recentRaw ?? []).map((b: any) => ({
       id: String(b.id ?? ""),
-      customer_name: (b.users as { full_name?: string } | null)?.full_name ?? "—",
-      provider_name: (b.providers as { full_name?: string } | null)?.full_name ?? "—",
-      service_type: String(b.service_type ?? "—"),
+      customer_name: (b.users as { name?: string } | null)?.name ?? "—",
+      provider_name: (b.providers as { users?: { name?: string } | null } | null)?.users?.name ?? "—",
+      service_type: String(b.service_id ?? "—"),
       status: String(b.status ?? ""),
       price: Number(b.price ?? 0),
       created_at: String(b.created_at ?? ""),
@@ -170,33 +165,20 @@ export async function fetchAdminStats(): Promise<{
     console.error("[AdminService] Fatal error fetching stats:", error);
     return {
       stats: {
-        totalUsers: 0,
-        totalProviders: 0,
-        totalBookings: 0,
-        activeBookings: 0,
-        totalRevenue: 0,
-        todayRevenue: 0,
-        pendingVerifications: 0,
-        cancelledBookings: 0,
+        totalUsers: 0, totalProviders: 0, totalBookings: 0, activeBookings: 0,
+        totalRevenue: 0, todayRevenue: 0, pendingVerifications: 0, cancelledBookings: 0,
       },
-      dailyData: [],
-      statusData: [],
-      serviceData: [],
-      recentBookings: [],
+      dailyData: [], statusData: [], serviceData: [], recentBookings: [],
       error: `Error: ${error.message}`,
     };
   }
 }
 
-/**
- * Update provider verification status
- */
 export async function updateProviderVerification(
   providerId: string,
   isVerified: boolean
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[AdminService] Updating provider ${providerId} verification to ${isVerified}`);
     const { error } = await supabase
       .from("providers")
       .update({ is_verified: isVerified })
@@ -206,8 +188,6 @@ export async function updateProviderVerification(
       console.error("[AdminService] Error updating provider verification:", error);
       return { success: false, error: error.message };
     }
-
-    console.log(`[AdminService] Provider ${providerId} verification updated successfully`);
     return { success: true };
   } catch (error: any) {
     console.error("[AdminService] Exception updating provider verification:", error);
@@ -215,9 +195,6 @@ export async function updateProviderVerification(
   }
 }
 
-/**
- * Get pending provider verifications count
- */
 export async function getPendingVerificationsCount(): Promise<number> {
   try {
     const { count, error } = await supabase
@@ -229,7 +206,6 @@ export async function getPendingVerificationsCount(): Promise<number> {
       console.error("[AdminService] Error getting pending verifications:", error);
       return 0;
     }
-
     return count ?? 0;
   } catch (error: any) {
     console.error("[AdminService] Exception getting pending verifications:", error);

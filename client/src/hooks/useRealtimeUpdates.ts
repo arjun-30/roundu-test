@@ -1,164 +1,98 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useLayoutEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
-/**
- * Hook for subscribing to real-time provider changes
- * Automatically unsubscribes on component unmount
- */
-export function useProviderRealtimeUpdates(
-  onProviderChange: (provider: any) => void
-) {
-  const subscriptionRef = useRef<RealtimeChannel | null>(null);
+// Store latest callback in a ref so the subscription never needs to re-subscribe
+// when the parent re-renders and passes a new function reference.
+function useLatestCallback<T extends (...args: any[]) => any>(fn: T) {
+  const ref = useRef(fn);
+  useLayoutEffect(() => { ref.current = fn; });
+  return ref;
+}
+
+export function useProviderRealtimeUpdates(onProviderChange: (provider: any) => void) {
+  const callbackRef = useLatestCallback(onProviderChange);
 
   useEffect(() => {
     console.log("[Realtime] Subscribing to provider updates");
-
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel("providers-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "providers",
-        },
-        (payload: any) => {
-          console.log("[Realtime] Provider update received:", payload);
-          if (payload.new) {
-            onProviderChange(payload.new);
-          }
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "providers" }, (payload: any) => {
+        console.log("[Realtime] Provider update received:", payload);
+        if (payload.new) callbackRef.current(payload.new);
+      })
       .subscribe((status) => {
         console.log("[Realtime] Provider subscription status:", status);
       });
 
     return () => {
       console.log("[Realtime] Unsubscribing from provider updates");
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [onProviderChange]);
-
-  return subscriptionRef.current;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/**
- * Hook for subscribing to real-time booking changes
- * Automatically unsubscribes on component unmount
- */
-export function useBookingRealtimeUpdates(
-  onBookingChange: (booking: any) => void
-) {
-  const subscriptionRef = useRef<RealtimeChannel | null>(null);
+export function useBookingRealtimeUpdates(onBookingChange: (booking: any) => void) {
+  const callbackRef = useLatestCallback(onBookingChange);
 
   useEffect(() => {
     console.log("[Realtime] Subscribing to booking updates");
-
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel("bookings-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookings",
-        },
-        (payload: any) => {
-          console.log("[Realtime] Booking update received:", payload);
-          if (payload.new) {
-            onBookingChange(payload.new);
-          }
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, (payload: any) => {
+        console.log("[Realtime] Booking update received:", payload);
+        if (payload.new) callbackRef.current(payload.new);
+      })
       .subscribe((status) => {
         console.log("[Realtime] Booking subscription status:", status);
       });
 
     return () => {
       console.log("[Realtime] Unsubscribing from booking updates");
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [onBookingChange]);
-
-  return subscriptionRef.current;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/**
- * Hook for subscribing to real-time user changes
- * Automatically unsubscribes on component unmount
- */
-export function useUserRealtimeUpdates(
-  onUserChange: (user: any) => void
-) {
-  const subscriptionRef = useRef<RealtimeChannel | null>(null);
+export function useUserRealtimeUpdates(onUserChange: (user: any) => void) {
+  const callbackRef = useLatestCallback(onUserChange);
 
   useEffect(() => {
     console.log("[Realtime] Subscribing to user updates");
-
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel("users-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "users",
-        },
-        (payload: any) => {
-          console.log("[Realtime] User update received:", payload);
-          if (payload.new) {
-            onUserChange(payload.new);
-          }
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, (payload: any) => {
+        console.log("[Realtime] User update received:", payload);
+        if (payload.new) callbackRef.current(payload.new);
+      })
       .subscribe((status) => {
         console.log("[Realtime] User subscription status:", status);
       });
 
     return () => {
       console.log("[Realtime] Unsubscribing from user updates");
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [onUserChange]);
-
-  return subscriptionRef.current;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/**
- * Hook for subscribing to real-time notification changes
- * Automatically unsubscribes on component unmount
- */
 export function useNotificationRealtimeUpdates(
   userId: string,
   onNotificationChange: (notification: any) => void
 ) {
-  const subscriptionRef = useRef<RealtimeChannel | null>(null);
+  const callbackRef = useLatestCallback(onNotificationChange);
 
   useEffect(() => {
+    if (!userId) return;
     console.log("[Realtime] Subscribing to notification updates for user:", userId);
-
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel(`notifications-${userId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${userId}`,
-        },
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         (payload: any) => {
           console.log("[Realtime] Notification update received:", payload);
-          if (payload.new) {
-            onNotificationChange(payload.new);
-          }
+          if (payload.new) callbackRef.current(payload.new);
         }
       )
       .subscribe((status) => {
@@ -167,24 +101,40 @@ export function useNotificationRealtimeUpdates(
 
     return () => {
       console.log("[Realtime] Unsubscribing from notification updates");
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [userId, onNotificationChange]);
-
-  return subscriptionRef.current;
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/**
- * Hook for subscribing to multiple tables at once
- */
+export function useAdminNotificationUpdates(
+  onNotification: (notification: any) => void
+) {
+  const callbackRef = useLatestCallback(onNotification);
+
+  useEffect(() => {
+    console.log("[Realtime] Subscribing to admin notifications");
+    const channel = supabase
+      .channel("admin-notifications-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload: any) => {
+          console.log("[Realtime] Admin notification received:", payload.new);
+          if (payload.new) callbackRef.current(payload.new);
+        }
+      )
+      .subscribe((status) => {
+        console.log("[Realtime] Admin notification subscription status:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 export function useMultipleRealtimeUpdates(
-  tables: Array<{
-    table: string;
-    callback: (payload: any) => void;
-    filter?: string;
-  }>
+  tables: Array<{ table: string; callback: (payload: any) => void; filter?: string }>
 ) {
   const subscriptionsRef = useRef<Map<string, RealtimeChannel>>(new Map());
 
@@ -193,35 +143,19 @@ export function useMultipleRealtimeUpdates(
 
     tables.forEach(({ table, callback, filter }) => {
       const channel = supabase
-        .channel(`${table}-changes`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: table,
-            filter: filter,
-          },
-          (payload: any) => {
-            console.log(`[Realtime] ${table} update received:`, payload);
-            callback(payload);
-          }
-        )
-        .subscribe((status) => {
-          console.log(`[Realtime] ${table} subscription status:`, status);
-        });
-
+        .channel(`${table}-multi`)
+        .on("postgres_changes", { event: "*", schema: "public", table, filter }, (payload: any) => {
+          console.log(`[Realtime] ${table} update received:`, payload);
+          callback(payload);
+        })
+        .subscribe();
       subscriptionsRef.current.set(table, channel);
     });
 
     return () => {
       console.log("[Realtime] Unsubscribing from multiple tables");
-      subscriptionsRef.current.forEach((channel) => {
-        supabase.removeChannel(channel);
-      });
+      subscriptionsRef.current.forEach((channel) => supabase.removeChannel(channel));
       subscriptionsRef.current.clear();
     };
-  }, [tables]);
-
-  return subscriptionsRef.current;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }

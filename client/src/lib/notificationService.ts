@@ -1,33 +1,40 @@
 import { supabase } from "./supabase";
 
-/**
- * Notification Service - Handles all notification-related database operations
- * Provides database-driven notification management instead of mock data
- */
+// Confirmed schema: notifications(id, user_id nullable, title, message, type, is_read, data, created_at)
+// Admin notifications use user_id = null and are filtered by type on the admin side
+
+export type NotificationType =
+  | "provider_registration"
+  | "provider_approved"
+  | "provider_rejected"
+  | "booking_created"
+  | "booking_cancelled"
+  | "refund_requested"
+  | "payment_completed"
+  | "booking"
+  | "general";
+
+export const ADMIN_NOTIFICATION_TYPES: NotificationType[] = [
+  "provider_registration",
+  "provider_approved",
+  "provider_rejected",
+  "booking_cancelled",
+  "refund_requested",
+];
 
 export interface DatabaseNotification {
   id: string;
   title: string;
   message: string;
-  type: "provider_registration" | "provider_approved" | "provider_rejected" | "booking_created" | "booking_cancelled" | "refund_requested" | "payment_completed" | "general";
-  user_id?: string;
-  provider_id?: string;
+  type: NotificationType;
+  user_id: string | null;
   created_at: string;
   is_read: boolean;
-  metadata?: Record<string, any>;
+  data?: Record<string, any> | null;
 }
 
-/**
- * Fetch all notifications for a user (or all if no user_id provided)
- * Orders by created_at DESC to show newest first
- */
-export async function fetchNotifications(
-  userId?: string,
-  limit: number = 50
-): Promise<DatabaseNotification[]> {
+export async function fetchNotifications(userId?: string, limit = 50): Promise<DatabaseNotification[]> {
   try {
-    console.log(`[NotificationService] Fetching notifications for user: ${userId || "all"}`);
-    
     let query = supabase
       .from("notifications")
       .select("*")
@@ -39,13 +46,10 @@ export async function fetchNotifications(
     }
 
     const { data, error } = await query;
-
     if (error) {
       console.error("[NotificationService] Error fetching notifications:", error);
       return [];
     }
-
-    console.log(`[NotificationService] Fetched ${data?.length ?? 0} notifications`);
     return data ?? [];
   } catch (error: any) {
     console.error("[NotificationService] Exception fetching notifications:", error);
@@ -53,24 +57,42 @@ export async function fetchNotifications(
   }
 }
 
-/**
- * Create a new notification
- */
+// Fetch admin-visible notifications (provider_registration events with null user_id)
+export async function fetchAdminNotifications(limit = 50): Promise<DatabaseNotification[]> {
+  try {
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .in("type", ADMIN_NOTIFICATION_TYPES)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("[NotificationService] Error fetching admin notifications:", error);
+      return [];
+    }
+    return data ?? [];
+  } catch (error: any) {
+    console.error("[NotificationService] Exception fetching admin notifications:", error);
+    return [];
+  }
+}
+
 export async function createNotification(
   notification: Omit<DatabaseNotification, "id" | "created_at" | "is_read">
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    console.log("[NotificationService] Creating notification:", notification.title);
-    
+    // Use `data` column (the actual column name in the DB, not `metadata`)
     const { data, error } = await supabase
       .from("notifications")
-      .insert([
-        {
-          ...notification,
-          created_at: new Date().toISOString(),
-          is_read: false,
-        },
-      ])
+      .insert([{
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        user_id: notification.user_id ?? null,
+        data: notification.data ?? null,
+        is_read: false,
+      }])
       .select("id");
 
     if (error) {
@@ -78,47 +100,52 @@ export async function createNotification(
       return { success: false, error: error.message };
     }
 
-    const notificationId = data?.[0]?.id;
-    console.log("[NotificationService] Notification created with ID:", notificationId);
-    return { success: true, id: notificationId };
+    return { success: true, id: data?.[0]?.id };
   } catch (error: any) {
     console.error("[NotificationService] Exception creating notification:", error);
     return { success: false, error: error.message };
   }
 }
 
-/**
- * Mark notification as read
- */
 export async function markAsRead(notificationId: string): Promise<boolean> {
   try {
-    console.log(`[NotificationService] Marking notification ${notificationId} as read`);
-    
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
       .eq("id", notificationId);
 
     if (error) {
-      console.error("[NotificationService] Error marking notification as read:", error);
+      console.error("[NotificationService] Error marking as read:", error);
       return false;
     }
-
-    console.log(`[NotificationService] Notification ${notificationId} marked as read`);
     return true;
   } catch (error: any) {
-    console.error("[NotificationService] Exception marking notification as read:", error);
+    console.error("[NotificationService] Exception marking as read:", error);
     return false;
   }
 }
 
-/**
- * Mark all notifications as read for a user
- */
+export async function markAllAdminNotificationsRead(): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("type", ADMIN_NOTIFICATION_TYPES)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("[NotificationService] Error marking all admin notifications read:", error);
+      return false;
+    }
+    return true;
+  } catch (error: any) {
+    console.error("[NotificationService] Exception:", error);
+    return false;
+  }
+}
+
 export async function markAllAsRead(userId: string): Promise<boolean> {
   try {
-    console.log(`[NotificationService] Marking all notifications as read for user ${userId}`);
-    
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -129,8 +156,6 @@ export async function markAllAsRead(userId: string): Promise<boolean> {
       console.error("[NotificationService] Error marking all as read:", error);
       return false;
     }
-
-    console.log(`[NotificationService] All notifications marked as read for user ${userId}`);
     return true;
   } catch (error: any) {
     console.error("[NotificationService] Exception marking all as read:", error);
@@ -138,13 +163,8 @@ export async function markAllAsRead(userId: string): Promise<boolean> {
   }
 }
 
-/**
- * Delete a notification
- */
 export async function deleteNotification(notificationId: string): Promise<boolean> {
   try {
-    console.log(`[NotificationService] Deleting notification ${notificationId}`);
-    
     const { error } = await supabase
       .from("notifications")
       .delete()
@@ -154,8 +174,6 @@ export async function deleteNotification(notificationId: string): Promise<boolea
       console.error("[NotificationService] Error deleting notification:", error);
       return false;
     }
-
-    console.log(`[NotificationService] Notification ${notificationId} deleted`);
     return true;
   } catch (error: any) {
     console.error("[NotificationService] Exception deleting notification:", error);
@@ -163,9 +181,6 @@ export async function deleteNotification(notificationId: string): Promise<boolea
   }
 }
 
-/**
- * Get unread notification count for a user
- */
 export async function getUnreadCount(userId: string): Promise<number> {
   try {
     const { count, error } = await supabase
@@ -178,7 +193,6 @@ export async function getUnreadCount(userId: string): Promise<number> {
       console.error("[NotificationService] Error getting unread count:", error);
       return 0;
     }
-
     return count ?? 0;
   } catch (error: any) {
     console.error("[NotificationService] Exception getting unread count:", error);
@@ -186,84 +200,89 @@ export async function getUnreadCount(userId: string): Promise<number> {
   }
 }
 
-/**
- * Create a provider registration notification
- */
+export async function getAdminUnreadCount(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .in("type", ADMIN_NOTIFICATION_TYPES)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("[NotificationService] Error getting admin unread count:", error);
+      return 0;
+    }
+    return count ?? 0;
+  } catch (error: any) {
+    console.error("[NotificationService] Exception getting admin unread count:", error);
+    return 0;
+  }
+}
+
+// Creates a provider registration notification (admin-facing, no user_id)
 export async function createProviderRegistrationNotification(
   providerId: string,
-  providerName: string
+  providerName: string,
+  serviceLabels?: string[]
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   return createNotification({
     title: "New Provider Registration",
     message: `${providerName} has registered as a service provider and is pending verification.`,
     type: "provider_registration",
-    provider_id: providerId,
-    metadata: { provider_id: providerId, provider_name: providerName },
+    user_id: null,
+    data: {
+      provider_id: providerId,
+      provider_name: providerName,
+      service_labels: serviceLabels ?? [],
+    },
   });
 }
 
-/**
- * Create a provider approval notification
- */
+// Creates a provider approval notification (sent to the provider's user_id)
 export async function createProviderApprovalNotification(
   providerId: string,
-  providerName: string
+  providerName: string,
+  providerUserId?: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   return createNotification({
     title: "Provider Approved",
-    message: `Your profile has been verified and approved. You can now accept job requests.`,
+    message: "Your profile has been verified and approved. You can now accept job requests.",
     type: "provider_approved",
-    provider_id: providerId,
-    metadata: { provider_id: providerId, provider_name: providerName },
+    user_id: providerUserId ?? null,
+    data: { provider_id: providerId, provider_name: providerName },
   });
 }
 
-/**
- * Create a provider rejection notification
- */
+// Creates a provider rejection notification (sent to the provider's user_id)
 export async function createProviderRejectionNotification(
   providerId: string,
   providerName: string,
-  reason?: string
+  reason?: string,
+  providerUserId?: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   return createNotification({
     title: "Provider Verification Rejected",
     message: `Your profile verification was rejected. ${reason ? `Reason: ${reason}` : "Please contact support for more details."}`,
     type: "provider_rejected",
-    provider_id: providerId,
-    metadata: { provider_id: providerId, provider_name: providerName, reason },
+    user_id: providerUserId ?? null,
+    data: { provider_id: providerId, provider_name: providerName, reason },
   });
 }
 
-/**
- * Subscribe to real-time notification changes for a user
- */
 export function subscribeToNotifications(
   userId: string,
   callback: (notification: DatabaseNotification) => void
 ) {
-  console.log(`[NotificationService] Subscribing to real-time notifications for user ${userId}`);
-  
   const subscription = supabase
     .channel(`notifications-${userId}`)
     .on(
       "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "notifications",
-        filter: `user_id=eq.${userId}`,
-      },
+      { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
       (payload: any) => {
-        console.log("[NotificationService] Real-time notification received:", payload);
-        if (payload.new) {
-          callback(payload.new as DatabaseNotification);
-        }
+        if (payload.new) callback(payload.new as DatabaseNotification);
       }
     )
-    .subscribe((status) => {
-      console.log(`[NotificationService] Subscription status: ${status}`);
-    });
+    .subscribe();
 
   return subscription;
 }

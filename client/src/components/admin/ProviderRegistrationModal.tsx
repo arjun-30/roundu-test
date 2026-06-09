@@ -16,6 +16,7 @@ interface ProviderRegistrationModalProps {
   onApprove: (providerId: string) => Promise<void>;
   onReject: (providerId: string) => Promise<void>;
   isLoading?: boolean;
+  onViewDetails?: () => void;
 }
 
 export default function ProviderRegistrationModal({
@@ -25,6 +26,7 @@ export default function ProviderRegistrationModal({
   onApprove,
   onReject,
   isLoading = false,
+  onViewDetails,
 }: ProviderRegistrationModalProps) {
   if (!provider) return null;
 
@@ -124,7 +126,7 @@ export default function ProviderRegistrationModal({
 
               {/* Link to full details */}
               <button
-                onClick={onClose}
+                onClick={onViewDetails ?? onClose}
                 className="w-full mt-4 py-2 text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors"
               >
                 View Details in Provider Management →

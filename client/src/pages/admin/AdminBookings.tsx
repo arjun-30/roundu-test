@@ -3,20 +3,25 @@ import { supabase } from "@/lib/supabase";
 import { Search, Download, RefreshCw, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Confirmed schema:
+//   bookings: id, customer_id, provider_id, service_id, status, price, address, created_at, scheduled_at, notes, voice_note
+//   users join: users!customer_id(name, phone)
+//   providers join: providers!provider_id(users!user_id(name))
+
 interface Booking {
     id: string;
     customer_name: string;
     customer_phone: string;
     provider_name: string;
-    service_type: string;
+    service_id: string;
     status: string;
     price: number;
     address: string;
     created_at: string;
     scheduled_at: string;
     notes: string;
-    has_voice_note: boolean;
-    user_id: string;
+    voice_note: boolean;
+    customer_id: string;
     provider_id: string;
 }
 
@@ -53,7 +58,6 @@ function DetailModal({ booking, onClose }: { booking: Booking; onClose: () => vo
                     onClick={e => e.stopPropagation()}
                     className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
                 >
-                    {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                         <div>
                             <h2 className="font-extrabold text-slate-800">Booking Detail</h2>
@@ -75,7 +79,7 @@ function DetailModal({ booking, onClose }: { booking: Booking; onClose: () => vo
                                 ["Customer", booking.customer_name],
                                 ["Phone", booking.customer_phone],
                                 ["Provider", booking.provider_name],
-                                ["Service", booking.service_type],
+                                ["Service", booking.service_id],
                                 ["Price", `₹${(booking.price ?? 0).toLocaleString()}`],
                                 ["Scheduled", booking.scheduled_at ? new Date(booking.scheduled_at).toLocaleString("en-IN") : "—"],
                             ].map(([label, val]) => (
@@ -98,7 +102,7 @@ function DetailModal({ booking, onClose }: { booking: Booking; onClose: () => vo
                             </div>
                         )}
 
-                        {booking.has_voice_note && (
+                        {booking.voice_note && (
                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
                                 <span className="text-blue-600 text-xs font-semibold">🎙 Voice note attached</span>
                             </div>
@@ -138,7 +142,7 @@ function exportCSV(data: Booking[]) {
     const headers = ["ID", "Customer", "Phone", "Provider", "Service", "Status", "Price", "Address", "Date"];
     const rows = data.map(b => [
         b.id, b.customer_name, b.customer_phone, b.provider_name,
-        b.service_type, b.status, b.price, b.address,
+        b.service_id, b.status, b.price, b.address,
         new Date(b.created_at).toLocaleDateString("en-IN"),
     ]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${v ?? ""}"`).join(",")).join("\n");
@@ -167,29 +171,34 @@ export default function AdminBookings() {
         const { data, error: err } = await supabase
             .from("bookings")
             .select(`
-        id, status, price, address, created_at, scheduled_at, notes, has_voice_note, service_type, user_id, provider_id,
-        users(full_name, phone),
-        providers(full_name)
-      `)
+                id, status, price, address, created_at, scheduled_at, notes, voice_note, service_id, customer_id, provider_id,
+                users!customer_id(name, phone),
+                providers!provider_id(users!user_id(name))
+            `)
             .order("created_at", { ascending: false });
 
-        if (err) { setError("Failed to load bookings."); setLoading(false); return; }
+        if (err) {
+            console.error("[AdminBookings] Error:", err);
+            setError(`Failed to load bookings: ${err.message}`);
+            setLoading(false);
+            return;
+        }
 
         setBookings(
-            (data ?? []).map((b: Record<string, unknown>) => ({
+            (data ?? []).map((b: any) => ({
                 id: String(b.id ?? ""),
-                customer_name: (b.users as { full_name?: string } | null)?.full_name ?? "—",
+                customer_name: (b.users as { name?: string } | null)?.name ?? "—",
                 customer_phone: (b.users as { phone?: string } | null)?.phone ?? "—",
-                provider_name: (b.providers as { full_name?: string } | null)?.full_name ?? "—",
-                service_type: String(b.service_type ?? "—"),
+                provider_name: (b.providers as { users?: { name?: string } | null } | null)?.users?.name ?? "—",
+                service_id: String(b.service_id ?? "—"),
                 status: String(b.status ?? ""),
                 price: Number(b.price ?? 0),
                 address: String(b.address ?? ""),
                 created_at: String(b.created_at ?? ""),
                 scheduled_at: String(b.scheduled_at ?? ""),
                 notes: String(b.notes ?? ""),
-                has_voice_note: Boolean(b.has_voice_note),
-                user_id: String(b.user_id ?? ""),
+                voice_note: Boolean(b.voice_note),
+                customer_id: String(b.customer_id ?? ""),
                 provider_id: String(b.provider_id ?? ""),
             }))
         );
@@ -198,12 +207,12 @@ export default function AdminBookings() {
 
     useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-    const serviceTypes = ["all", ...Array.from(new Set(bookings.map(b => b.service_type).filter(Boolean)))];
+    const serviceIds = ["all", ...Array.from(new Set(bookings.map(b => b.service_id).filter(Boolean)))];
 
     const filtered = bookings.filter(b => {
         const matchSearch = b.id.toLowerCase().includes(search.toLowerCase()) || b.customer_name.toLowerCase().includes(search.toLowerCase());
         const matchStatus = filterStatus === "all" || b.status === filterStatus;
-        const matchService = filterService === "all" || b.service_type === filterService;
+        const matchService = filterService === "all" || b.service_id === filterService;
         const matchFrom = !dateFrom || b.created_at >= dateFrom;
         const matchTo = !dateTo || b.created_at <= dateTo + "T23:59:59";
         return matchSearch && matchStatus && matchService && matchFrom && matchTo;
@@ -221,37 +230,34 @@ export default function AdminBookings() {
                     <h1 className="text-2xl font-extrabold text-slate-800">Bookings</h1>
                     <p className="text-slate-500 text-sm mt-0.5">{bookings.length} total bookings</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 mb-6">
 
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
                     <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
                         <p className="text-xs text-slate-500">Pending</p>
                         <h2 className="text-2xl font-bold text-amber-600">
                             {bookings.filter(b => b.status === "pending").length}
                         </h2>
                     </div>
-
                     <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
                         <p className="text-xs text-slate-500">Completed</p>
                         <h2 className="text-2xl font-bold text-green-600">
                             {bookings.filter(b => b.status === "completed").length}
                         </h2>
                     </div>
-
                     <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
                         <p className="text-xs text-slate-500">Cancelled</p>
                         <h2 className="text-2xl font-bold text-red-600">
                             {bookings.filter(b => b.status === "cancelled").length}
                         </h2>
                     </div>
-
                     <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
                         <p className="text-xs text-slate-500">Revenue</p>
                         <h2 className="text-2xl font-bold text-[#17375E]">
-                            ₹{bookings.reduce((a, b) => a + (b.price || 0), 0)}
+                            ₹{bookings.filter(b => b.status === "completed").reduce((a, b) => a + (b.price || 0), 0).toLocaleString()}
                         </h2>
                     </div>
-
                 </div>
+
                 <div className="flex items-center gap-2">
                     <button onClick={fetchBookings} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50">
                         <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -276,7 +282,7 @@ export default function AdminBookings() {
                 </select>
                 <select value={filterService} onChange={e => { setFilterService(e.target.value); setPage(1); }}
                     className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none">
-                    {serviceTypes.map(s => <option key={s} value={s}>{s === "all" ? "All Services" : s}</option>)}
+                    {serviceIds.map(s => <option key={s} value={s}>{s === "all" ? "All Services" : s}</option>)}
                 </select>
                 <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
                     className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none" />
@@ -285,24 +291,12 @@ export default function AdminBookings() {
             </div>
 
             {error && (
-                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-semibold text-red-700">
-                                Unable to load bookings
-                            </h4>
-                            <p className="text-sm text-red-500">
-                                Please check your backend connection.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={fetchBookings}
-                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm"
-                        >
-                            Retry
-                        </button>
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center justify-between">
+                    <div>
+                        <h4 className="font-semibold text-red-700">Unable to load bookings</h4>
+                        <p className="text-sm text-red-500">{error}</p>
                     </div>
+                    <button onClick={fetchBookings} className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm">Retry</button>
                 </div>
             )}
 
@@ -327,35 +321,12 @@ export default function AdminBookings() {
                                     <tr>
                                         <td colSpan={8} className="px-4 py-16">
                                             <div className="flex flex-col items-center justify-center">
-
                                                 <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4">
                                                     <span className="text-4xl">📅</span>
                                                 </div>
-
-                                                <h3 className="text-lg font-bold text-slate-700">
-                                                    No Bookings Yet
-                                                </h3>
-
-                                                <p className="text-sm text-slate-400 mt-1">
-                                                    Customer bookings will appear here
-                                                </p>
-
-                                                <div className="mt-4 flex gap-2">
-                                                    <button
-                                                        className="px-4 py-2 rounded-xl bg-[#17375E] text-white text-sm font-medium"
-                                                        onClick={() => alert("Create Booking")}
-                                                    >
-                                                        + Create Booking
-                                                    </button>
-
-                                                    <button
-                                                        className="px-4 py-2 rounded-xl border border-slate-200 text-sm"
-                                                        onClick={fetchBookings}
-                                                    >
-                                                        Refresh
-                                                    </button>
-                                                </div>
-
+                                                <h3 className="text-lg font-bold text-slate-700">No Bookings Yet</h3>
+                                                <p className="text-sm text-slate-400 mt-1">Customer bookings will appear here</p>
+                                                <button className="mt-4 px-4 py-2 rounded-xl border border-slate-200 text-sm" onClick={fetchBookings}>Refresh</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -368,7 +339,7 @@ export default function AdminBookings() {
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{b.id.slice(0, 8)}…</td>
                                         <td className="px-4 py-3 font-semibold text-slate-700">{b.customer_name}</td>
                                         <td className="px-4 py-3 text-slate-600">{b.provider_name}</td>
-                                        <td className="px-4 py-3 capitalize text-slate-600">{b.service_type}</td>
+                                        <td className="px-4 py-3 capitalize text-slate-600">{b.service_id}</td>
                                         <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                                         <td className="px-4 py-3 font-semibold text-slate-700">₹{b.price.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-slate-500 max-w-[140px] truncate">{b.address}</td>
