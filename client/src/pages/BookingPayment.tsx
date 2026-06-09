@@ -21,7 +21,8 @@ const BookingPayment = () => {
     bookings,
     user,
     dispatch,
-    addBooking
+    addBooking,
+    walletBalance
   } = useApp();
 
   const location = useLocation();
@@ -77,6 +78,12 @@ const BookingPayment = () => {
         }
       } else if (method === "wallet") {
         try {
+          if ((walletBalance ?? 0) < total) {
+            setError("Insufficient wallet balance. Please add money to your Roundu Wallet.");
+            setLoading(false);
+            return;
+          }
+
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           dispatch({ type: "PAY_BOOKING", id: bookingId });
           dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
@@ -211,6 +218,12 @@ const BookingPayment = () => {
         }
       } else if (method === "wallet") {
         try {
+          if ((walletBalance ?? 0) < total) {
+            setError("Insufficient wallet balance. Please add money to your Roundu Wallet.");
+            setLoading(false);
+            return;
+          }
+
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           const bookingData = {
             customer_id: user.id,
@@ -371,7 +384,7 @@ const BookingPayment = () => {
               onClick={() => setMethod("wallet")}
               icon={Wallet}
               title="Roundu Wallet"
-              subtitle="Balance: ₹2,400"
+              subtitle={`Balance: ₹${(walletBalance ?? 0).toLocaleString()}`}
             />
             <PaymentOption
               active={method === "upi"}
