@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
-import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
@@ -23,12 +23,40 @@ const PendingApproval = () => {
     }
   }, [clicks, navigate]);
 
+  useEffect(() => {
+    const providerId = localStorage.getItem("provider_id");
+
+    if (!providerId) return;
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("providers")
+        .select("verified")
+        .eq("id", providerId)
+        .single();
+
+      if (data?.verified) {
+        setNotification(
+          "Approved by Admin. Redirecting..."
+        );
+
+        clearInterval(interval);
+
+        setTimeout(() => {
+          navigate("/provider");
+        }, 1500);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [navigate]);
+
   return (
     <div className="flex flex-col min-h-screen bg-background items-center justify-center p-6 text-center relative overflow-hidden">
       {/* Premium Background Elements */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-      
+
       <div className="relative mb-8 mt-12 group">
         <div className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle">
           <Clock size={56} className="text-accent" />
@@ -44,7 +72,7 @@ const PendingApproval = () => {
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight animate-fade-in">
           Verification <br /><span className="text-accent">In Progress</span>
         </h1>
-        
+
         <p className="text-sm text-muted-foreground leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
           We're currently reviewing your documents. Our team usually approves profiles within <span className="text-foreground font-bold">24 hours</span>.
         </p>
@@ -53,7 +81,7 @@ const PendingApproval = () => {
       {/* Checklist */}
       <div className="w-full max-w-[320px] bg-card border border-border rounded-[32px] p-6 my-10 animate-fade-in shadow-xl shadow-accent/5 text-left relative z-10" style={{ animationDelay: '0.2s' }}>
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-5 px-1">Application Status</h3>
-        
+
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -73,9 +101,9 @@ const PendingApproval = () => {
             </div>
             <span className="text-sm font-bold text-foreground/80">Portfolio Review</span>
           </div>
-          
+
           <div className="h-px bg-border my-2 mx-1" />
-          
+
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-full border-2 border-accent border-r-transparent animate-spin flex-shrink-0" />
             <span className="text-sm font-extrabold text-accent">Final Admin Approval</span>
@@ -84,32 +112,54 @@ const PendingApproval = () => {
       </div>
 
       <div className="flex flex-col w-full max-w-[320px] gap-3 mb-8 relative z-10">
-        <button 
+        <button
           disabled={isLoading}
           onClick={async () => {
             if (!user?.id) {
               setError("User not authenticated");
-              setTimeout(() => setError(""), 3000);
               return;
             }
+
             setIsLoading(true);
+
             try {
-              const res = await registerProvider({
-                userId: user.id,
-                bio: providerRegistrationDraft.bio,
-                experienceYears: providerRegistrationDraft.experienceYears,
-                workingHours: providerRegistrationDraft.workingHours,
-                serviceRadius: providerRegistrationDraft.serviceRadius,
-                serviceIds: providerRegistrationDraft.serviceIds
-              });
-              if (!res.success) throw new Error(res.message || "Registration failed");
-              dispatch({ type: "SET_ROLE", role: "provider" });
-              dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
-              setNotification("Registration successful! Redirecting to Dashboard...");
-              setTimeout(() => navigate('/provider'), 1000);
+              const { data, error } = await supabase
+                .from("providers")
+                .insert({
+                  user_id: user.id,
+                  full_name: user.name,
+                  phone: user.phone,
+                  bio: providerRegistrationDraft.bio,
+                  experience_years: providerRegistrationDraft.experienceYears,
+                  working_hours: providerRegistrationDraft.workingHours,
+                  service_radius: providerRegistrationDraft.serviceRadius,
+                  service_ids: providerRegistrationDraft.serviceIds,
+                  verified: false,
+                  kyc_status: "pending",
+                  is_online: false,
+                  rating: 0,
+                  total_earnings: 0
+                })
+                .select()
+                .single();
+
+              if (error) throw error;
+
+              localStorage.setItem(
+                "provider_id",
+                String(data.id)
+              );
+
+              setNotification(
+                "Application submitted successfully. Awaiting admin approval."
+              );
+
+              setTimeout(() => {
+                navigate("/provider/pending-approval");
+              }, 1000);
             } catch (err: any) {
-              setError(err.message || 'Connection failed');
-              setTimeout(() => setError(""), 3000);
+              console.error(err);
+              setError(err.message || "Registration failed");
             } finally {
               setIsLoading(false);
             }

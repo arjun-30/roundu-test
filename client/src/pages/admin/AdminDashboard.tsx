@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminTopBar from "@/components/admin/AdminTopBar";
+import AdminRealtimeAlert from "@/components/admin/AdminRealtimeAlert";
 import StatCard from "@/components/admin/StatCard";
 import {
     Users, Briefcase, CalendarCheck, Activity,
-    DollarSign, TrendingUp, Clock, XCircle, RefreshCw
+    DollarSign, TrendingUp, Clock, XCircle, RefreshCw, CheckCircle
 } from "lucide-react";
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { motion } from "framer-motion";
 
@@ -38,14 +39,15 @@ interface RecentBooking {
     price: number;
     created_at: string;
 }
+interface PendingProvider {
+    id: string;
+    full_name: string;
+    phone: string;
+    service_type: string;
+    created_at: string;
+}
 
 const ACTIVE_STATUSES = ["assigned", "on_the_way", "arrived", "in_progress"];
-const STATUS_COLORS: Record<string, string> = {
-    completed: "#10b981",
-    pending: "#F4B942",
-    cancelled: "#ef4444",
-    active: "#3b82f6",
-};
 const PIE_COLORS = ["#10b981", "#3b82f6", "#F4B942", "#ef4444"];
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -74,6 +76,7 @@ export function AdminLayout() {
             <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="flex-1 flex flex-col min-w-0">
                 <AdminTopBar onMenuClick={() => setSidebarOpen(true)} />
+                <AdminRealtimeAlert />
                 <main className="flex-1 p-6 lg:p-8 overflow-auto max-w-none">
                     <Outlet />
                 </main>
@@ -84,11 +87,14 @@ export function AdminLayout() {
 
 // ─── Dashboard Home ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState<Stats | null>(null);
     const [dailyData, setDailyData] = useState<DailyPoint[]>([]);
     const [statusData, setStatusData] = useState<StatusPoint[]>([]);
     const [serviceData, setServiceData] = useState<ServicePoint[]>([]);
     const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
+    const [pendingProviders, setPendingProviders] = useState<PendingProvider[]>([]);
+    const [approvingId, setApprovingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -110,6 +116,7 @@ export default function AdminDashboard() {
                 { data: todayBookingsRaw },
                 { data: last14Bookings },
                 { data: recentRaw },
+                { data: pendingRaw },
             ] = await Promise.all([
                 supabase.from("users").select("*", { count: "exact", head: true }),
                 supabase.from("providers").select("*", { count: "exact", head: true }),
@@ -121,6 +128,7 @@ export default function AdminDashboard() {
                 supabase.from("bookings").select("price").gte("created_at", today).eq("status", "completed"),
                 supabase.from("bookings").select("created_at,price,status,service_type").gte("created_at", since14),
                 supabase.from("bookings").select("id,status,price,created_at,service_type,users(full_name),providers(full_name)").order("created_at", { ascending: false }).limit(10),
+                supabase.from("providers").select("id,full_name,phone,service_type,created_at").eq("verified", false).order("created_at", { ascending: false }).limit(20),
             ]);
 
             const totalRevenue = (completedBookings ?? []).reduce((s: number, b: { price?: number }) => s + (b.price ?? 0), 0);
@@ -136,6 +144,17 @@ export default function AdminDashboard() {
                 pendingVerifications: pendingVerifications ?? 0,
                 cancelledBookings: cancelledBookings ?? 0,
             });
+
+            // Pending providers (for quick-approve panel)
+            setPendingProviders(
+                (pendingRaw ?? []).map((p: Record<string, unknown>) => ({
+                    id: String(p.id ?? ""),
+                    full_name: String(p.full_name ?? ""),
+                    phone: String(p.phone ?? ""),
+                    service_type: String(p.service_type ?? ""),
+                    created_at: String(p.created_at ?? ""),
+                }))
+            );
 
             // Daily data
             const dayMap: Record<string, DailyPoint> = {};
@@ -195,6 +214,19 @@ export default function AdminDashboard() {
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
+    // Approve a provider straight from the dashboard
+    const approveProvider = async (id: string) => {
+        setApprovingId(id);
+        const { error: err } = await supabase.from("providers").update({ verified: true }).eq("id", id);
+        if (err) {
+            setError("Could not approve provider. Please retry.");
+        } else {
+            setPendingProviders(prev => prev.filter(p => p.id !== id));
+            setStats(s => (s ? { ...s, pendingVerifications: Math.max(0, s.pendingVerifications - 1) } : s));
+        }
+        setApprovingId(null);
+    };
+
     // ── Stat cards config
     const statCards = stats
         ? [
@@ -249,6 +281,76 @@ export default function AdminDashboard() {
                 }
             </div>
 
+            {/* ─── Pending Provider Approvals (quick actions) ─────────────────── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-extrabold text-slate-700">Pending Provider Approvals</h2>
+                        {pendingProviders.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+                                {pendingProviders.length}
+                            </span>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => navigate("/admin/providers?status=pending")}
+                        className="text-sm font-semibold text-[#17375E] hover:underline"
+                    >
+                        View all →
+                    </button>
+                </div>
+
+                {loading ? (
+                    <div className="space-y-2">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+                        ))}
+                    </div>
+                ) : pendingProviders.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-slate-400 py-6">
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        All caught up — no providers waiting for approval.
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {pendingProviders.map(p => (
+                            <div
+                                key={p.id}
+                                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl bg-[#F4B942] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                        {(p.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-slate-700 text-sm truncate">
+                                            {p.full_name || "Unnamed provider"}
+                                        </p>
+                                        <p className="text-xs text-slate-400 truncate capitalize">
+                                            {(p.service_type || "—")} · {new Date(p.created_at).toLocaleString("en-IN")}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={() => approveProvider(p.id)}
+                                        disabled={approvingId === p.id}
+                                        className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                                    >
+                                        {approvingId === p.id ? "Approving…" : "Approve"}
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/admin/providers?status=pending&highlight=${p.id}`)}
+                                        className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                                    >
+                                        Review
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 
@@ -278,7 +380,10 @@ export default function AdminDashboard() {
                     <h3 className="font-bold mb-4">Pending Tasks</h3>
 
                     <div className="space-y-3">
-                        <div className="flex justify-between">
+                        <div
+                            onClick={() => navigate("/admin/providers?status=pending")}
+                            className="flex justify-between cursor-pointer rounded-lg -mx-2 px-2 py-1 hover:bg-slate-50 hover:text-[#17375E] transition-colors"
+                        >
                             <span>Provider Verifications</span>
                             <span className="font-bold text-orange-500">
                                 {stats?.pendingVerifications ?? 0}
@@ -377,7 +482,7 @@ export default function AdminDashboard() {
                     ) : (
                         <ResponsiveContainer width="100%" height={320}>
                             <PieChart>
-                                <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
+                                <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
                                     {statusData.map((_, i) => (
                                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                                     ))}
@@ -406,36 +511,6 @@ export default function AdminDashboard() {
                             </BarChart>
                         </ResponsiveContainer>
                     )}
-                </div>
-            </div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
-                <h2 className="text-sm font-extrabold text-slate-700 mb-4">
-                    Recent Activity
-                </h2>
-
-                <div className="space-y-3">
-
-                    <div className="flex justify-between">
-                        <span>New provider registered</span>
-                        <span className="text-slate-400">
-                            2 mins ago
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between">
-                        <span>Booking completed</span>
-                        <span className="text-slate-400">
-                            10 mins ago
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between">
-                        <span>New user signup</span>
-                        <span className="text-slate-400">
-                            25 mins ago
-                        </span>
-                    </div>
-
                 </div>
             </div>
 
