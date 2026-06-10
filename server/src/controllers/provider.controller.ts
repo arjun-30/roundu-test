@@ -228,11 +228,28 @@ export const checkProviderExists = async (req: Request, res: Response) => {
 export const getProviderProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    if (!id) return res.status(400).json({ success: false, message: 'Provider ID required' });
+    if (!id) {
+      console.log('[getProviderProfile] Missing ID');
+      return res.status(400).json({ success: false, message: 'Provider ID required' });
+    }
 
+    console.log('[getProviderProfile] Fetching provider with ID:', id);
     const provider = await ProviderModel.findById(id);
-    if (!provider) return res.status(404).json({ success: false, message: 'Provider not found' });
+    
+    if (!provider) {
+      console.warn('[getProviderProfile] Provider not found for ID:', id);
+      console.log('[getProviderProfile] Attempting fallback: search all providers');
+      
+      // Fallback: Search all providers to debug
+      const allRes = await getPool().query(
+        'SELECT id, name FROM providers LIMIT 5'
+      );
+      console.log('[getProviderProfile] Available provider IDs:', allRes.rows);
+      
+      return res.status(404).json({ success: false, message: 'Provider not found', requestedId: id });
+    }
 
+    console.log('[getProviderProfile] Found provider:', { id: provider.id, name: provider.name });
     const stats = await ProviderModel.getStats(provider.id);
 
     res.json({
@@ -248,12 +265,17 @@ export const getProviderProfile = async (req: Request, res: Response) => {
           is_online: provider.is_online,
           rating: parseFloat(provider.rating || '5.0'),
           serviceId: provider.service_id,
+          serviceIds: provider.serviceIds || [],
+          lat: provider.lat,
+          lng: provider.lng,
+          display_location: provider.display_location,
+          service_radius: provider.service_radius,
         },
         stats
       }
     });
-  } catch (error) {
-    console.error('Get provider profile error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+  } catch (error: any) {
+    console.error('[getProviderProfile] Error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Server error', error: error?.message });
   }
 };

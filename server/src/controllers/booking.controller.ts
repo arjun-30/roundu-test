@@ -43,24 +43,36 @@ export const createBooking = async (req: Request, res: Response) => {
       }
     }
 
-    // The frontend might send users.id instead of providers.id for the quote.
-    // Try to resolve it to a providers.id if it matches a user.
+    // Validate provider exists and check for schedule conflicts
     if (bookingData.provider_id) {
-      const provider = await ProviderModel.findByUserId(bookingData.provider_id);
-      const providerId = provider ? provider.id : bookingData.provider_id;
-      bookingData.provider_id = providerId;
-
-      // 2. Check if provider has a schedule conflict
-      if (bookingData.scheduled_at) {
-        const proposedStart = new Date(bookingData.scheduled_at);
-        const proposedDuration = bookingData.duration || 2;
-        const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
-        if (conflictCheck.conflict) {
+      try {
+        const provider = await ProviderModel.findById(bookingData.provider_id);
+        if (provider) {
+          // Check if provider has a schedule conflict
+          if (bookingData.scheduled_at) {
+            const proposedStart = new Date(bookingData.scheduled_at);
+            const proposedDuration = bookingData.duration || 2;
+            const conflictCheck = await checkScheduleConflict(provider.id, proposedStart, proposedDuration);
+            if (conflictCheck.conflict) {
+              return res.status(400).json({
+                success: false,
+                message: conflictCheck.message || 'Schedule conflict: Provider has another booking at this time.'
+              });
+            }
+          }
+        } else {
+          console.warn(`Provider not found for id=${bookingData.provider_id}`);
           return res.status(400).json({
             success: false,
-            message: conflictCheck.message || 'Schedule conflict: Provider has another booking at this time.'
+            message: 'Invalid provider. Please try again.'
           });
         }
+      } catch (err: any) {
+        console.error('Error validating provider_id:', err.message);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid provider. Please try again.'
+        });
       }
     }
 
@@ -166,8 +178,28 @@ export const createBooking = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: booking });
   } catch (error: any) {
-    console.error('Create booking error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message, stack: error.stack });
+    console.error('Create booking error:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', error);
+    
+    // Provide helpful error messages
+    let errorMessage = 'Booking failed. Please try again.';
+    
+    if (error.code === '23505') {
+      errorMessage = 'This booking already exists.';
+    } else if (error.message?.includes('violates foreign key')) {
+      errorMessage = 'Invalid provider or service. Please try again.';
+    } else if (error.message?.includes('column') && error.message?.includes('does not exist')) {
+      errorMessage = 'Server configuration error. Please contact support.';
+    } else if (process.env.NODE_ENV === 'development') {
+      errorMessage = error.message || 'Booking failed.';
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 };
 

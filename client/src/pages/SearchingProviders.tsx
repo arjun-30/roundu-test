@@ -572,11 +572,37 @@ const SearchingProviders = () => {
                 transform: "translate(-50%, -50%)",
               }}
             >
-              <div className="relative">
+              <div className="relative cursor-pointer" onClick={() => {
+                // Find the quote for this provider and navigate to details
+                const quote = receivedQuotes.find(q => q.providerId === p.id);
+                navigate(`/provider/${p.id}`, { 
+                  state: { 
+                    provider: {
+                      id: p.id,
+                      name: p.name,
+                      avatar_url: p.avatar_url,
+                      rating: p.rating || 0,
+                      lat: p.lat,
+                      lng: p.lng,
+                      distance_km: p.distance_km || 0
+                    },
+                    quote: quote || {
+                      providerId: p.id,
+                      providerName: p.name,
+                      providerAvatar: p.avatar_url || p.name?.charAt(0),
+                      rating: p.rating || 0,
+                      price: quote?.price || 500,
+                      distanceKm: p.distance_km || 0,
+                      etaMin: quote?.etaMin || 15
+                    },
+                    broadcastId
+                  }
+                });
+              }}>
 
                 <div className="absolute inset-0 rounded-full bg-[#152E4B]/20 animate-ping" />
 
-                <div className="w-11 h-11 rounded-full bg-white p-[2px] shadow-xl border border-white">
+                <div className="w-11 h-11 rounded-full bg-white p-[2px] shadow-xl border border-white hover:scale-110 transition-transform">
 
                   {p.avatar_url ? (
                     <img
@@ -654,7 +680,23 @@ const SearchingProviders = () => {
                 key={q.providerId}
                 className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm"
               >
-                <div className="flex justify-between">
+                <div 
+                  className="flex justify-between cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => {
+                    navigate(`/provider/${q.providerId}`, { 
+                      state: { 
+                        provider: {
+                          id: q.providerId,
+                          name: q.providerName,
+                          avatar_url: q.providerAvatar,
+                          rating: q.rating || 0
+                        },
+                        quote: q,
+                        broadcastId
+                      }
+                    });
+                  }}
+                >
 
                   <div className="flex gap-3">
                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[#152E4B]">

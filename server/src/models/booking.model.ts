@@ -8,6 +8,8 @@ export interface Booking {
   status: string;
   scheduled_at: string;
   address: string;
+  lat?: number;
+  lng?: number;
   price: number;
   notes: string;
   voice_note_url?: string;
@@ -23,8 +25,8 @@ export const BookingModel = {
     console.log(JSON.stringify(booking, null, 2));
 
     const res = await getPool().query(
-      'INSERT INTO bookings (customer_id, provider_id, service_id, status, scheduled_at, address, price, notes, voice_note, voice_note_url, paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-      [booking.customer_id, booking.provider_id, booking.service_id, booking.status || 'pending', booking.scheduled_at, booking.address, booking.price, booking.notes, booking.voice_note || false, booking.voice_note_url || null, booking.paid || false]
+      'INSERT INTO bookings (customer_id, provider_id, service_id, status, scheduled_at, address, lat, lng, price, notes, voice_note, voice_note_url, paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+      [booking.customer_id, booking.provider_id, booking.service_id, booking.status || 'pending', booking.scheduled_at, booking.address, booking.lat || null, booking.lng || null, booking.price, booking.notes, booking.voice_note || false, booking.voice_note_url || null, booking.paid || false]
     );
     return res.rows[0];
   },

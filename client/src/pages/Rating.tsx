@@ -61,7 +61,7 @@ const Rating = () => {
         />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5">
         {error && <p className="text-red-500 text-xs mb-2 text-center">{error}</p>}
         <button
           onClick={submit}

@@ -14,6 +14,34 @@ async function main() {
   const db = getPool();
   try {
     // ── Column migrations ───────────────────────────────────────────────────
+    // Create bookings table if it doesn't exist
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS bookings (
+          id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          customer_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          provider_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          service_id      VARCHAR(255),
+          status          VARCHAR(50) NOT NULL DEFAULT 'pending',
+          scheduled_at    TIMESTAMPTZ,
+          address         TEXT,
+          lat             NUMERIC(10, 7),
+          lng             NUMERIC(10, 7),
+          price           NUMERIC(10, 2),
+          notes           TEXT,
+          voice_note      BOOLEAN DEFAULT FALSE,
+          voice_note_url  VARCHAR(500),
+          paid            BOOLEAN DEFAULT FALSE,
+          created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      console.log('[server] Bookings table ready');
+    } catch (tableErr: any) {
+      console.log('[server] Bookings table creation note:', tableErr.message);
+      // Table might already exist, continue anyway
+    }
+    
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
@@ -536,6 +564,17 @@ async function main() {
 
         const broadcast = activeBroadcasts.get(data.broadcastId);
 
+        // Check if provider has any active jobs
+        const { getProviderActiveBookings } = require('./utils/bookingHelper');
+        const activeBookings = await getProviderActiveBookings(providerId);
+        
+        if (activeBookings && activeBookings.length > 0) {
+          socket.emit('quote_error', {
+            message: 'You cannot send quotes while you have an active job. Please complete your current job first.'
+          });
+          return;
+        }
+
         const proposedStart = parseDateTime(
           broadcast?.date,
           broadcast?.time
@@ -588,7 +627,7 @@ async function main() {
           io.to(`user:${customerId}`).emit('new_quote_received', {
             broadcastId: data.broadcastId,
             serviceId: broadcast?.serviceId || data.serviceId,
-            providerId: data.providerId,
+            providerId: providerId,
             providerName: data.providerName,
             providerAvatar: data.providerAvatar,
             providerPhone: data.providerPhone,

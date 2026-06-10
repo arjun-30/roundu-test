@@ -110,13 +110,23 @@ export const ProviderModel = {
       "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
       [providerId]
     );
-    const jobsRes = await getPool().query(
+    const totalJobsRes = await getPool().query(
+      "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1",
+      [providerId]
+    );
+    const completedJobsRes = await getPool().query(
       "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'",
+      [providerId]
+    );
+    const ratingRes = await getPool().query(
+      "SELECT rating FROM providers WHERE id = $1",
       [providerId]
     );
     return {
       earningsToday: parseFloat(earningsRes.rows[0]?.total || '0'),
-      completedJobs: parseInt(jobsRes.rows[0]?.count || '0')
+      total_jobs: parseInt(totalJobsRes.rows[0]?.count || '0'),
+      completed_jobs: parseInt(completedJobsRes.rows[0]?.count || '0'),
+      rating: parseFloat(ratingRes.rows[0]?.rating || '0')
     };
   },
 
