@@ -13,73 +13,45 @@ async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
   const db = getPool();
   try {
-    // ── Column migrations ───────────────────────────────────────────────────
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
-
-
+    
+    // Add columns to notifications table
+    await db.query('ALTER TABLE notifications ADD COLUMN IF NOT EXISTS provider_id UUID;');
+    await db.query('ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;');
+    
     // Add location storage columns to users and providers tables
     await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
     await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
     await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
-
+    
     await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
     await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
     await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
-
+    
     // Set service_radius default to 20
     await db.query('ALTER TABLE providers ALTER COLUMN service_radius SET DEFAULT 20;');
     await db.query('UPDATE providers SET service_radius = 20 WHERE service_radius = 5 OR service_radius IS NULL;');
 
     // Add service_category column to providers table
     await db.query("ALTER TABLE providers ADD COLUMN IF NOT EXISTS service_category VARCHAR(255)[] DEFAULT '{}';");
+    // Seed/populate service_category for existing providers if it's empty
     await db.query(`
-      UPDATE providers p
+      UPDATE providers p 
       SET service_category = COALESCE(
         (
-          SELECT array_agg(s.label)
-          FROM provider_services ps
-          JOIN services s ON ps.service_id = s.id
+          SELECT array_agg(s.label) 
+          FROM provider_services ps 
+          JOIN services s ON ps.service_id = s.id 
           WHERE ps.provider_id = p.id
-        ),
+        ), 
         '{}'::VARCHAR[]
-      )
+      ) 
       WHERE service_category IS NULL OR service_category = '{}';
     `);
-
-    // ── Wallets table (needed by WalletModel / provider dashboard) ──────────
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS wallets (
-        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-        balance     BIGINT NOT NULL DEFAULT 0,
-        currency    VARCHAR(8) NOT NULL DEFAULT 'INR',
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);`);
-
-    // ── Ensure all services used by the app exist in the services table ────
-    await db.query(`
-      INSERT INTO services (id, label, description, price_per_hr) VALUES
-        ('plumber',                'Plumber',         'Pipes & drainage',            299),
-        ('electrician',            'Electrician',      'Wiring & fixtures',           299),
-        ('carwash',                'Car Wash',         'At your doorstep',            199),
-        ('drivers',                'Acting Drivers',   'Expert chauffeurs',           399),
-        ('housekeeping',           'House Keeping',    'Deep & regular',              499),
-        ('ac-cleaning',            'AC Cleaning',      'AC service & filter clean',   499),
-        ('ac-repair',              'AC Repair',        'AC diagnosis & repair',       599),
-        ('appliance-repair',       'Appliance Repair', 'Home appliance repair',       399),
-        ('pest-control',           'Pest Control',     'Home pest treatment',         699),
-        ('painting',               'Painting',         'Home & office painting',      499),
-        ('carpentry',              'Carpentry',        'Furniture & woodwork',        399),
-        ('srv-d7orcli8qa3s738r9qe0','Expert Services', 'Premium customized services', 599)
-      ON CONFLICT (id) DO NOTHING;
-    `);
-
-    console.log('[server] Database schema up to date.');
+    
+    console.log('[server] Database schema up to date with location and service category fields.');
   } catch (err) {
     console.error('[server] Migration error:', err);
   }

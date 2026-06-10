@@ -1,27 +1,14 @@
 import axios from 'axios';
 import { env } from '../config/env';
-import crypto from 'crypto';
 
 const CASHFREE_BASE_URL = env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/verification';
-
-function getHeaders() {
-  const headers: any = {
-    'x-client-id': env.CASHFREE_CLIENT_ID,
-    'x-client-secret': env.CASHFREE_CLIENT_SECRET,
-    'content-type': 'application/json',
-    'User-Agent': 'RoundU-Backend/1.0 (Node.js)'
-  };
-
-  if (env.CASHFREE_PUBLIC_KEY) {
-    let key = env.CASHFREE_PUBLIC_KEY;
-    if (!key.includes('\n')) key = key.replace(/\\n/g, '\n');
-    const timestamp = Math.floor(Date.now() / 1000);
-    const data = env.CASHFREE_CLIENT_ID + '.' + timestamp;
-    const signature = crypto.publicEncrypt({ key, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, Buffer.from(data));
-    headers['x-cf-signature'] = signature.toString('base64');
-  }
-  return headers;
-}
+const HEADERS = {
+  'x-client-id': env.CASHFREE_CLIENT_ID,
+  'x-client-secret': env.CASHFREE_CLIENT_SECRET,
+  'content-type': 'application/json',
+  'User-Agent': 'RoundU-Backend/1.0 (Node.js)'
+  // NOTE: x-api-version NOT here — differs per API, pass per-method
+};
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -35,7 +22,7 @@ export class CashfreeService {
     const response = await axios.post(
       `${CASHFREE_BASE_URL}/digilocker/verify-account`,
       { verification_id: checkVerificationId, mobile_number: phone },
-      { headers: getHeaders() }
+      { headers: HEADERS }
     );
     return response.data; // { status: 'ACCOUNT_EXISTS' | 'ACCOUNT_NOT_FOUND' }
   }
@@ -54,7 +41,7 @@ export class CashfreeService {
         redirect_url: redirectUrl,
         user_flow: userFlow
       },
-      { headers: getHeaders() }
+      { headers: HEADERS }
     );
     return response.data; // { url, status, verification_id, reference_id }
   }
@@ -63,7 +50,7 @@ export class CashfreeService {
   static async getDigilockerStatus(verificationId: string) {
     const response = await axios.get(
       `${CASHFREE_BASE_URL}/digilocker`,
-      { headers: getHeaders(), params: { verification_id: verificationId } }
+      { headers: HEADERS, params: { verification_id: verificationId } }
     );
     return response.data;
     // { status, user_details: { eaadhaar: 'Y'|'N', name, dob, ... } }
@@ -76,7 +63,7 @@ export class CashfreeService {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const response = await axios.get(
         `${CASHFREE_BASE_URL}/digilocker/document/${documentType}`,
-        { headers: getHeaders(), params: { verification_id: verificationId } }
+        { headers: HEADERS, params: { verification_id: verificationId } }
       );
       const data = response.data;
       if (data.status === 'SUCCESS') return data;
@@ -99,7 +86,7 @@ export class CashfreeService {
     const response = await axios.post(
       `${CASHFREE_BASE_URL}/pan`,
       { pan, ...(name ? { name } : {}) },
-      { headers: { ...getHeaders(), 'x-api-version': '2022-10-26' } }
+      { headers: { ...HEADERS, 'x-api-version': '2022-10-26' } }
     );
     return response.data;
     // { valid, registered_name, pan_status, reference_id, name_match_result,
@@ -114,7 +101,7 @@ export class CashfreeService {
     const response = await axios.post(
       `${CASHFREE_BASE_URL}/bank-account/sync`,
       { bank_account: accountNumber, ifsc, ...(name ? { name } : {}) },
-      { headers: getHeaders() }
+      { headers: HEADERS }
     );
     return response.data;
     // { account_status, account_status_code, name_at_bank, bank_name, reference_id, utr }
