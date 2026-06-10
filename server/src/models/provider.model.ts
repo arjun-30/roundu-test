@@ -8,12 +8,16 @@ export interface Provider {
   rating: number;
   response_rate: number;
   is_online: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
   service_radius: number;
   working_hours: string | null;
   lat?: number | null;
   lng?: number | null;
   display_location?: string | null;
-  
+
   // camelCase fields for client matching & verification
   serviceCategory?: string[];
   isOnline?: boolean;
@@ -30,7 +34,11 @@ export function mapProvider(dbRow: any): any {
     serviceCategory: dbRow.service_category || [],
     service_category: dbRow.service_category || [],
     isOnline: dbRow.is_online,
-    is_online: dbRow.is_online,
+    is_online: dbRow.is_online ?? false,
+    is_verified: dbRow.is_verified ?? false,
+    is_active: dbRow.is_active ?? true,
+    approval_status: dbRow.approval_status ?? 'pending',
+    rejection_reason: dbRow.rejection_reason ?? null,
     serviceRadius: dbRow.service_radius,
     service_radius: dbRow.service_radius,
     latitude: dbRow.lat != null ? Number(dbRow.lat) : null,

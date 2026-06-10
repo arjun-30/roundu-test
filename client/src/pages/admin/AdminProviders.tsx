@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { updateProviderVerification } from "@/lib/adminService";
+import { approveProvider, rejectProvider } from "@/lib/adminService";
 import { createProviderApprovalNotification, createProviderRejectionNotification } from "@/lib/notificationService";
 import { Search, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +33,9 @@ function ProviderRow({ provider, onVerify }: { provider: Provider; onVerify: (id
         e.stopPropagation();
         setUpdating(true);
         try {
-            const result = await updateProviderVerification(provider.id, val);
+            const result = val
+                ? await approveProvider(provider.id)
+                : await rejectProvider(provider.id, "Admin review");
             if (!result.success) {
                 console.error("[AdminProviders] Failed to update provider:", result.error);
                 setUpdating(false);

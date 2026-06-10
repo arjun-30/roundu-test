@@ -178,19 +178,56 @@ export async function updateProviderVerification(
   providerId: string,
   isVerified: boolean
 ): Promise<{ success: boolean; error?: string }> {
+  return isVerified ? approveProvider(providerId) : rejectProvider(providerId, "");
+}
+
+export async function approveProvider(
+  providerId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await supabase
       .from("providers")
-      .update({ is_verified: isVerified })
+      .update({
+        is_verified: true,
+        approval_status: "approved",
+        is_active: true,
+        rejection_reason: null,
+      })
       .eq("id", providerId);
 
     if (error) {
-      console.error("[AdminService] Error updating provider verification:", error);
+      console.error("[AdminService] Error approving provider:", error);
       return { success: false, error: error.message };
     }
     return { success: true };
   } catch (error: any) {
-    console.error("[AdminService] Exception updating provider verification:", error);
+    console.error("[AdminService] Exception approving provider:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function rejectProvider(
+  providerId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from("providers")
+      .update({
+        is_verified: false,
+        approval_status: "rejected",
+        is_active: false,
+        rejection_reason: reason || null,
+      })
+      .eq("id", providerId);
+
+    if (error) {
+      console.error("[AdminService] Error rejecting provider:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error("[AdminService] Exception rejecting provider:", error);
     return { success: false, error: error.message };
   }
 }
