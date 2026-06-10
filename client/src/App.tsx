@@ -15,6 +15,7 @@ import { AdminLayout } from "@/pages/admin/AdminDashboard";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminProviders from "@/pages/admin/AdminProviders";
+import AdminProviderApprovals from "@/pages/admin/ProviderApprovals";
 import AdminBookings from "@/pages/admin/AdminBookings";
 import AdminEarnings from "@/pages/admin/AdminEarnings";
 import AdminReports from "@/pages/admin/AdminReports";
@@ -247,6 +248,7 @@ const AppRoutes = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/providers" element={<AdminProviders />} />
+          <Route path="/admin/provider-approvals" element={<AdminProviderApprovals />} />
           <Route path="/admin/bookings" element={<AdminBookings />} />
           <Route path="/admin/earnings" element={<AdminEarnings />} />
           <Route path="/admin/reports" element={<AdminReports />} />

@@ -10,11 +10,15 @@ interface AdminTopBarProps {
 
 function getNotificationRoute(n: DatabaseNotification): string | null {
     switch (n.type) {
-        case "provider_registration":
-            return "/admin/providers";
+        case "provider_registration": {
+            const pid = n.data?.provider_id;
+            return pid
+                ? `/admin/provider-approvals?highlight=${pid}`
+                : "/admin/provider-approvals";
+        }
         case "provider_approved":
         case "provider_rejected":
-            return "/admin/providers";
+            return "/admin/provider-approvals";
         case "booking_cancelled":
         case "booking_created":
             return "/admin/bookings";
@@ -217,7 +221,7 @@ export default function AdminTopBar({ onMenuClick }: AdminTopBarProps) {
                             {/* Footer */}
                             <div className="p-3 bg-slate-50 text-center border-t border-slate-100">
                                 <button
-                                    onClick={() => { setShowNotifications(false); navigate("/admin/providers"); }}
+                                    onClick={() => { setShowNotifications(false); navigate("/admin/provider-approvals"); }}
                                     className="text-sm text-[#17375E] font-semibold hover:underline"
                                 >
                                     View Pending Approvals →
