@@ -79,13 +79,6 @@ async function main() {
       ON CONFLICT (id) DO NOTHING;
     `);
 
-    // ── Provider approval status & blocking ────────────────────────────────
-    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending';`);
-    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;`);
-    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;`);
-    // Back-fill: already-verified providers get approved status
-    await db.query(`UPDATE providers SET approval_status = 'approved', is_active = true WHERE is_verified = true AND approval_status = 'pending';`);
-
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
@@ -261,7 +254,7 @@ async function main() {
               }
 
               const isOnline = provider.isOnline === true;
-              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const isApproved = providerRow.is_verified === true;
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                       matchesServiceCategory(provider.serviceCategory, serviceLabel);
               const inRadius = dist <= (provider.serviceRadius || 20);
@@ -440,7 +433,7 @@ async function main() {
               }
 
               const isOnline = provider.isOnline === true;
-              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const isApproved = providerRow.is_verified === true;
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                       matchesServiceCategory(provider.serviceCategory, serviceLabel);
               const inRadius = dist <= (provider.serviceRadius || 20);

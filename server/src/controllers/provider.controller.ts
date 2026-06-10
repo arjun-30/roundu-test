@@ -91,8 +91,8 @@ export const searchProviders = async (req: Request, res: Response) => {
       const busy = await isProviderBusy(p.id);
       if (busy) continue;
 
-      // Enforce that candidate providers are online, verified, active and not rejected
-      if (!p.is_online || !p.is_verified || p.is_active === false || p.approval_status === 'rejected') {
+      // Enforce that candidate providers are currently online and verified/approved
+      if (!p.is_online || !p.is_verified) {
         continue;
       }
 
