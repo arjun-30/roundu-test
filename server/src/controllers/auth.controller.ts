@@ -16,15 +16,15 @@ export const sendOTP = async (req: Request, res: Response) => {
     // 2. Send via MSG91 (using custom OTP)
     await msg91.sendOTP(phone, otp);
 
-    // In dev mode without SMS configured, surface the OTP so it can actually be used.
+    // In dev mode without SMS configured we still log the OTP to the server console
+    // but we do NOT return it in the API response to avoid relying on navigation state.
     const smsConfigured = Boolean(env.MSG91_AUTH_KEY);
-    if (!smsConfigured) {
+    if (!smsConfigured && env.NODE_ENV !== 'production') {
       console.log(`[auth] DEV OTP for ${phone}: ${otp}`);
     }
     res.json({
       success: true,
       message: 'OTP sent successfully',
-      ...(env.NODE_ENV !== 'production' && !smsConfigured ? { devOtp: otp } : {}),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

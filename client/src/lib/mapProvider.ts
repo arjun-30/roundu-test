@@ -214,76 +214,204 @@ export function formatCityCountry(feature: any): string {
   
   // Try to find place (city)
   let city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text;
-  
-  // Fallbacks for city
   if (!city) {
     city = feature.context?.find((c: any) => c.id.startsWith("district"))?.text;
   }
-  if (!city) {
-    city = feature.context?.find((c: any) => c.id.startsWith("region"))?.text;
-  }
-  if (!city) {
-    if (feature.id?.startsWith("place") || feature.id?.startsWith("district")) {
-      city = feature.text;
-    }
-  }
   
-  // Try to find country
-  let country = feature.context?.find((c: any) => c.id.startsWith("country"))?.text;
-  if (!country && feature.id?.startsWith("country")) {
-    country = feature.text;
-  }
-  if (!country && feature.place_name) {
-    const parts = feature.place_name.split(",");
-    country = parts[parts.length - 1]?.trim();
-  }
-  if (!country) {
-    country = "India";
-  }
+  let area = feature.text || "";
   
-  if (city) {
-    return `${city.trim()}, ${country.trim()}`;
+  // Clean district/city
+  const cleanDistrict = (name: string): string => {
+    if (!name) return "";
+    return name
+      .replace(/\bDistrict\b/gi, "")
+      .replace(/\bState\b/gi, "")
+      .trim();
+  };
+
+  const finalDistrict = cleanDistrict(city || "");
+  const EXCLUDED_NAMES = new Set([
+    "india", "tamil nadu", "tamilnadu", "karnataka", "andhra pradesh", 
+    "kerala", "maharashtra", "delhi", "state", "country"
+  ]);
+
+  const isExcluded = (name: string): boolean => {
+    if (!name) return true;
+    const lower = name.toLowerCase().trim();
+    return EXCLUDED_NAMES.has(lower);
+  };
+
+  const finalArea = isExcluded(area) ? "" : area.trim();
+  const filteredDistrict = isExcluded(finalDistrict) ? "" : finalDistrict;
+
+  if (finalArea && filteredDistrict && finalArea.toLowerCase() !== filteredDistrict.toLowerCase()) {
+    return `${finalArea}, ${filteredDistrict}`;
   }
-  
-  if (feature.place_name) {
-    const parts = feature.place_name.split(",");
-    if (parts.length >= 2) {
-      return `${parts[parts.length - 2].trim()}, ${parts[parts.length - 1].trim()}`;
-    }
-    return feature.place_name;
-  }
-  
-  return "Set Location";
+  return finalArea || filteredDistrict || "Set Location";
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; area: string; city: string; pincode: string }> {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Mapbox reverse geocoding HTTP ${res.status}`);
-  const data = await res.json();
-  const feature = data.features?.[0];
-  if (!feature) throw new Error("Mapbox reverse geocoding: no results");
-  
-  let city = feature.context?.find((c: any) => c.id.startsWith("place"))?.text || "";
-  if (!city && feature.context) {
-    city = feature.context.find((c: any) => c.id.startsWith("district"))?.text || 
-           feature.context.find((c: any) => c.id.startsWith("region"))?.text || "";
+  const isDev = import.meta.env.DEV;
+
+  if (isDev) {
+    console.log("[DEBUG LOCATION] Latitude:", lat);
+    console.log("[DEBUG LOCATION] Longitude:", lng);
+    console.log("[DEBUG LOCATION] Geocoding request URL:", url);
   }
-  const area = feature.text || "";
-  let pincode = feature.context?.find((c: any) => c.id.startsWith("postcode"))?.text || "";
-  if (!pincode && feature.place_name) {
-    const match = feature.place_name.match(/\b\d{6}\b/);
-    if (match) {
-      pincode = match[0];
+
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (fetchErr: any) {
+    const errorMsg = `Network request failure: Unable to reach geocoding service. Please check your internet connection.`;
+    if (isDev) {
+      console.error("[DEBUG LOCATION] Fetch Error:", fetchErr);
+    }
+    throw new Error(errorMsg);
+  }
+
+  if (!res.ok) {
+    let errText = "";
+    try {
+      errText = await res.text();
+    } catch (_) {}
+    let errorMsg = `Reverse geocoding API failure: HTTP ${res.status}`;
+    if (res.status === 401 || res.status === 403) {
+      errorMsg = "Reverse geocoding API failure: Invalid API key or unauthorized request.";
+    } else if (errText) {
+      errorMsg = `Reverse geocoding API failure: ${errText}`;
+    }
+    if (isDev) {
+      console.error("[DEBUG LOCATION] Response Error:", errorMsg);
+    }
+    throw new Error(errorMsg);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (jsonErr: any) {
+    const errorMsg = `Address parsing failure: Failed to parse geocoding service response.`;
+    if (isDev) {
+      console.error("[DEBUG LOCATION] JSON Parse Error:", jsonErr);
+    }
+    throw new Error(errorMsg);
+  }
+
+  if (isDev) {
+    console.log("[DEBUG LOCATION] API response:", data);
+  }
+
+  const features = data.features || [];
+  if (features.length === 0) {
+    throw new Error("Address parsing failure: No address found for the current coordinates.");
+  }
+  
+  let locality = "";
+  let sublocality = "";
+  let neighborhood = "";
+  let suburb = "";
+  let city = "";
+  let district = "";
+  let pincode = "";
+
+  const checkAndSet = (id: string, text: string) => {
+    if (!text) return;
+    const cleanText = text.trim();
+    if (id.startsWith("locality") && !locality) locality = cleanText;
+    if (id.startsWith("sublocality") && !sublocality) sublocality = cleanText;
+    if (id.startsWith("neighborhood") && !neighborhood) neighborhood = cleanText;
+    if (id.startsWith("suburb") && !suburb) suburb = cleanText;
+    if (id.startsWith("place") && !city) city = cleanText;
+    if (id.startsWith("district") && !district) district = cleanText;
+    if (id.startsWith("postcode") && !pincode) pincode = cleanText;
+  };
+
+  for (const f of features) {
+    if (f.id) checkAndSet(f.id, f.text);
+    if (f.context) {
+      for (const ctx of f.context) {
+        if (ctx.id) checkAndSet(ctx.id, ctx.text);
+      }
     }
   }
-  
-  const formattedAddress = formatCityCountry(feature);
-  
+
+  // Fallback for postcode check in place_names
+  for (const f of features) {
+    if (!pincode && f.place_name) {
+      const match = f.place_name.match(/\b\d{6}\b/);
+      if (match) {
+        pincode = match[0];
+      }
+    }
+  }
+
+  const cleanDistrictName = (name: string): string => {
+    if (!name) return "";
+    return name
+      .replace(/\bDistrict\b/gi, "")
+      .replace(/\bState\b/gi, "")
+      .trim();
+  };
+
+  const finalDistrict = cleanDistrictName(district || city);
+
+  const EXCLUDED_NAMES = new Set([
+    "india", "tamil nadu", "tamilnadu", "karnataka", "andhra pradesh", 
+    "kerala", "maharashtra", "delhi", "state", "country"
+  ]);
+
+  const isExcluded = (name: string): boolean => {
+    if (!name) return true;
+    const lower = name.toLowerCase().trim();
+    return EXCLUDED_NAMES.has(lower);
+  };
+
+  // Determine Area with Priority:
+  // 1. locality
+  // 2. subLocality
+  // 3. neighborhood
+  // 4. suburb
+  let finalArea = "";
+  if (locality && !isExcluded(locality)) finalArea = locality;
+  else if (sublocality && !isExcluded(sublocality)) finalArea = sublocality;
+  else if (neighborhood && !isExcluded(neighborhood)) finalArea = neighborhood;
+  else if (suburb && !isExcluded(suburb)) finalArea = suburb;
+
+  const filteredDistrict = isExcluded(finalDistrict) ? "" : finalDistrict;
+
+  // If Area is same as District, clear/try backup
+  if (finalArea.toLowerCase() === filteredDistrict.toLowerCase()) {
+    if (finalArea === locality) {
+      const backupArea = sublocality || neighborhood || suburb || "";
+      if (backupArea && !isExcluded(backupArea)) {
+        finalArea = backupArea;
+      } else {
+        finalArea = "";
+      }
+    } else {
+      finalArea = "";
+    }
+  }
+
+  let formattedAddress = "";
+  if (finalArea && filteredDistrict) {
+    formattedAddress = `${finalArea}, ${filteredDistrict}`;
+  } else {
+    formattedAddress = finalArea || filteredDistrict || "Set Location";
+  }
+
+  if (isDev) {
+    console.log("[DEBUG LOCATION] Parsed Area:", finalArea);
+    console.log("[DEBUG LOCATION] Parsed District/City:", filteredDistrict);
+    console.log("[DEBUG LOCATION] Final display location:", formattedAddress);
+  }
+
   return { 
     address: formattedAddress,
-    area: area,
-    city: city,
+    area: finalArea,
+    city: filteredDistrict,
     pincode: pincode
   };
 }

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
 import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
-import { uploadProviderVideo } from '@/lib/supabase';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
@@ -29,12 +28,9 @@ const PendingApproval = () => {
       {/* Premium Background Elements */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-
+      
       <div className="relative mb-8 mt-12 group">
-        <div 
-          onClick={() => setClicks(c => c + 1)}
-          className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle cursor-pointer"
-        >
+        <div className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle">
           <Clock size={56} className="text-accent" />
         </div>
         <div className="absolute -top-2 -right-2 w-10 h-10 bg-card border border-border rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
@@ -48,7 +44,7 @@ const PendingApproval = () => {
         <h1 className="text-3xl font-extrabold text-foreground tracking-tight animate-fade-in">
           Verification <br /><span className="text-accent">In Progress</span>
         </h1>
-
+        
         <p className="text-sm text-muted-foreground leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
           We're currently reviewing your documents. Our team usually approves profiles within <span className="text-foreground font-bold">24 hours</span>.
         </p>
@@ -57,7 +53,7 @@ const PendingApproval = () => {
       {/* Checklist */}
       <div className="w-full max-w-[320px] bg-card border border-border rounded-[32px] p-6 my-10 animate-fade-in shadow-xl shadow-accent/5 text-left relative z-10" style={{ animationDelay: '0.2s' }}>
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-5 px-1">Application Status</h3>
-
+        
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -77,9 +73,9 @@ const PendingApproval = () => {
             </div>
             <span className="text-sm font-bold text-foreground/80">Portfolio Review</span>
           </div>
-
+          
           <div className="h-px bg-border my-2 mx-1" />
-
+          
           <div className="flex items-center gap-4 group">
             <div className="w-6 h-6 rounded-full border-2 border-accent border-r-transparent animate-spin flex-shrink-0" />
             <span className="text-sm font-extrabold text-accent">Final Admin Approval</span>
@@ -88,43 +84,33 @@ const PendingApproval = () => {
       </div>
 
       <div className="flex flex-col w-full max-w-[320px] gap-3 mb-8 relative z-10">
-        <button
+        <button 
           disabled={isLoading}
           onClick={async () => {
             if (!user?.id) {
               setError("User not authenticated");
+              setTimeout(() => setError(""), 3000);
               return;
             }
-
             setIsLoading(true);
-
             try {
-              // 1. Call server API to create provider record
               const res = await registerProvider({
                 userId: user.id,
-                bio: providerRegistrationDraft.bio,
-                experienceYears: providerRegistrationDraft.experienceYears,
-                workingHours: providerRegistrationDraft.workingHours,
-                serviceRadius: providerRegistrationDraft.serviceRadius,
-                serviceIds: providerRegistrationDraft.serviceIds
+                bio: providerRegistrationDraft.bio || "Professional Service Provider",
+                experienceYears: providerRegistrationDraft.experienceYears || 2,
+                workingHours: providerRegistrationDraft.workingHours || "9 AM - 6 PM",
+                serviceRadius: providerRegistrationDraft.serviceRadius || 15,
+                serviceIds: providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0 
+                  ? providerRegistrationDraft.serviceIds 
+                  : ['plumber']
               });
               if (!res.success) throw new Error(res.message || "Registration failed");
-
-              const newProvider = res.data;
-
-              // 2. Upload video file to Supabase if exists in draft
-              if (providerRegistrationDraft.videoFile) {
-                setNotification("Uploading introduction video...");
-                await uploadProviderVideo(newProvider.id, providerRegistrationDraft.videoFile);
-              }
-
               dispatch({ type: "SET_ROLE", role: "provider" });
               dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
               setNotification("Registration successful! Redirecting to Dashboard...");
               setTimeout(() => navigate('/provider'), 1000);
             } catch (err: any) {
-              console.error(err);
-              setError(err.message || "Registration failed");
+              setError(err.message || 'Connection failed');
               setTimeout(() => setError(""), 3000);
             } finally {
               setIsLoading(false);

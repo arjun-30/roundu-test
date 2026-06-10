@@ -71,12 +71,15 @@ const Earnings = () => {
     return now - jobDate < 30 * 86400000;
   });
 
-  const timeframeTotal = filteredJobs.reduce((s, j) => s + (Number(j.price) || 0), 0);
-  const withdrawableAmount =
-    Math.max(
-      0,
-      walletBalance - commissionDue
-    );
+  const timeframeTotal = filteredJobs.reduce(
+    (s, j) => s + (Number(j.price) || 0),
+    0
+  );
+
+  const withdrawableAmount = Math.max(
+    0,
+    walletBalance - commissionDue
+  );
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">

@@ -9,7 +9,6 @@ import { getProviderById, getServiceById } from "@/data/mockData";
 import { useApp } from "@/context/AppContext";
 import api, { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
-import { getProviderVideo } from "@/lib/supabase";
 
 const ProviderDetail = () => {
   const { id = "" } = useParams();
@@ -23,24 +22,6 @@ const ProviderDetail = () => {
 
   const [dynamicProfile, setDynamicProfile] = useState<any>(null);
   const [dynamicStats, setDynamicStats] = useState<any>(null);
-  const [video, setVideo] = useState<any | null>(null);
-  const [loadingVideo, setLoadingVideo] = useState(true);
-
-  useEffect(() => {
-    const fetchVideo = async () => {
-      if (!id) return;
-      try {
-        setLoadingVideo(true);
-        const activeVideo = await getProviderVideo(id);
-        setVideo(activeVideo);
-      } catch (err) {
-        console.error("Error fetching provider video:", err);
-      } finally {
-        setLoadingVideo(false);
-      }
-    };
-    fetchVideo();
-  }, [id]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -366,33 +347,6 @@ const ProviderDetail = () => {
                 <span className="px-4 py-2 bg-secondary/5 rounded-full text-[13px] font-bold text-secondary border border-secondary/10">Installation</span>
              </div>
           </div>
-
-          {/* Video Introduction Section */}
-          {loadingVideo ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3">Video Introduction</h3>
-              <div className="aspect-video bg-slate-100 animate-pulse rounded-[24px] flex flex-col items-center justify-center gap-2">
-                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <span className="text-xs text-muted-foreground font-semibold">Loading video intro...</span>
-              </div>
-            </div>
-          ) : video ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3 flex items-center gap-2">
-                Video Introduction
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">Active</span>
-              </h3>
-              <div className="aspect-video bg-black rounded-[24px] overflow-hidden flex items-center justify-center border border-slate-200 shadow-sm relative group">
-                <video 
-                  src={video.video_url} 
-                  controls 
-                  className="w-full h-full object-contain" 
-                  preload="metadata"
-                  playsInline
-                />
-              </div>
-            </div>
-          ) : null}
 
           {/* About Section */}
           <div className="mb-8 px-1">

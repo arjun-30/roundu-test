@@ -2,7 +2,7 @@ import { ArrowLeft, Camera, User, Mail, Phone, Briefcase, Image as ImageIcon, Tr
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import { updateUser } from "@/lib/api";
+import { updateUser, fetchProviderDashboard } from "@/lib/api";
 import { toast } from "sonner";
 
 import { services } from "@/data/mockData";
@@ -10,7 +10,7 @@ import { services } from "@/data/mockData";
 const EditProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, providerRegistrationDraft, dispatch } = useApp();
+  const { user, providerRegistrationDraft, dispatch, refreshLocation } = useApp();
 
   const handleBack = () => {
     if (window.history.state && window.history.state.idx > 0) {
@@ -31,6 +31,25 @@ const EditProfile = () => {
   const [phone, setPhone] = useState(user.phone);
   const [emailError, setEmailError] = useState('');
   const [serviceId, setServiceId] = useState(providerRegistrationDraft?.serviceIds?.[0] || services[0].id);
+
+  useEffect(() => {
+    const fetchCurrentService = async () => {
+      try {
+        const response = await fetchProviderDashboard(user.id);
+        if (response.success && response.data?.provider) {
+          const fetchedServiceIds = response.data.provider.serviceIds || [];
+          if (fetchedServiceIds.length > 0) {
+            setServiceId(fetchedServiceIds[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch provider service ID for profile edit:", err);
+      }
+    };
+    if (user.role === "provider" && user.id) {
+      fetchCurrentService();
+    }
+  }, [user.role, user.id]);
 
   const [profilePicture, setProfilePicture] = useState(user.profilePicture || "");
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -160,7 +179,8 @@ const EditProfile = () => {
         name,
         email,
         phone,
-        avatar_url: profilePicture 
+        avatar_url: profilePicture,
+        serviceIds: user.role === "provider" ? [serviceId] : undefined
       });
       dispatch({
         type: "UPDATE_USER",
@@ -177,6 +197,11 @@ const EditProfile = () => {
           type: "UPDATE_REGISTRATION_DRAFT", 
           patch: { serviceIds: [serviceId] } 
         });
+      }
+      try {
+        await refreshLocation();
+      } catch (locErr) {
+        console.warn("Auto location refresh failed during profile save:", locErr);
       }
       toast.success("Profile saved successfully!");
       navigate(-1);

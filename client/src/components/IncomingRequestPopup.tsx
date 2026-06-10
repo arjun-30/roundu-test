@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import { getDistance } from "@/lib/utils";
+import { getDistance, formatDistance } from "@/lib/utils";
 import { ProviderRequest } from "@/data/mockData";
 import { getServiceById } from "@/data/mockData";
 import { X, Check, MapPin, Calendar, Clock, Star, Map, User, Navigation } from "lucide-react";
@@ -108,7 +108,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                  <Navigation size={12} /> {computeDistanceKm() || "2.5"} km away
+                  <Navigation size={12} /> {formatDistance(computeDistanceKm())}
                 </span>
               </div>
             </div>

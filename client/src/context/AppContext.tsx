@@ -14,6 +14,7 @@ import { getStoredMembership, setStoredMembership } from "@/lib/membership";
 import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
 import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
+import { Geolocation } from '@capacitor/geolocation';
 
 
 type Role = "customer" | "provider" | null;
@@ -101,8 +102,6 @@ interface State {
       panVerified: boolean;
       bankVerified: boolean;
     };
-    videoFile?: File | null;
-    videoUrl?: string | null;
   };
   // New Flow State
   isNewUser: boolean;
@@ -211,6 +210,23 @@ if (savedUser) {
   }
 }
 
+const savedDraft = localStorage.getItem("roundu_provider_draft");
+let parsedDraft = {
+  serviceIds: [],
+  bio: "",
+  experienceYears: 1,
+  workingHours: "All day",
+  serviceRadius: 5,
+  kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
+};
+if (savedDraft) {
+  try {
+    parsedDraft = JSON.parse(savedDraft);
+  } catch (e) {
+    console.error("Failed to parse saved draft", e);
+  }
+}
+
 const initialState: State = {
   isAuthenticated: !!token && !!savedUser && !!savedRole,
   phone: parsedUser.phone || "",
@@ -221,9 +237,12 @@ const initialState: State = {
     phone: parsedUser.phone || "",
     email: parsedUser.email || "",
     address: parsedUser.address || "",
-    role: (savedRole as "customer" | "provider") || parsedUser.role || "customer",
-    accountType: parsedUser.accountType || "customer",
-    profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
+    role:
+      (savedRole as "customer" | "provider") ||
+      (parsedUser.role as "customer" | "provider") ||
+      "customer", accountType:
+      (parsedUser.accountType as "customer" | "provider") ||
+      "customer", profilePicture: parsedUser.profilePicture || parsedUser.avatar_url || "",
     avatar_url: parsedUser.avatar_url || parsedUser.profilePicture || "",
     savedAddresses: [
       { id: "sa-1", label: "Home", address: "12, MG Road, Indiranagar, Bangalore", lat: 12.9783, lng: 77.6408 },
@@ -246,16 +265,7 @@ const initialState: State = {
   notifications: [],
   nearbyProviders: {},
   currentLocation: null,
-  providerRegistrationDraft: {
-    serviceIds: [],
-    bio: "",
-    experienceYears: 1,
-    workingHours: "All day",
-    serviceRadius: 5,
-    kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
-    videoFile: null,
-    videoUrl: null,
-  },
+  providerRegistrationDraft: parsedDraft,
   isNewUser: true,
   walletBalance: 0,
   isOnline: true,
@@ -289,10 +299,19 @@ function reducer(state: State, action: Action): State {
         return state;
       }
 
-      if (state.onboardingData?.serviceIds?.length > 0) {
-        if (!state.onboardingData.serviceIds.includes(request.serviceId)) {
-          return state;
-        }
+      const providerServices =
+        state.onboardingData?.serviceIds ||
+        state.providerRegistrationDraft?.serviceIds ||
+        [];
+
+      console.log("Provider Services:", providerServices);
+      console.log("Incoming Service:", request.serviceId);
+
+      if (
+        providerServices.length === 0 ||
+        !providerServices.includes(request.serviceId)
+      ) {
+        return state;
       }
 
       if (request.lat && request.lng && state.currentLocation) {
@@ -426,8 +445,10 @@ function reducer(state: State, action: Action): State {
         if (isCompleted) {
           const targetReq = state.providerRequests.find(r => r.id === normalizedId || r.id === bookingId);
           if (targetReq) {
-            const enrichedReq = { ...targetReq, status: status as any, paid: action.data.paid ?? targetReq.paid };
-            updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
+            const enrichedReq = {
+              ...targetReq,
+              status: status as any
+            }; updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
             if (!updatedCompleted.some(c => c.id === targetReq.id)) {
               updatedCompleted = [enrichedReq, ...updatedCompleted];
             } else {
@@ -435,12 +456,16 @@ function reducer(state: State, action: Action): State {
             }
           } else {
             updatedCompleted = updatedCompleted.map(c =>
-              (c.id === normalizedId || c.id === bookingId) ? { ...c, status: status as any, paid: action.data.paid ?? c.paid } : c
+              (c.id === normalizedId || c.id === bookingId)
+                ? { ...c, status: status as any }
+                : c
             );
           }
         } else {
           updatedRequests = state.providerRequests.map((r) =>
-            (r.id === normalizedId || r.id === bookingId) ? { ...r, status: status as any, paid: action.data.paid ?? r.paid } : r
+            (r.id === normalizedId || r.id === bookingId)
+              ? { ...r, status: status as any }
+              : r
           );
         }
 
@@ -675,19 +700,33 @@ function reducer(state: State, action: Action): State {
         )
       };
     }
-    case "UPDATE_REGISTRATION_DRAFT":
+    case "UPDATE_REGISTRATION_DRAFT": {
+      const newDraft = { ...state.providerRegistrationDraft, ...action.patch };
+      try {
+        localStorage.setItem("roundu_provider_draft", JSON.stringify(newDraft));
+      } catch (e) {
+        console.error(e);
+      }
       return {
         ...state,
-        providerRegistrationDraft: { ...state.providerRegistrationDraft, ...action.patch },
+        providerRegistrationDraft: newDraft,
       };
-    case "UPDATE_KYC":
+    }
+    case "UPDATE_KYC": {
+      const newDraft = {
+        ...state.providerRegistrationDraft,
+        kyc: { ...state.providerRegistrationDraft.kyc, ...action.patch },
+      };
+      try {
+        localStorage.setItem("roundu_provider_draft", JSON.stringify(newDraft));
+      } catch (e) {
+        console.error(e);
+      }
       return {
         ...state,
-        providerRegistrationDraft: {
-          ...state.providerRegistrationDraft,
-          kyc: { ...state.providerRegistrationDraft.kyc, ...action.patch },
-        },
+        providerRegistrationDraft: newDraft,
       };
+    }
     case "UPDATE_ONBOARDING": {
       const newData = { ...state.onboardingData, ...action.patch };
       return {
@@ -854,6 +893,7 @@ interface Ctx extends State {
   dispatch: React.Dispatch<Action>;
   selectedProvider: Provider | null;
   addBooking: (booking: Booking) => void;
+  refreshLocation: () => Promise<void>;
 }
 
 const AppContext = createContext<Ctx | null>(null);
@@ -1241,6 +1281,69 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [state.isAuthenticated, state.user.id, state.role, state.onboardingData.serviceIds]);
 
+  const refreshLocation = useCallback(async () => {
+    try {
+      let perm;
+      try {
+        perm = await Geolocation.checkPermissions();
+      } catch (e) {
+        perm = { location: "prompt" };
+      }
+      if (perm.location !== "granted") {
+        try {
+          perm = await Geolocation.requestPermissions();
+        } catch (e) {
+          perm = { location: "denied" };
+        }
+      }
+      if (perm.location !== "granted") {
+        console.warn("[refreshLocation] GPS permission not granted");
+        return;
+      }
+
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      const { reverseGeocode } = await import("@/lib/mapProvider");
+      const result = await reverseGeocode(lat, lng);
+
+      const formattedAddress = result.address;
+
+      dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+      dispatch({ type: "UPDATE_USER", user: { address: formattedAddress, lat, lng, display_location: formattedAddress } as any });
+
+      localStorage.setItem(
+        "roundu_last_location",
+        JSON.stringify({ lat, lng, address: formattedAddress, ts: Date.now() })
+      );
+
+      const currentUser = stateRef.current.user;
+      if (currentUser?.id) {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(currentUser.id, {
+          lat,
+          lng,
+          display_location: formattedAddress,
+          address: formattedAddress
+        });
+        console.log("[refreshLocation] Location successfully refreshed and saved to DB");
+      }
+    } catch (err) {
+      console.error("[refreshLocation] Error refreshing location:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.isAuthenticated) {
+      refreshLocation();
+    }
+  }, [state.isAuthenticated, refreshLocation]);
+
   const addBooking = useCallback((booking: Booking) => {
     dispatch({ type: "ADD_BOOKING", booking });
     socket.emit("new_booking", {
@@ -1262,7 +1365,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   return (
-    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking }}>
+    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation }}>
       {children}
     </AppContext.Provider>
   );

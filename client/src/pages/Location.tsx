@@ -38,14 +38,56 @@ const LocationPage = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSelectLocation = (lat: number, lng: number, address: string) => {
+  const handleSelectLocation = async (lat: number, lng: number, address: string) => {
+    try {
+      if (user?.id) {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(user.id, {
+          lat,
+          lng,
+          display_location: address,
+          address
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save location updates to database:", err);
+    }
     dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
-    dispatch({ type: "UPDATE_USER", user: { address } });
+    dispatch({ type: "UPDATE_USER", user: { address, lat, lng, display_location: address } as any });
+    localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address, ts: Date.now() }));
     navigate(-1);
   };
 
-  const handleSaveManual = () => {
-    dispatch({ type: "UPDATE_USER", user: { address: manualAddress } });
+  const handleSaveManual = async () => {
+    let lat = null;
+    let lng = null;
+    try {
+      const { geocode } = await import("@/lib/mapProvider");
+      const coords = await geocode(manualAddress);
+      lat = coords.lat;
+      lng = coords.lng;
+    } catch (_) {}
+
+    try {
+      if (user?.id) {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(user.id, {
+          lat,
+          lng,
+          display_location: manualAddress,
+          address: manualAddress
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save manual address to database:", err);
+    }
+    if (lat != null && lng != null) {
+      dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
+      dispatch({ type: "UPDATE_USER", user: { address: manualAddress, lat, lng, display_location: manualAddress } as any });
+      localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address: manualAddress, ts: Date.now() }));
+    } else {
+      dispatch({ type: "UPDATE_USER", user: { address: manualAddress, display_location: manualAddress } as any });
+    }
     navigate(-1);
   };
 
@@ -86,8 +128,8 @@ const LocationPage = () => {
       try {
         const result = await reverseGeocode(lat, lng);
         handleSelectLocation(lat, lng, result.address);
-      } catch (err) {
-        setError("Failed to resolve address. Please enter manually.");
+      } catch (err: any) {
+        setError(err.message || "Failed to resolve address. Please enter manually.");
         setIsDetecting(false);
       }
     } catch (err: any) {

@@ -29,8 +29,9 @@ const RoleSelect = () => {
       return;
     }
 
+    // Directly navigate to service selection for providers
     if (user.role === "provider") {
-      navigate("/provider", { replace: true });
+      navigate("/provider/select-service", { replace: true });
       return;
     }
 
@@ -39,7 +40,8 @@ const RoleSelect = () => {
       const res = await checkProviderExists(user.id);
       if (res.exists) {
         dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
-        navigate("/provider", { replace: true });
+        // After confirming existing provider, go straight to service selection
+        navigate("/provider/select-service", { replace: true });
         return;
       }
     } catch (err) {

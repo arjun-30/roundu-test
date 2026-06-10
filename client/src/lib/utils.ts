@@ -108,14 +108,8 @@ export const getShortAddress = (address: string): string => {
     .map((p) => p.replace(/\b\d{5,6}\b/g, "").trim())
     .filter(Boolean);
 
-  // Filter out:
-  // - empty strings
-  // - Indian pincodes (6 digits)
-  // - generic country/state names
-  // - very short numeric parts (like door numbers: "12", "3b")
-  const countries = ["india"];
   const statesCountries = [
-    ...countries,
+    "india",
     "andaman and nicobar islands", "andhra pradesh", "arunachal pradesh", "assam",
     "bihar", "chandigarh", "chhattisgarh", "dadra and nagar haveli", "daman and diu",
     "delhi", "goa", "gujarat", "haryana", "himachal pradesh", "jammu and kashmir",
@@ -126,15 +120,34 @@ export const getShortAddress = (address: string): string => {
     "west bengal"
   ];
 
-  const cleanParts = parts.filter(p => {
+  const cleanParts = parts.map(p => {
+    return p.replace(/\bDistrict\b/gi, "").trim();
+  }).filter(p => {
     if (!p) return false;
     if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Door number e.g. "12", "12a", "3"
     if (statesCountries.includes(p.toLowerCase())) return false; // State/Country
     return true;
   });
 
-  const city = cleanParts.at(-1);
-  const country = "India";
+  if (cleanParts.length === 0) return "";
+  if (cleanParts.length === 1) return cleanParts[0];
 
-  return city ? `${city}, ${country}` : "";
+  // Return Area, District (last two cleaned parts)
+  const lastTwo = cleanParts.slice(-2);
+  return lastTwo.join(", ");
 };
+
+export function formatDistance(distanceKm: number): string {
+  if (distanceKm == null || isNaN(distanceKm)) return "2.5 km away";
+  
+  const DEBUG_LOCATION = true; // Temporary debug flag
+  if (DEBUG_LOCATION) {
+    console.log(`[DEBUG LOCATION] formatDistance called with: ${distanceKm} km`);
+  }
+
+  if (distanceKm < 1) {
+    const metres = Math.round(distanceKm * 1000);
+    return `${metres} m away`;
+  }
+  return `${distanceKm.toFixed(1)} km away`;
+}

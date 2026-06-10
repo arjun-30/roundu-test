@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Camera, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Camera, MapPin, Loader2, User } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { reverseGeocode } from '@/lib/mapProvider';
 import { Geolocation } from '@capacitor/geolocation';
@@ -26,6 +26,8 @@ const PersonalDetails = () => {
   const [radiusIndex, setRadiusIndex] = useState(RADIUS_OPTIONS.indexOf(providerRegistrationDraft.serviceRadius || 5));
   const [workingHours, setWorkingHours] = useState(providerRegistrationDraft.workingHours || "All day");
   
+  const [fullName, setFullName] = useState("");
+  const [fullNameTouched, setFullNameTouched] = useState(false);
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState(user.address || "");
@@ -75,9 +77,9 @@ const PersonalDetails = () => {
         if (result.address) setAddress(result.address);
         if (result.city) setCity(result.city);
         if (result.pincode) setPincode(result.pincode);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Reverse geocoding error:", err);
-        setDetectError("Failed to resolve address. Please enter manually.");
+        setDetectError(err.message || "Failed to resolve address. Please enter manually.");
       } finally {
         setIsDetecting(false);
       }
@@ -100,6 +102,10 @@ const PersonalDetails = () => {
   };
 
   const handleNext = useCallback(() => {
+    dispatch({
+      type: "UPDATE_USER",
+      user: { ...user, name: fullName }
+    });
     // Save draft items needed
     dispatch({
       type: "UPDATE_REGISTRATION_DRAFT",
@@ -113,8 +119,11 @@ const PersonalDetails = () => {
     });
     // In real app, we'd dispatch user updates too
     navigate("/provider/digilocker-kyc");
-  }, [bio, dispatch, expIndex, navigate, radiusIndex, workingHours]);
-  const canProceed = dob && gender && address && city && pincode.length === 6;
+  }, [bio, dispatch, expIndex, navigate, radiusIndex, workingHours, user, fullName]);
+
+  const isFullNameValid = fullName.trim().length >= 3;
+  const fullNameError = fullNameTouched && !isFullNameValid ? "Please enter your full name" : "";
+  const canProceed = isFullNameValid && dob && gender && address && city && pincode.length === 6;
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -147,7 +156,7 @@ const PersonalDetails = () => {
               {profilePhotoUri ? (
                 <img src={profilePhotoUri} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl font-bold text-muted-foreground">{user.name.charAt(0)}</span>
+                <span className="text-3xl font-bold text-muted-foreground">{fullName ? fullName.charAt(0).toUpperCase() : user.name?.charAt(0) || "U"}</span>
               )}
             </div>
             <button 
@@ -164,37 +173,64 @@ const PersonalDetails = () => {
               className="hidden" 
             />
           </div>
-          <p className="mt-3 font-bold text-foreground text-lg">{user.name}</p>
-          <p className="text-xs text-muted-foreground">{user.phone}</p>
+          <p className="mt-3 text-sm font-semibold text-muted-foreground">{user.phone}</p>
         </section>
 
         {/* Basic Info */}
         <section className="space-y-4 animate-fade-in">
           <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider">Basic Info</h3>
-          <div className="grid grid-cols-2 gap-3">
+          
+          <div className="space-y-3">
             <div>
-              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Date of Birth *</label>
-              <input 
-                type="date" 
-                value={dob}
-                min={minDob}
-                max={maxDob}
-                onChange={(e) => setDob(e.target.value)}
-                className="w-full bg-card border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground"
-              />
+              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Full Name *</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <User size={18} />
+                </div>
+                <input 
+                  type="text" 
+                  value={fullName}
+                  onChange={(e) => {
+                    const cleanedVal = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                    setFullName(cleanedVal);
+                    setFullNameTouched(false);
+                  }}
+                  onBlur={() => setFullNameTouched(true)}
+                  placeholder="Enter your full name"
+                  autoComplete="name"
+                  className={`w-full bg-card border ${fullNameError ? 'border-destructive focus:border-destructive' : 'border-border focus:border-primary'} rounded-xl pl-10 pr-3 py-3 text-sm focus:outline-none text-foreground transition-all`}
+                />
+              </div>
+              {fullNameError && (
+                <p className="text-destructive text-xs mt-1.5 ml-1 font-semibold">{fullNameError}</p>
+              )}
             </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Gender *</label>
-              <select 
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="w-full bg-card border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground"
-              >
-                <option value="">Select</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Date of Birth *</label>
+                <input 
+                  type="date" 
+                  value={dob}
+                  min={minDob}
+                  max={maxDob}
+                  onChange={(e) => setDob(e.target.value)}
+                  className="w-full bg-card border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Gender *</label>
+                <select 
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full bg-card border border-border rounded-xl p-3 text-sm focus:outline-none focus:border-primary text-foreground"
+                >
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
           </div>
         </section>

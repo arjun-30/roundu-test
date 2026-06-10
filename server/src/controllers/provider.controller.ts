@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../config/env';
 import { ProviderModel } from '../models/provider.model';
 import { getPool } from '../config/database';
 import { WalletModel } from '../models/wallet.model';
@@ -9,7 +10,22 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
 
-    const provider = await ProviderModel.findByUserId(userId as string);
+    let provider = null;
+    try {
+      provider = await ProviderModel.findByUserId(userId as string);
+    } catch (err: any) {
+      // Handle cases where client passed a phone number instead of UUID
+      if ((err?.message || '').includes('invalid input syntax for type uuid')) {
+        const pool = getPool();
+        const userRes = await pool.query('SELECT id FROM users WHERE phone = $1', [userId]);
+        if (userRes.rows[0]) {
+          const resolvedUserId = userRes.rows[0].id;
+          provider = await ProviderModel.findByUserId(resolvedUserId);
+        }
+      } else {
+        throw err;
+      }
+    }
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
     // Stats and wallet are non-fatal — return zeros on failure
@@ -40,15 +56,39 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
         }
       }
     });
-  } catch (error) {
-    console.error('Provider dashboard error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+  } catch (error: any) {
+    console.error('Provider dashboard error:', error?.stack || error);
+    const resp: any = { success: false, message: 'Server error' };
+    if (env.isDevelopment) {
+      resp.error = {
+        message: error?.message,
+        stack: error?.stack
+      };
+    }
+    res.status(500).json(resp);
   }
 };
 
 export const searchProviders = async (req: Request, res: Response) => {
   try {
-    const { serviceId } = req.query;
+    const { serviceId, lat, lng, userId } = req.query;
+
+    let customerLat = lat ? Number(lat) : null;
+    let customerLng = lng ? Number(lng) : null;
+
+    // Fallback: If no lat/lng passed in query, try to get from database using userId
+    if ((customerLat == null || customerLng == null) && userId) {
+      try {
+        const pool = getPool();
+        const userRes = await pool.query('SELECT lat, lng FROM users WHERE id = $1', [userId]);
+        if (userRes.rows[0]) {
+          customerLat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
+          customerLng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
+        }
+      } catch (err) {
+        console.error('Failed to get customer coordinates from database:', err);
+      }
+    }
 
     let providers;
     if (serviceId) {
@@ -61,9 +101,48 @@ export const searchProviders = async (req: Request, res: Response) => {
     const filteredProviders = [];
     for (const p of providers) {
       const busy = await isProviderBusy(p.id);
-      if (!busy) {
-        filteredProviders.push(p);
+      if (busy) continue;
+
+      // Enforce that candidate providers are currently online and verified/approved
+      if (!p.is_online || !p.is_verified) {
+        continue;
       }
+
+      // Filter by distance if customer coordinates are available
+      if (customerLat != null && customerLng != null) {
+        let plat = p.lat ? Number(p.lat) : null;
+        let plng = p.lng ? Number(p.lng) : null;
+
+        // Fallback: Check user table if not on provider profile
+        if (plat == null || plng == null) {
+          try {
+            const pool = getPool();
+            const userRes = await pool.query('SELECT lat, lng FROM users WHERE id = $1', [p.user_id]);
+            if (userRes.rows[0]) {
+              plat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
+              plng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
+            }
+          } catch (_) {}
+        }
+
+        if (plat != null && plng != null) {
+          const { getDistanceKm } = require('../utils/locationHelper');
+          const dist = getDistanceKm(
+            { lat: customerLat, lng: customerLng },
+            { lat: plat, lng: plng }
+          );
+
+          const maxRadius = p.service_radius || 20;
+          if (dist > maxRadius) {
+            console.log(`[Search] Provider ${p.id} filtered out (distance ${dist.toFixed(2)} km > service radius ${maxRadius} km)`);
+            continue; // Skip provider because they are outside of the service radius
+          }
+          // Enrich with calculated distance
+          p.distanceKm = Math.round(dist * 10) / 10;
+        }
+      }
+
+      filteredProviders.push(p);
     }
 
     res.json({ success: true, data: filteredProviders });
@@ -77,8 +156,8 @@ export const registerProvider = async (req: Request, res: Response) => {
   try {
     const { userId, bio, experienceYears, workingHours, serviceRadius, serviceIds } = req.body;
     
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
+    if (!userId || !serviceIds || serviceIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const provider = await ProviderModel.register(userId, {

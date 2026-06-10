@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS users (
     address TEXT,
     avatar_url TEXT,
     role VARCHAR(20) DEFAULT 'customer',
+    lat NUMERIC(10, 7),
+    lng NUMERIC(10, 7),
+    display_location VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,9 +28,13 @@ CREATE TABLE IF NOT EXISTS providers (
     rating DECIMAL(3, 2) DEFAULT 0.00,
     response_rate INTEGER DEFAULT 100,
     is_online BOOLEAN DEFAULT false,
-    service_radius INTEGER DEFAULT 5,
+    service_radius INTEGER DEFAULT 20,
     working_hours TEXT,
     is_verified BOOLEAN DEFAULT false,
+    lat NUMERIC(10, 7),
+    lng NUMERIC(10, 7),
+    display_location VARCHAR(255),
+    service_category VARCHAR(255)[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -68,18 +75,6 @@ CREATE TABLE IF NOT EXISTS bookings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Wallets Table (provider/customer wallet balance in paise)
-CREATE TABLE IF NOT EXISTS wallets (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    balance     BIGINT NOT NULL DEFAULT 0,
-    currency    VARCHAR(8) NOT NULL DEFAULT 'INR',
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
-
 -- Wallet Transactions (Earnings/Payments)
 CREATE TABLE IF NOT EXISTS wallet_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -89,6 +84,16 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     description TEXT,
     booking_id UUID REFERENCES bookings(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Wallets (per-user balances, stored in paise as BIGINT)
+CREATE TABLE IF NOT EXISTS wallets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    balance BIGINT DEFAULT 0,
+    currency VARCHAR(10) DEFAULT 'INR',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Payments Table
@@ -174,18 +179,11 @@ CREATE INDEX IF NOT EXISTS idx_otp_attempts_phone ON otp_attempts(phone);
 
 -- Insert Initial Services
 INSERT INTO services (id, label, description, price_per_hr) VALUES
-('plumber',                 'Plumber',          'Pipes & drainage',            299),
-('electrician',             'Electrician',       'Wiring & fixtures',           299),
-('carwash',                 'Car Wash',          'At your doorstep',            199),
-('drivers',                 'Acting Drivers',    'Expert chauffeurs',           399),
-('housekeeping',            'House Keeping',     'Deep & regular',              499),
-('ac-cleaning',             'AC Cleaning',       'AC service & filter clean',   499),
-('ac-repair',               'AC Repair',         'AC diagnosis & repair',       599),
-('appliance-repair',        'Appliance Repair',  'Home appliance repair',       399),
-('pest-control',            'Pest Control',      'Home pest treatment',         699),
-('painting',                'Painting',          'Home & office painting',      499),
-('carpentry',               'Carpentry',         'Furniture & woodwork',        399),
-('srv-d7orcli8qa3s738r9qe0','Expert Services',   'Premium customized services', 599)
+('plumber', 'Plumber', 'Pipes & drainage', 299),
+('electrician', 'Electrician', 'Wiring & fixtures', 299),
+('carwash', 'Car Wash', 'At your doorstep', 199),
+('drivers', 'Acting Drivers', 'Expert chauffeurs', 399),
+('housekeeping', 'House Keeping', 'Deep & regular', 499)
 ON CONFLICT (id) DO NOTHING;
 
 -- KYC Audit Logs
@@ -271,17 +269,3 @@ CREATE TABLE IF NOT EXISTS penny_drop_queue (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_reason VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_flagged_at TIMESTAMP;
-
--- Provider Video Portfolios Table
-CREATE TABLE IF NOT EXISTS provider_video_portfolios (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
-    video_url TEXT NOT NULL,
-    storage_path TEXT NOT NULL,
-    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status TEXT DEFAULT 'Active',
-    duration_seconds INTEGER
-);
-
-CREATE INDEX IF NOT EXISTS idx_provider_video_portfolios_provider ON provider_video_portfolios(provider_id);

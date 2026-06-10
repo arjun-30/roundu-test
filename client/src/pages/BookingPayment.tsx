@@ -21,7 +21,8 @@ const BookingPayment = () => {
     bookings,
     user,
     dispatch,
-    addBooking
+    addBooking,
+    walletBalance
   } = useApp();
 
   const location = useLocation();
@@ -77,6 +78,12 @@ const BookingPayment = () => {
         }
       } else if (method === "wallet") {
         try {
+          if ((walletBalance ?? 0) < total) {
+            setError("Insufficient wallet balance. Please add money to your Roundu Wallet.");
+            setLoading(false);
+            return;
+          }
+
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           dispatch({ type: "PAY_BOOKING", id: bookingId });
           dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
@@ -122,6 +129,9 @@ const BookingPayment = () => {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
+
+                  providerId: provider?.id || selectedProvider?.id,
+                  amount: total
                 });
 
                 if (!verifyRes.data.success) {
@@ -129,9 +139,21 @@ const BookingPayment = () => {
                   return;
                 }
 
+
                 dispatch({ type: "PAY_BOOKING", id: bookingId });
-                dispatch({ type: "UPDATE_BOOKING_STATUS", bookingId: bookingId, status: "paid" });
-                socket.emit("update_job_status", { bookingId: bookingId, status: "paid", paid: true });
+
+                dispatch({
+                  type: "UPDATE_BOOKING_STATUS",
+                  bookingId: bookingId,
+                  status: "paid"
+                });
+
+                socket.emit("update_job_status", {
+                  bookingId: bookingId,
+                  status: "paid",
+                  paid: true
+                });
+
                 navigate(`/rating/${bookingId}`, { replace: true });
               } catch (err) {
                 console.error("Verification error:", err);
@@ -196,6 +218,12 @@ const BookingPayment = () => {
         }
       } else if (method === "wallet") {
         try {
+          if ((walletBalance ?? 0) < total) {
+            setError("Insufficient wallet balance. Please add money to your Roundu Wallet.");
+            setLoading(false);
+            return;
+          }
+
           dispatch({ type: "UPDATE_WALLET", amount: -total });
           const bookingData = {
             customer_id: user.id,
@@ -258,6 +286,9 @@ const BookingPayment = () => {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
+
+                  providerId: provider?.id || selectedProvider?.id,
+                  amount: total
                 });
 
                 if (!verifyRes.data.success) {
@@ -353,7 +384,7 @@ const BookingPayment = () => {
               onClick={() => setMethod("wallet")}
               icon={Wallet}
               title="Roundu Wallet"
-              subtitle="Balance: ₹2,400"
+              subtitle={`Balance: ₹${(walletBalance ?? 0).toLocaleString()}`}
             />
             <PaymentOption
               active={method === "upi"}

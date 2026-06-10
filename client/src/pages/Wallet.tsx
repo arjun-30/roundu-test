@@ -56,8 +56,10 @@ const Wallet = () => {
           </div>
         </div>
 
+        {/* Quick Actions removed per customer request */}
+
         {/* Transactions list */}
-        <div className="space-y-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        <div className="space-y-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
           <div className="flex items-center justify-between">
             <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
               <History size={18} className="text-primary" /> Recent Transactions

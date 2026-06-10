@@ -40,12 +40,8 @@ const Login = () => {
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
         localStorage.setItem("roundu_pending_phone", data.phone);
-        if (response.data.devOtp) {
-          setSuccess(`Dev OTP: ${response.data.devOtp}`);
-        } else {
-          setSuccess("OTP sent successfully!");
-        }
-        setTimeout(() => navigate("/otp", { state: { devOtp: response.data.devOtp } }), 800);
+        setSuccess("OTP sent successfully!");
+        setTimeout(() => navigate("/otp"), 800);
       } else {
         setError(response.data.message || "Failed to send OTP");
       }
@@ -89,13 +85,8 @@ const Login = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="mt-8 mb-10 relative z-10"
+        className="mt-12 mb-10 relative z-10"
       >
-        <img
-          src="/logo.png"
-          alt="RoundU"
-          className="w-20 h-20 object-contain mb-6"
-        />
         <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
           {isSignUp ? "Create an account" : "Welcome to "}<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">RoundU</span>
         </h1>
