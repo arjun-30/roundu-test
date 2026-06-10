@@ -1,9 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useRef, useState } from "react"
-import { MeshGradient } from "@paper-design/shaders-react"
+import { useRef } from "react"
 
 interface ShaderBackgroundProps {
   children: React.ReactNode
@@ -11,28 +9,9 @@ interface ShaderBackgroundProps {
 
 export function ShaderBackground({ children }: ShaderBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isActive, setIsActive] = useState(false)
-
-  useEffect(() => {
-    const handleMouseEnter = () => setIsActive(true)
-    const handleMouseLeave = () => setIsActive(false)
-
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener("mouseenter", handleMouseEnter)
-      container.addEventListener("mouseleave", handleMouseLeave)
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener("mouseenter", handleMouseEnter)
-        container.removeEventListener("mouseleave", handleMouseLeave)
-      }
-    }
-  }, [])
 
   return (
-    <div ref={containerRef} className="min-h-[650px] w-full relative overflow-hidden rounded-b-[40px]">
+    <div ref={containerRef} className="min-h-[650px] w-full relative overflow-hidden rounded-b-[40px] bg-slate-950">
       {/* SVG Filters */}
       <svg className="absolute inset-0 w-0 h-0">
         <defs>
@@ -61,22 +40,26 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
         </defs>
       </svg>
 
-      {/* Background Shaders */}
-      <MeshGradient
+      {/* Premium CSS Mesh Gradient (Navy + Slate + Indigo + Amber Accent) */}
+      <div 
         className="absolute inset-0 w-full h-full"
-        colors={["#000000", "#10b981", "#ffffff", "#047857", "#34d399"]}
-        speed={0.3}
-        backgroundColor="#000000"
+        style={{
+          background: `
+            radial-gradient(circle at 15% 20%, rgba(30, 58, 138, 0.8) 0%, transparent 60%),
+            radial-gradient(circle at 85% 15%, rgba(245, 158, 11, 0.18) 0%, transparent 55%),
+            radial-gradient(circle at 50% 85%, rgba(15, 23, 42, 0.95) 0%, transparent 75%),
+            radial-gradient(circle at 80% 85%, rgba(79, 70, 229, 0.3) 0%, transparent 60%),
+            #0a1f33
+          `,
+          filter: 'contrast(1.05)'
+        }}
       />
-      <MeshGradient
-        className="absolute inset-0 w-full h-full opacity-60"
-        colors={["#000000", "#ffffff", "#10b981", "#000000"]}
-        speed={0.2}
-        wireframe={true}
-        backgroundColor="transparent"
-      />
+
+      {/* Decorative premium glass lines / grid overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
       {children}
     </div>
   )
 }
+
