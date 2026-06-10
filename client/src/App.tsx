@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,7 +8,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
 import SupportChatbot from "@/components/SupportChatbot";
-import { useProviderApprovalStatus } from "@/hooks/useProviderApprovalStatus";
 
 // Admin Imports
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -79,7 +78,6 @@ const PersonalDetails = lazy(() => import("@/pages/provider/PersonalDetails"));
 const DigiLockerKYC = lazy(() => import("@/pages/provider/DigiLockerKYC"));
 const GpsConsent = lazy(() => import("@/pages/provider/GpsConsent"));
 const PendingApproval = lazy(() => import("@/pages/provider/PendingApproval"));
-const ApplicationRejected = lazy(() => import("@/pages/provider/ApplicationRejected"));
 const Portfolio = lazy(() => import("@/pages/provider/Portfolio"));
 const Documents = lazy(() => import("@/pages/provider/Documents"));
 const GPSMonitor = lazy(() => import("@/pages/provider/GPSMonitor"));
@@ -99,12 +97,9 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-// Provider Route Guard — also enforces approval status check on every render
+// Provider Route Guard
 const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, role, user, dispatch } = useApp();
-  const { status: approvalStatus, loading: statusLoading } = useProviderApprovalStatus(
-    isAuthenticated && user?.accountType === "provider" ? user.id : null
-  );
 
   useEffect(() => {
     if (isAuthenticated && user?.accountType === "provider" && role !== "provider") {
@@ -113,22 +108,9 @@ const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   }, [isAuthenticated, user?.accountType, role, dispatch]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user.accountType !== "provider") return <Navigate to="/home" replace />;
-
-  // While fetching status from DB, show a minimal loader
-  if (statusLoading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-4 border-[#17375E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  if (user.accountType !== "provider") {
+    return <Navigate to="/home" replace />;
   }
-
-  // Hard block: rejected providers cannot access any provider route
-  if (approvalStatus === "rejected") {
-    return <Navigate to="/provider/application-rejected" replace />;
-  }
-
   return children;
 };
 
@@ -254,9 +236,6 @@ const AppRoutes = () => (
           <Route path="/provider/documents" element={<Documents />} />
           <Route path="/provider/gps-monitor" element={<GPSMonitor />} />
         </Route>
-
-        {/* Rejection page — outside RequireProviderRole so blocked providers can always reach it */}
-        <Route path="/provider/application-rejected" element={<RequireAuth><ApplicationRejected /></RequireAuth>} />
 
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />

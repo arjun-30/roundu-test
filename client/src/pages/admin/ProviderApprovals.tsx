@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { approveProvider, rejectProvider } from "@/lib/adminService";
+import { updateProviderVerification } from "@/lib/adminService";
 import {
   createProviderApprovalNotification,
   createProviderRejectionNotification,
@@ -236,7 +236,7 @@ export default function ProviderApprovals() {
   const handleApprove = async (provider: ProviderRow) => {
     setActionLoading(provider.id);
     try {
-      const res = await approveProvider(provider.id);
+      const res = await updateProviderVerification(provider.id, true);
       if (!res.success) throw new Error(res.error);
       await createProviderApprovalNotification(provider.id, provider.name, provider.user_id);
       await fetchAll();
@@ -252,23 +252,16 @@ export default function ProviderApprovals() {
     if (!rejectTarget) return;
     setRejectSubmitting(true);
     try {
-      const finalReason = rejectReason.trim() || "No reason provided";
-      // Set is_verified=false, approval_status=rejected, is_active=false, rejection_reason in DB
-      const res = await rejectProvider(rejectTarget.id, finalReason);
-      if (!res.success) throw new Error(res.error);
-      // Notify the provider
+      // Keep is_verified = false (it already is); just write the rejection notification
       await createProviderRejectionNotification(
         rejectTarget.id,
         rejectTarget.name,
-        finalReason,
+        rejectReason || "No reason provided",
         rejectTarget.user_id
       );
-      setRejectedIds(prev => new Map(prev).set(rejectTarget.id, finalReason));
+      setRejectedIds(prev => new Map(prev).set(rejectTarget.id, rejectReason || "No reason provided"));
       setAllProviders(prev =>
-        prev.map(p => p.id === rejectTarget.id
-          ? { ...p, is_verified: false, rejection_reason: finalReason }
-          : p
-        )
+        prev.map(p => p.id === rejectTarget.id ? { ...p, rejection_reason: rejectReason || "No reason provided" } : p)
       );
       setRejectTarget(null);
       setRejectReason("");
