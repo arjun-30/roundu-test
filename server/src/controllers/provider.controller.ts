@@ -28,8 +28,17 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
     }
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
+    if (provider.approval_status === 'rejected' || provider.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Provider account has been suspended.',
+        code: 'ACCOUNT_REJECTED',
+        rejection_reason: provider.rejection_reason ?? null,
+      });
+    }
+
     const stats = await ProviderModel.getStats(provider.id);
-    
+
     const walletModel = new WalletModel(getPool());
     const wallet = await walletModel.findOrCreate(userId as string);
 

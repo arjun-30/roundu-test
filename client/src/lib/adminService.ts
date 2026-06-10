@@ -185,6 +185,7 @@ export async function approveProvider(
   providerId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Try full update with new columns first
     const { error } = await supabase
       .from("providers")
       .update({
@@ -196,6 +197,16 @@ export async function approveProvider(
       .eq("id", providerId);
 
     if (error) {
+      // Column may not exist yet in Supabase — fall back to is_verified only
+      if (error.message?.includes("column") || error.code === "42703" || error.code === "PGRST204") {
+        console.warn("[AdminService] New columns missing in Supabase, falling back to is_verified only");
+        const { error: fallbackError } = await supabase
+          .from("providers")
+          .update({ is_verified: true })
+          .eq("id", providerId);
+        if (fallbackError) return { success: false, error: fallbackError.message };
+        return { success: true };
+      }
       console.error("[AdminService] Error approving provider:", error);
       return { success: false, error: error.message };
     }
@@ -211,6 +222,7 @@ export async function rejectProvider(
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Try full update with new columns first
     const { error } = await supabase
       .from("providers")
       .update({
@@ -222,6 +234,16 @@ export async function rejectProvider(
       .eq("id", providerId);
 
     if (error) {
+      // Column may not exist yet in Supabase — fall back to is_verified only
+      if (error.message?.includes("column") || error.code === "42703" || error.code === "PGRST204") {
+        console.warn("[AdminService] New columns missing in Supabase, falling back to is_verified only");
+        const { error: fallbackError } = await supabase
+          .from("providers")
+          .update({ is_verified: false })
+          .eq("id", providerId);
+        if (fallbackError) return { success: false, error: fallbackError.message };
+        return { success: true };
+      }
       console.error("[AdminService] Error rejecting provider:", error);
       return { success: false, error: error.message };
     }

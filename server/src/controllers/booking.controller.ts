@@ -94,7 +94,7 @@ export const createBooking = async (req: Request, res: Response) => {
       const matchingProviders = [];
       for (const p of providers) {
         const isOnline = p.is_online === true;
-        const isApproved = p.is_verified === true;
+        const isApproved = p.is_verified === true && p.is_active !== false && p.approval_status !== 'rejected';
         const matchesCategory = matchesServiceCategory(p.serviceCategory, booking.service_id) || 
                                 matchesServiceCategory(p.serviceCategory, serviceLabel);
 

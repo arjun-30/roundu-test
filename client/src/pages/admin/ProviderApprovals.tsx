@@ -26,6 +26,8 @@ interface ProviderRow {
   service_labels: string[];
   rating: number | null;
   is_verified: boolean;
+  is_active: boolean;
+  approval_status: "pending" | "approved" | "rejected" | null;
   is_online: boolean;
   created_at: string;
   rejection_reason?: string;
@@ -76,7 +78,7 @@ export default function ProviderApprovals() {
 
   const [tab, setTab] = useState<Tab>("pending");
   const [allProviders, setAllProviders] = useState<ProviderRow[]>([]);
-  const [rejectedIds, setRejectedIds] = useState<Map<string, string>>(new Map()); // id → reason
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -100,28 +102,12 @@ export default function ProviderApprovals() {
     setLoading(true);
     setError("");
     try {
-      const [{ data: providers, error: provErr }, { data: rejNotifs, error: rejErr }] = await Promise.all([
-        supabase
-          .from("providers")
-          .select("id, user_id, rating, is_online, is_verified, created_at, users!user_id(name, phone, email, kyc_status), provider_services(service_id, services(label))")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("notifications")
-          .select("data")
-          .eq("type", "provider_rejected"),
-      ]);
+      const { data: providers, error: provErr } = await supabase
+        .from("providers")
+        .select("*, users!user_id(name, phone, email, kyc_status), provider_services(service_id, services(label))")
+        .order("created_at", { ascending: false });
 
       if (provErr) throw provErr;
-      if (rejErr) console.warn("[ProviderApprovals] Could not fetch rejection notifications:", rejErr.message);
-
-      // Build rejected id → reason map
-      const rejMap = new Map<string, string>();
-      (rejNotifs ?? []).forEach((n: any) => {
-        const pid = n.data?.provider_id;
-        const reason = n.data?.reason ?? "";
-        if (pid) rejMap.set(pid, reason);
-      });
-      setRejectedIds(rejMap);
 
       const rows: ProviderRow[] = (providers ?? []).map((raw: any) => {
         const userInfo = raw.users as { name?: string; phone?: string; email?: string; kyc_status?: string } | null;
@@ -136,9 +122,11 @@ export default function ProviderApprovals() {
           service_labels: psRows.map(ps => ps.services?.label ?? ps.service_id).filter(Boolean),
           rating: raw.rating ?? null,
           is_verified: raw.is_verified ?? false,
+          is_active: raw.is_active ?? true,
+          approval_status: raw.approval_status ?? null,
           is_online: raw.is_online ?? false,
           created_at: raw.created_at,
-          rejection_reason: rejMap.get(raw.id),
+          rejection_reason: raw.rejection_reason ?? undefined,
         };
       });
 
@@ -178,9 +166,9 @@ export default function ProviderApprovals() {
     if (!provider) return;
 
     // Determine which tab this provider belongs to
-    if (provider.is_verified) {
+    if (provider.approval_status === "approved" || (provider.approval_status == null && provider.is_verified)) {
       setTab("approved");
-    } else if (rejectedIds.has(provider.id)) {
+    } else if (provider.approval_status === "rejected" || provider.is_active === false) {
       setTab("rejected");
     } else {
       setTab("pending");
@@ -193,7 +181,7 @@ export default function ProviderApprovals() {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 150);
-  }, [highlightId, allProviders, rejectedIds, loading]);
+  }, [highlightId, allProviders, loading]);
 
   // Clear highlight param after 3 seconds
   useEffect(() => {
@@ -206,12 +194,15 @@ export default function ProviderApprovals() {
 
   // ── Derived lists ─────────────────────────────────────────────────────────
 
-  const pending = allProviders.filter(p => !p.is_verified && !rejectedIds.has(p.id));
-  const approved = allProviders.filter(p => p.is_verified);
-  const rejected = allProviders.filter(p => !p.is_verified && rejectedIds.has(p.id)).map(p => ({
-    ...p,
-    rejection_reason: rejectedIds.get(p.id),
-  }));
+  const pending = allProviders.filter(p =>
+    p.approval_status === "pending" || (p.approval_status == null && !p.is_verified)
+  );
+  const approved = allProviders.filter(p =>
+    p.approval_status === "approved" || (p.approval_status == null && p.is_verified === true)
+  );
+  const rejected = allProviders.filter(p =>
+    p.approval_status === "rejected" || p.is_active === false
+  );
 
   const activeList = tab === "pending" ? pending : tab === "approved" ? approved : rejected;
 
@@ -250,29 +241,29 @@ export default function ProviderApprovals() {
 
   const handleRejectSubmit = async () => {
     if (!rejectTarget) return;
+    const trimmed = rejectReason.trim();
+    if (trimmed.length < 10) return; // UI prevents this; guard here too
     setRejectSubmitting(true);
     try {
-      const finalReason = rejectReason.trim() || "No reason provided";
-      // Set is_verified=false, approval_status=rejected, is_active=false, rejection_reason in DB
-      const res = await rejectProvider(rejectTarget.id, finalReason);
+      const res = await rejectProvider(rejectTarget.id, trimmed);
       if (!res.success) throw new Error(res.error);
-      // Notify the provider
       await createProviderRejectionNotification(
         rejectTarget.id,
         rejectTarget.name,
-        finalReason,
+        trimmed,
         rejectTarget.user_id
       );
-      setRejectedIds(prev => new Map(prev).set(rejectTarget.id, finalReason));
       setAllProviders(prev =>
         prev.map(p => p.id === rejectTarget.id
-          ? { ...p, is_verified: false, rejection_reason: finalReason }
+          ? { ...p, is_verified: false, is_active: false, approval_status: "rejected", rejection_reason: trimmed }
           : p
         )
       );
       setRejectTarget(null);
       setRejectReason("");
       setTab("rejected");
+      setSuccessMsg("Provider application rejected successfully.");
+      setTimeout(() => setSuccessMsg(""), 4000);
     } catch (e: any) {
       setError(`Failed to reject provider: ${e.message}`);
     } finally {
@@ -334,6 +325,14 @@ export default function ProviderApprovals() {
             Refresh
           </button>
         </div>
+
+        {/* Success Banner */}
+        {successMsg && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-100 flex items-center justify-between">
+            <span>✓ {successMsg}</span>
+            <button onClick={() => setSuccessMsg("")}><X size={14} /></button>
+          </div>
+        )}
 
         {/* Error Banner */}
         {error && (
@@ -741,6 +740,10 @@ function RejectModal({
   onCancel: () => void;
   submitting: boolean;
 }) {
+  const trimmed = reason.trim();
+  const isValid = trimmed.length >= 10;
+  const showError = trimmed.length > 0 && !isValid;
+
   return (
     <>
       <motion.div
@@ -775,15 +778,32 @@ function RejectModal({
 
           <div className="mb-5">
             <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">
-              Rejection Reason <span className="text-slate-400 font-normal">(optional)</span>
+              Rejection Reason <span className="text-red-500">*</span>
+              <span className="text-slate-400 font-normal ml-1">(required — min 10 characters)</span>
             </label>
             <textarea
               value={reason}
               onChange={e => onReasonChange(e.target.value)}
               rows={3}
-              placeholder="e.g. Incomplete KYC documents, invalid credentials…"
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-300 resize-none"
+              placeholder="Explain why the application was rejected..."
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none resize-none transition-colors ${
+                showError
+                  ? "border-red-400 bg-red-50 focus:border-red-500"
+                  : isValid
+                    ? "border-emerald-300 focus:border-emerald-400"
+                    : "border-slate-200 focus:border-red-300"
+              }`}
             />
+            <div className="flex items-center justify-between mt-1.5">
+              {showError ? (
+                <p className="text-xs text-red-500">Reason must be at least 10 characters.</p>
+              ) : (
+                <span />
+              )}
+              <p className={`text-xs ml-auto ${trimmed.length >= 10 ? "text-emerald-600" : "text-slate-400"}`}>
+                {trimmed.length}/10 min
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -796,8 +816,9 @@ function RejectModal({
             </button>
             <button
               onClick={onConfirm}
-              disabled={submitting}
-              className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={submitting || !isValid}
+              title={!isValid ? "Please provide a rejection reason (min 10 characters)" : undefined}
+              className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? <RefreshCw size={14} className="animate-spin" /> : <XCircle size={14} />}
               Reject Provider

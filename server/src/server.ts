@@ -327,7 +327,7 @@ async function main() {
           }
 
           const isOnline = provider.isOnline === true;
-          const isApproved = providerRow.is_verified === true;
+          const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
           const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                   matchesServiceCategory(provider.serviceCategory, serviceLabel);
           const inRadius = dist <= (provider.serviceRadius || 20);
@@ -336,7 +336,7 @@ async function main() {
           if (!isOnline) {
             decision = "REJECTED (Offline)";
           } else if (!isApproved) {
-            decision = "REJECTED (Unverified)";
+            decision = "REJECTED (Unverified/Blocked)";
           } else if (!matchesCategory) {
             decision = "REJECTED (Category mismatch)";
           } else if (!inRadius) {

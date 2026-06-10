@@ -39,7 +39,7 @@ export function useProviderApprovalStatus(userId: string | null | undefined): Pr
     // Initial fetch
     supabase
       .from("providers")
-      .select("is_verified, approval_status, rejection_reason, is_active")
+      .select("*")
       .eq("user_id", userId)
       .maybeSingle()
       .then(({ data, error }) => {
