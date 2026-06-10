@@ -173,7 +173,7 @@ export const ProviderModel = {
       const provider = providerRes.rows[0];
 
       // 3. Create notification for admin about new provider registration
-      const userRes = await client.query('SELECT full_name, phone FROM users WHERE id = $1', [userId]);
+      const userRes = await client.query('SELECT name, phone FROM users WHERE id = $1', [userId]);
       const user = userRes.rows[0];
       
       const notificationRes = await client.query(
@@ -181,11 +181,11 @@ export const ProviderModel = {
          VALUES ($1, $2, $3, $4, NOW(), false, $5)`,
         [
           'New Provider Registration',
-          `${user?.full_name || 'A new provider'} has submitted registration and requires approval.`,
+          `${user?.name || 'A new provider'} has submitted registration and requires approval.`,
           'provider_registration',
           provider.id,
           JSON.stringify({
-            provider_name: user?.full_name,
+            provider_name: user?.name,
             provider_phone: user?.phone,
             service_category: serviceCategories,
             registration_date: new Date().toISOString()

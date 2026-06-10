@@ -101,13 +101,11 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, role, user, dispatch } = useApp();
 
-  // Auto-switch back to provider role — done in an effect, NOT during render,
-  // to avoid "Cannot update a component while rendering a different component".
   useEffect(() => {
-    if (isAuthenticated && user.accountType === "provider" && role !== "provider") {
+    if (isAuthenticated && user?.accountType === "provider" && role !== "provider") {
       dispatch({ type: "SET_ROLE", role: "provider" });
     }
-  }, [isAuthenticated, user.accountType, role, dispatch]);
+  }, [isAuthenticated, user?.accountType, role, dispatch]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user.accountType !== "provider") {
@@ -134,22 +132,25 @@ const MobileRoutesLayout = () => (
 
 // Smart Role Routing Logic
 const SmartRoleRoute = () => {
-  const { user, dispatch } = useApp();
+  const { user, role, dispatch, providerRegistrationDraft } = useApp();
   const phone = user.phone || "";
   const savedRole = phone ? getSavedRoleForPhone(phone) : null;
 
-  // Persist the saved role in an effect — calling dispatch during render here
-  // was the cause of the "Maximum update depth exceeded" infinite loop.
   useEffect(() => {
-    if (savedRole) {
+    if (savedRole && savedRole !== role) {
       dispatch({ type: "SET_ROLE", role: savedRole });
     }
-  }, [savedRole, dispatch]);
+  }, [savedRole, role, dispatch]);
 
   if (savedRole) {
-    return savedRole === "provider"
-      ? <Navigate to="/provider" replace />
-      : <Navigate to="/home" replace />;
+    if (savedRole === "provider") {
+      const hasSelectedServices = providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0;
+      return hasSelectedServices
+        ? <Navigate to="/provider" replace />
+        : <Navigate to="/provider/select-service" replace />;
+    } else {
+      return <Navigate to="/home" replace />;
+    }
   }
 
   return <RoleSelect />;

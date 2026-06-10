@@ -24,6 +24,12 @@ const OtpVerify = () => {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
+    // If navigation provided a dev OTP after first render, ensure inputs are filled
+    if (devOtp && /^\d{6}$/.test(devOtp)) {
+      setOtp(devOtp.split(""));
+      // focus the first input so user can proceed or edit
+      setTimeout(() => refs.current[0]?.focus(), 50);
+    }
     if (!phone) {
       const pendingPhone = localStorage.getItem("roundu_pending_phone");
       if (pendingPhone) {
@@ -107,10 +113,13 @@ const OtpVerify = () => {
           return;
         }
 
-        // ✅ Check if this phone already has a saved role → skip /role screen
+        // Determine role precedence: prefer server role -> saved role -> ask user
         const savedRole = getSavedRoleForPhone(userPhone);
-        if (savedRole) {
-          navigateByRole(userPhone, savedRole);
+        const serverRole = apiUser?.role || apiUser?.accountType || null;
+        const roleToUse = (serverRole as any) || (savedRole as any) || null;
+
+        if (roleToUse === 'provider' || roleToUse === 'customer') {
+          navigateByRole(userPhone, roleToUse as 'provider' | 'customer');
         } else {
           // First time — show role selection
           navigate("/role", { replace: true });

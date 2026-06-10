@@ -29,8 +29,16 @@ api.interceptors.response.use(
 );
 
 export const fetchProviderDashboard = async (userId: string) => {
-  const res = await api.get(`/providers/dashboard?userId=${userId}`);
-  return res.data;
+  try {
+    const res = await api.get(`/providers/dashboard?userId=${userId}`);
+    return res.data;
+  } catch (error: any) {
+    // Normalize errors so callers don't have to handle thrown AxiosErrors
+    const status = error?.response?.status;
+    const data = error?.response?.data || { message: error?.message };
+    console.error('[API] fetchProviderDashboard error', { status, data });
+    return { success: false, error: data, status };
+  }
 };
 
 export const checkProviderExists = async (userId: string): Promise<{ exists: boolean }> => {

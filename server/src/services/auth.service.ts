@@ -31,8 +31,15 @@ export const AuthService = {
   },
 
   async verifyOTP(phone: string, otp: string): Promise<{ success: boolean; message?: string }> {
-    // Master bypass for testing
-    if (otp === '000000' || otp === '123456') return { success: true };
+    // Master bypass for testing — also remove any stored OTP attempts for cleanliness
+    if (otp === '000000' || otp === '123456') {
+      try {
+        await getPool().query('DELETE FROM otp_attempts WHERE phone = $1', [phone]);
+      } catch (err) {
+        if (env.isDevelopment) console.warn('[AuthService] Failed to cleanup otp_attempts for master bypass', err);
+      }
+      return { success: true };
+    }
 
     try {
       const res = await getPool().query(

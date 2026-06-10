@@ -102,8 +102,6 @@ interface State {
       panVerified: boolean;
       bankVerified: boolean;
     };
-    videoFile?: File | null;
-    videoUrl?: string | null;
   };
   // New Flow State
   isNewUser: boolean;
@@ -212,6 +210,23 @@ if (savedUser) {
   }
 }
 
+const savedDraft = localStorage.getItem("roundu_provider_draft");
+let parsedDraft = {
+  serviceIds: [],
+  bio: "",
+  experienceYears: 1,
+  workingHours: "All day",
+  serviceRadius: 5,
+  kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
+};
+if (savedDraft) {
+  try {
+    parsedDraft = JSON.parse(savedDraft);
+  } catch (e) {
+    console.error("Failed to parse saved draft", e);
+  }
+}
+
 const initialState: State = {
   isAuthenticated: !!token && !!savedUser && !!savedRole,
   phone: parsedUser.phone || "",
@@ -250,16 +265,7 @@ const initialState: State = {
   notifications: [],
   nearbyProviders: {},
   currentLocation: null,
-  providerRegistrationDraft: {
-    serviceIds: [],
-    bio: "",
-    experienceYears: 1,
-    workingHours: "All day",
-    serviceRadius: 5,
-    kyc: { aadhaarVerified: false, panVerified: false, bankVerified: false },
-    videoFile: null,
-    videoUrl: null,
-  },
+  providerRegistrationDraft: parsedDraft,
   isNewUser: true,
   walletBalance: 0,
   isOnline: true,
@@ -686,19 +692,33 @@ function reducer(state: State, action: Action): State {
         )
       };
     }
-    case "UPDATE_REGISTRATION_DRAFT":
+    case "UPDATE_REGISTRATION_DRAFT": {
+      const newDraft = { ...state.providerRegistrationDraft, ...action.patch };
+      try {
+        localStorage.setItem("roundu_provider_draft", JSON.stringify(newDraft));
+      } catch (e) {
+        console.error(e);
+      }
       return {
         ...state,
-        providerRegistrationDraft: { ...state.providerRegistrationDraft, ...action.patch },
+        providerRegistrationDraft: newDraft,
       };
-    case "UPDATE_KYC":
+    }
+    case "UPDATE_KYC": {
+      const newDraft = {
+        ...state.providerRegistrationDraft,
+        kyc: { ...state.providerRegistrationDraft.kyc, ...action.patch },
+      };
+      try {
+        localStorage.setItem("roundu_provider_draft", JSON.stringify(newDraft));
+      } catch (e) {
+        console.error(e);
+      }
       return {
         ...state,
-        providerRegistrationDraft: {
-          ...state.providerRegistrationDraft,
-          kyc: { ...state.providerRegistrationDraft.kyc, ...action.patch },
-        },
+        providerRegistrationDraft: newDraft,
       };
+    }
     case "UPDATE_ONBOARDING": {
       const newData = { ...state.onboardingData, ...action.patch };
       return {

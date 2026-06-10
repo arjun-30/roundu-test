@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../config/env';
 import { ProviderModel } from '../models/provider.model';
 import { getPool } from '../config/database';
 import { WalletModel } from '../models/wallet.model';
@@ -9,7 +10,22 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
     const { userId } = req.query; // In real app, this comes from JWT
     if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
 
-    const provider = await ProviderModel.findByUserId(userId as string);
+    let provider = null;
+    try {
+      provider = await ProviderModel.findByUserId(userId as string);
+    } catch (err: any) {
+      // Handle cases where client passed a phone number instead of UUID
+      if ((err?.message || '').includes('invalid input syntax for type uuid')) {
+        const pool = getPool();
+        const userRes = await pool.query('SELECT id FROM users WHERE phone = $1', [userId]);
+        if (userRes.rows[0]) {
+          const resolvedUserId = userRes.rows[0].id;
+          provider = await ProviderModel.findByUserId(resolvedUserId);
+        }
+      } else {
+        throw err;
+      }
+    }
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
     const stats = await ProviderModel.getStats(provider.id);
@@ -28,9 +44,16 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
         }
       }
     });
-  } catch (error) {
-    console.error('Provider dashboard error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+  } catch (error: any) {
+    console.error('Provider dashboard error:', error?.stack || error);
+    const resp: any = { success: false, message: 'Server error' };
+    if (env.isDevelopment) {
+      resp.error = {
+        message: error?.message,
+        stack: error?.stack
+      };
+    }
+    res.status(500).json(resp);
   }
 };
 

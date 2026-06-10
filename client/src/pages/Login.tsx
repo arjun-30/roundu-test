@@ -40,12 +40,8 @@ const Login = () => {
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
         localStorage.setItem("roundu_pending_phone", data.phone);
-        if (response.data.devOtp) {
-          setSuccess(`Dev OTP: ${response.data.devOtp}`);
-        } else {
-          setSuccess("OTP sent successfully!");
-        }
-        setTimeout(() => navigate("/otp", { state: { devOtp: response.data.devOtp } }), 800);
+        setSuccess("OTP sent successfully!");
+        setTimeout(() => navigate("/otp"), 800);
       } else {
         setError(response.data.message || "Failed to send OTP");
       }
