@@ -21,6 +21,7 @@ const RoleSelect = () => {
     const phone = user.phone || "";
     if (phone) saveRoleForPhone(phone, role);
 
+    dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { serviceIds: [] } });
     dispatch({ type: "SET_ROLE", role });
     dispatch({ type: "UPDATE_USER", user: { role, accountType: role } });
 
@@ -88,12 +89,9 @@ const RoleSelect = () => {
 
         {/* TITLE */}
         <div className="mb-8">
-          <h1 className="text-[34px] font-extrabold leading-[1.1]" style={{ color: "#0F172A" }}>
-            How would you like<br />to get{" "}
-            <span className="bg-gradient-to-r from-[#8B6B2E] via-[#D89B1D] to-[#F4B942] bg-clip-text text-transparent">
-              started?
-            </span>
-          </h1>
+            <h1 className="text-[34px] font-extrabold leading-[1.1]" style={{ color: "#000000" }}>
+              How would you like<br /> to get started?
+            </h1>
           <p className="text-[15px] mt-3 leading-relaxed" style={{ color: "#64748B" }}>
             Choose your account path to customize your experience.
           </p>

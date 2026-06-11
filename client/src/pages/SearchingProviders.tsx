@@ -82,7 +82,17 @@ const SearchingProviders = () => {
   );
 
   // Timer state for provider search timeout
-  const [searchStartTime, setSearchStartTime] = useState<number>(Date.now());
+  const initSearchStartTime = () => {
+  const stored = sessionStorage.getItem('search_start_time');
+  if (stored) {
+    return parseInt(stored, 10);
+  }
+  const now = Date.now();
+  sessionStorage.setItem('search_start_time', String(now));
+  return now;
+};
+
+const [searchStartTime, setSearchStartTime] = useState<number>(initSearchStartTime());
   const [remainingSeconds, setRemainingSeconds] = useState<number>(300);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [showTimeoutModal, setShowTimeoutModal] = useState<boolean>(false);
@@ -280,7 +290,13 @@ const SearchingProviders = () => {
         console.error("Failed to restore quotes", e);
       }
     } else {
-      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+        dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+        // New quick‑fix request – clear any persisted start time so a fresh timer begins.
+        sessionStorage.removeItem('search_start_time');
+        // Re‑initialise the start timestamp for this new session.
+        const freshNow = Date.now();
+        sessionStorage.setItem('search_start_time', String(freshNow));
+        setSearchStartTime(freshNow);
     }
 
     const buildPayload = () => ({

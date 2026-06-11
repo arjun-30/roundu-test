@@ -77,9 +77,9 @@ const BookService = () => {
   const selectedProblems: string[] =
     selectedIssue
       ? selectedIssue
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean)
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean)
       : [];
 
   const [desc, setDesc] = useState(
@@ -667,8 +667,8 @@ const BookService = () => {
                 )
               }
               className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType === "now"
-                  ? "bg-[#17375E] text-white border-[#17375E]"
-                  : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
+                ? "bg-[#17375E] text-white border-[#17375E]"
+                : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
                 }`}
             >
               <Zap
@@ -693,9 +693,9 @@ const BookService = () => {
                 )
               }
               className={`flex-1 rounded-[20px] py-5 flex flex-col items-center justify-center gap-2 border transition-all ${scheduleType ===
-                  "later"
-                  ? "bg-[#17375E] text-white border-[#17375E]"
-                  : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
+                "later"
+                ? "bg-[#17375E] text-white border-[#17375E]"
+                : "bg-[#F8FAFC] text-[#0F172A] border-slate-200"
                 }`}
             >
               <Clock
