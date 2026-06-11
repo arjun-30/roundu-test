@@ -515,7 +515,7 @@ const Home = () => {
           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/40 group-hover:text-accent transition-colors">
             <Search size={20} strokeWidth={2.5} />
           </div>
-          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC] border-2 border-transparent group-hover:border-primary/10 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-medium shadow-inner">
+          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC]/40 border border-slate-200/80 group-hover:border-primary/20 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-medium shadow-sm">
             What service do you need today?
           </div>
         </motion.button>

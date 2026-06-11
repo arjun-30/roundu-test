@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { 
-  ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase, 
-  MessageCircle, Phone, Share2, MoreVertical, ShieldCheck, 
+import {
+  ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase,
+  MessageCircle, Phone, Share2, MoreVertical, ShieldCheck,
   ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X, Play, CreditCard
 } from "lucide-react";
 import FixedBackButton from "@/components/FixedBackButton";
@@ -17,7 +17,7 @@ const ProviderDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, dispatch, currentLocation } = useApp();
-  
+
   // Get provider from state (e.g. from Search) or fallback to mock data
   const initialProvider = location.state?.provider || getProviderById(id);
   const quote = location.state?.quote; // If coming from SearchingProviders.tsx
@@ -31,7 +31,7 @@ const ProviderDetail = () => {
       setIsLoading(true);
       const targetUserId = quote?.providerId || id;
       console.log('[ProviderDetail] useEffect: id from params=', id, 'quote.providerId=', quote?.providerId, 'targetUserId=', targetUserId);
-      
+
       if (!targetUserId) {
         console.log('[ProviderDetail] No target user ID, using initialProvider');
         setIsLoading(false);
@@ -41,17 +41,17 @@ const ProviderDetail = () => {
       try {
         const res = await api.get(`/providers/${targetUserId}`);
         console.log('[ProviderDetail] API raw response:', res.data);
-        
+
         if (res.data?.success && res.data?.data) {
           const provider = res.data.data.provider;
           const stats = res.data.data.stats;
-          
+
           console.log('[ProviderDetail] Setting dynamicProfile:', provider);
           console.log('[ProviderDetail] Setting dynamicStats:', stats);
-          
+
           setDynamicProfile(provider);
           setDynamicStats(stats);
-          
+
           // Fetch service labels for the provider
           const serviceIds = provider?.serviceIds || provider?.service_ids || [];
           if (serviceIds && serviceIds.length > 0) {
@@ -78,12 +78,12 @@ const ProviderDetail = () => {
   const provider = useMemo(() => {
     // PRIORITY 1: Use API data (dynamicProfile + dynamicStats) if available
     // PRIORITY 2: Fall back to navigation state (initialProvider)
-    
+
     const fromApi = dynamicProfile && Object.keys(dynamicProfile).length > 0;
     console.log('[ProviderDetail] useMemo: fromApi=', fromApi, 'dynamicProfile=', dynamicProfile, 'initialProvider=', initialProvider);
-    
+
     const baseProfile = fromApi ? dynamicProfile : initialProvider;
-    
+
     if (!baseProfile) {
       console.log('[ProviderDetail] No provider data available');
       return null;
@@ -117,9 +117,9 @@ const ProviderDetail = () => {
       display_location: baseProfile?.display_location || "Service Area",
       service_radius: baseProfile?.service_radius || 20
     };
-    
+
     console.log('[ProviderDetail] Final provider object:', result);
-    
+
     // If we have a quote, override price/eta/distance from quote
     if (quote) {
       return {
@@ -132,7 +132,7 @@ const ProviderDetail = () => {
         name: quote.providerName || result.name
       };
     }
-    
+
     return result;
   }, [dynamicProfile, dynamicStats, quote, initialProvider, id]);
 
@@ -235,7 +235,7 @@ const ProviderDetail = () => {
       };
 
       const res = await createBooking(bookingData);
-      
+
       if (res.success && res.data) {
         const enrichedBooking = {
           ...res.data,
@@ -268,7 +268,7 @@ const ProviderDetail = () => {
         } else {
           showNotification("✅ Booking confirmed!");
         }
-        
+
         setBookingSuccess(true);
         setTimeout(() => navigate(`/chat/${res.data.id}`), 1000);
       } else {
@@ -307,322 +307,344 @@ const ProviderDetail = () => {
       <FixedBackButton />
 
       <div className="min-h-screen bg-gray-50 pb-32 font-['DM_Sans',sans-serif]">
-      {/* Portfolio Video Cover Section */}
-      <div className="relative w-full h-64 sm:h-80 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden rounded-b-3xl">
-        {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover opacity-80"
-          src="https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"
-        />
-        
-        {/* Fallback: Show first portfolio image if video fails */}
-        {portfolio.length > 0 && (
-          <img 
-            src={portfolio[0]?.image} 
-            alt="Portfolio Cover" 
-            className="absolute inset-0 w-full h-full object-cover opacity-0 hover:opacity-100 transition-opacity"
+        {/* Portfolio Video Cover Section */}
+        <div className="relative w-full h-64 sm:h-80 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden rounded-b-3xl">
+          {/* Background Video */}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-80"
+            src="https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"
           />
-        )}
 
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          {/* Fallback: Show first portfolio image if video fails */}
+          {portfolio.length > 0 && (
+            <img
+              src={portfolio[0]?.image}
+              alt="Portfolio Cover"
+              className="absolute inset-0 w-full h-full object-cover opacity-0 hover:opacity-100 transition-opacity"
+            />
+          )}
 
-        {/* Play Button Overlay */}
-        <button 
-          onClick={() => setShowVideoPlayer(!showVideoPlayer)}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:bg-white/30 active:scale-95 transition-all shadow-lg"
-        >
-          <Play size={28} className="text-white fill-white ml-1" />
-        </button>
-      </div>
+          {/* Dark Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-      {/* Content with Floating Avatar */}
-      <div className="px-4 sm:px-6 py-6 relative">
-        {/* Floating Avatar at Top Center */}
-        <div className="flex justify-center -mt-16 mb-6 relative z-20">
-          <div className="relative">
-            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden">
-              {provider.avatar && typeof provider.avatar === 'string' && provider.avatar.startsWith('http') ? (
-                <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-6xl sm:text-7xl font-bold text-white">{provider.name?.charAt(0)}</span>
-              )}
-            </div>
-            <div className="absolute bottom-0 right-0 w-7 h-7 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Profile Section - Centered */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="text-center mb-3">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{provider.name}</h1>
-              {provider.verified && <BadgeCheck className="text-blue-500" size={24} />}
-            </div>
-            <p className="text-sm sm:text-base text-muted-foreground font-medium">{providerServices.length > 0 ? providerServices.join(", ") : service?.label || "Professional Service"}</p>
-          </div>
-
-          <div className="text-center mb-4">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Star size={14} className="text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-bold text-foreground">{provider.rating || 0}</span>
-              <span className="text-xs text-muted-foreground">({provider.reviews || 0} reviews)</span>
-            </div>
-          </div>
-
-          <button 
-            onClick={handleCall}
-            className="flex items-center gap-2 bg-white border-2 border-foreground rounded-full px-6 py-2 font-bold text-foreground active:scale-95"
+          {/* Play Button Overlay */}
+          <button
+            onClick={() => setShowVideoPlayer(!showVideoPlayer)}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:bg-white/30 active:scale-95 transition-all shadow-lg"
           >
-            <Phone size={16} />
-            Call
+            <Play size={28} className="text-white fill-white ml-1" />
           </button>
         </div>
 
-        {/* Info Cards Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
-            <MapPin size={20} className="text-red-500 mx-auto mb-2" />
-            <p className="text-xs font-bold text-foreground mb-1">{provider.display_location || "Service Area"}</p>
-            <p className="text-[10px] text-muted-foreground">{provider.lat && provider.lng ? `${provider.lat.toFixed(4)}, ${provider.lng.toFixed(4)}` : provider.service_radius ? `Up to ${provider.service_radius} km radius` : "Coordinates available"}</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
-            <Clock size={20} className="text-blue-500 mx-auto mb-2" />
-            <p className="text-xs font-bold text-foreground mb-1">ETA Preference</p>
-            <p className="text-[10px] text-muted-foreground">{provider.etaMin || 15} mins</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
-            <CheckCircle2 size={20} className="text-green-500 mx-auto mb-2" />
-            <p className="text-xs font-bold text-foreground mb-1">Verified</p>
-            <p className="text-[10px] text-muted-foreground">Documents verified</p>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-8 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <span className="text-2xl sm:text-3xl font-black text-foreground">{provider.rating || 0}</span>
-              <Star size={16} className="text-yellow-500 fill-yellow-500" />
-            </div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase">Rating</p>
-          </div>
-          <div className="text-center">
-            <span className="text-2xl sm:text-3xl font-black text-foreground block mb-1">{provider.jobs || 0}</span>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Jobs</p>
-          </div>
-          <div className="text-center">
-            <span className="text-2xl sm:text-3xl font-black text-foreground block mb-1">100%</span>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase">Response Rate</p>
-          </div>
-        </div>
-
-        {/* Services & Work Details - Two Column */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Briefcase size={16} className="text-purple-600" />
+        {/* Content with Floating Avatar */}
+        <div className="px-4 sm:px-6 py-6 relative">
+          {/* Floating Avatar at Top Center */}
+          <div className="flex justify-center -mt-16 mb-6 relative z-20">
+            <div className="relative">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden">
+                {provider.avatar && typeof provider.avatar === 'string' && provider.avatar.startsWith('http') ? (
+                  <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-6xl sm:text-7xl font-bold text-white">{provider.name?.charAt(0)}</span>
+                )}
               </div>
-              <h3 className="font-bold text-foreground text-sm">Services</h3>
+              <div className="absolute bottom-0 right-0 w-7 h-7 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full" />
+              </div>
             </div>
-            <div className="space-y-2">
-              {(provider.tags || ['Bike Taxi', 'Quick Pickups', 'Safe Rides']).slice(0, 4).map((svc: string) => (
-                <div key={svc} className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-blue-500 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm text-foreground font-medium line-clamp-1">{svc}</span>
-                </div>
-              ))}
-            </div>
-            <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View All Services</button>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                <Briefcase size={16} className="text-green-600" />
+          {/* Profile Section - Centered */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="text-center mb-3">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{provider.name}</h1>
+                {provider.verified && <BadgeCheck className="text-blue-500" size={24} />}
               </div>
-              <h3 className="font-bold text-foreground text-sm">Work Details</h3>
+              <p className="text-sm sm:text-base text-muted-foreground font-medium">{providerServices.length > 0 ? providerServices.join(", ") : service?.label || "Professional Service"}</p>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock size={14} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Working Hours</span>
-                </div>
-                <span className="text-xs font-bold text-foreground">All day</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Service Radius</span>
-                </div>
-                <span className="text-xs font-bold text-foreground">Up to 5 km</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageCircle size={14} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Languages</span>
-                </div>
-                <span className="text-xs font-bold text-foreground">3 langs</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard size={14} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Payment</span>
-                </div>
-                <span className="text-xs font-bold text-foreground">Cash, UPI</span>
+
+            <div className="text-center mb-4">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                <span className="text-sm font-bold text-foreground">{provider.rating || 0}</span>
+                <span className="text-xs text-muted-foreground">({provider.reviews || 0} reviews)</span>
               </div>
             </div>
-            <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View Full Details</button>
+
+            <button
+              onClick={handleCall}
+              className="flex items-center gap-2 bg-white border-2 border-foreground rounded-full px-6 py-2 font-bold text-foreground active:scale-95"
+            >
+              <Phone size={16} />
+              Call
+            </button>
           </div>
-        </div>
+
+          {/* Info Cards Grid */}
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
+              <MapPin size={20} className="text-red-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-foreground mb-1">{provider.display_location || "Service Area"}</p>
+              <p className="text-[10px] text-muted-foreground">{provider.lat && provider.lng ? `${provider.lat.toFixed(4)}, ${provider.lng.toFixed(4)}` : provider.service_radius ? `Up to ${provider.service_radius} km radius` : "Coordinates available"}</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
+              <Clock size={20} className="text-blue-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-foreground mb-1">ETA Preference</p>
+              <p className="text-[10px] text-muted-foreground">{provider.etaMin || 15} mins</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
+              <CheckCircle2 size={20} className="text-green-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-foreground mb-1">Verified</p>
+              <p className="text-[10px] text-muted-foreground">Documents verified</p>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 mb-8 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <span className="text-2xl sm:text-3xl font-black text-foreground">{provider.rating || 0}</span>
+                <Star size={16} className="text-yellow-500 fill-yellow-500" />
+              </div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Rating</p>
+            </div>
+            <div className="text-center">
+              <span className="text-2xl sm:text-3xl font-black text-foreground block mb-1">{provider.jobs || 0}</span>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Jobs</p>
+            </div>
+            <div className="text-center">
+              <span className="text-2xl sm:text-3xl font-black text-foreground block mb-1">100%</span>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Response Rate</p>
+            </div>
+          </div>
+
+          {/* Services & Work Details - Two Column */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Briefcase size={16} className="text-purple-600" />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Services</h3>
+              </div>
+              <div className="space-y-2">
+                {(provider.tags || ['Bike Taxi', 'Quick Pickups', 'Safe Rides']).slice(0, 4).map((svc: string) => (
+                  <div key={svc} className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-foreground font-medium line-clamp-1">{svc}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View All Services</button>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                  <Briefcase size={16} className="text-green-600" />
+                </div>
+                <h3 className="font-bold text-foreground text-sm">Work Details</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Working Hours</span>
+                  </div>
+                  <span className="text-xs font-bold text-foreground">All day</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Service Radius</span>
+                  </div>
+                  <span className="text-xs font-bold text-foreground">Up to 5 km</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Languages</span>
+                  </div>
+                  <span className="text-xs font-bold text-foreground">3 langs</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Payment</span>
+                  </div>
+                  <span className="text-xs font-bold text-foreground">Cash, UPI</span>
+                </div>
+              </div>
+              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View Full Details</button>
+            </div>
+          </div>
 
           {/* Experience & Skills */}
           <div className="mb-8">
-             <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {portfolio.slice(0, 6).map((item: any, index: number) => (
-                   <div 
-                     key={item.id || index}
-                     className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
-                     onClick={() => {
-                       setShowGalleryModal(true);
-                     }}
-                   >
-                     <img 
-                       src={item.image} 
-                       alt={item.title}
-                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                     />
-                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                       <Play className="w-8 h-8 text-white fill-white" />
-                     </div>
-                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                       <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
-                     </div>
-                   </div>
-                ))}
-             </div>
-             {portfolio.length > 6 && (
-               <button 
-                 onClick={() => setShowGalleryModal(true)}
-                 className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
-               >
-                 View All {portfolio.length} Projects
-               </button>
-             )}
-          </div>
-
-        {/* Certificates & Licenses */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                <span className="text-sm">📋</span>
-              </div>
-              Certificates & Licenses
-            </h3>
-            <button className="text-primary text-xs font-bold">View All</button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-              <div className="text-3xl mb-2">🪪</div>
-              <p className="text-xs font-bold text-foreground line-clamp-2">Driving License</p>
-            </div>
-            <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-              <div className="text-3xl mb-2">📋</div>
-              <p className="text-xs font-bold text-foreground line-clamp-2">Insurance</p>
-            </div>
-            <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-              <div className="text-3xl mb-2">🏍️</div>
-              <p className="text-xs font-bold text-foreground line-clamp-2">Bike RC</p>
-            </div>
-            <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-              <div className="text-3xl mb-2">✅</div>
-              <p className="text-xs font-bold text-foreground line-clamp-2">PESO</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Reviews */}
-        <div className="mb-4">
-          <h3 className="text-lg font-extrabold text-foreground mb-4 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-              <Star size={16} className="text-yellow-600" />
-            </div>
-            Customer Reviews
-          </h3>
-          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200">
-            <div className="flex justify-between">
-              <div>
-                <p className="text-4xl font-black text-foreground">{provider.rating || 0}.0</p>
-                <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">({mockReviews.length} reviews)</p>
-              </div>
-              <div className="flex flex-col gap-1">
-                {[5, 4, 3, 2, 1].map((rating) => (
-                  <div key={rating} className="flex items-center gap-2">
-                    <div className="flex gap-0.5 w-12">
-                      {[...Array(rating)].map((_, i) => (
-                        <Star key={i} size={10} className="text-yellow-500 fill-yellow-500" />
-                      ))}
-                      {[...Array(5 - rating)].map((_, i) => (
-                        <div key={i} className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground w-6 text-right">0</span>
+            <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {portfolio.slice(0, 6).map((item: any, index: number) => (
+                <div
+                  key={item.id || index}
+                  className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
+                  onClick={() => {
+                    setShowGalleryModal(true);
+                  }}
+                >
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="w-8 h-8 text-white fill-white" />
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="text-center py-6">
-              <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="text-sm font-bold text-foreground">No reviews yet</p>
-              <p className="text-xs text-muted-foreground">Be the first customer to review</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Gallery Modal */}
-      {showGalleryModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={() => setShowGalleryModal(false)}>
-          <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
-              <h3 className="text-base sm:text-lg font-extrabold">Project Gallery</h3>
-              <button onClick={() => setShowGalleryModal(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-              {portfolio.map((item) => (
-                <div key={item.id} className="bg-gray-50 rounded-xl overflow-hidden group">
-                  <div className="aspect-video w-full overflow-hidden relative bg-gray-100">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  </div>
-                  <div className="p-4">
-                    <h4 className="text-sm font-bold text-foreground mb-1">{item.title}</h4>
-                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                    <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
                   </div>
                 </div>
               ))}
             </div>
+            {portfolio.length > 6 && (
+              <button
+                onClick={() => setShowGalleryModal(true)}
+                className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
+              >
+                View All {portfolio.length} Projects
+              </button>
+            )}
           </div>
-        </div>
-      )}
 
+          {/* Certificates & Licenses */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <span className="text-sm">📋</span>
+                </div>
+                Certificates & Licenses
+              </h3>
+              <button className="text-primary text-xs font-bold">View All</button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                <div className="text-3xl mb-2">🪪</div>
+                <p className="text-xs font-bold text-foreground line-clamp-2">Driving License</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                <div className="text-3xl mb-2">📋</div>
+                <p className="text-xs font-bold text-foreground line-clamp-2">Insurance</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                <div className="text-3xl mb-2">🏍️</div>
+                <p className="text-xs font-bold text-foreground line-clamp-2">Bike RC</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                <div className="text-3xl mb-2">✅</div>
+                <p className="text-xs font-bold text-foreground line-clamp-2">PESO</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Reviews */}
+          <div className="mb-4">
+            <h3 className="text-lg font-extrabold text-foreground mb-4 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                <Star size={16} className="text-yellow-600" />
+              </div>
+              Customer Reviews
+            </h3>
+            <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-4xl font-black text-foreground">{provider.rating || 0}.0</p>
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">({mockReviews.length} reviews)</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {[5, 4, 3, 2, 1].map((rating) => (
+                    <div key={rating} className="flex items-center gap-2">
+                      <div className="flex gap-0.5 w-12">
+                        {[...Array(rating)].map((_, i) => (
+                          <Star key={i} size={10} className="text-yellow-500 fill-yellow-500" />
+                        ))}
+                        {[...Array(5 - rating)].map((_, i) => (
+                          <div key={i} className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground w-6 text-right">0</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="text-center py-6">
+                <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-foreground">No reviews yet</p>
+                <p className="text-xs text-muted-foreground">Be the first customer to review</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Gallery Modal */}
+        {showGalleryModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={() => setShowGalleryModal(false)}>
+            <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
+                <h3 className="text-base sm:text-lg font-extrabold">Project Gallery</h3>
+                <button onClick={() => setShowGalleryModal(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+                {portfolio.map((item) => (
+                  <div key={item.id} className="bg-gray-50 rounded-xl overflow-hidden group">
+                    <div className="aspect-video w-full overflow-hidden relative bg-gray-100">
+                      <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    </div>
+                    <div className="p-4">
+                      <h4 className="text-sm font-bold text-foreground mb-1">{item.title}</h4>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Book Button at Bottom */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-30 flex gap-3">
+          <button
+            onClick={handleBook}
+            disabled={isBooking || bookingSuccess}
+            className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${
+              bookingSuccess ? "bg-green-500" : isBooking ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            <span>
+              {bookingSuccess ? (
+                "Confirmed!"
+              ) : isBooking ? (
+                "Processing..."
+              ) : quote ? (
+                `Accept Quote — ₹${provider.pricePerHr}`
+              ) : (
+                `Book — ₹${provider.pricePerHr}`
+              )}
+            </span>
+          </button>
+        </div>
 
       </div>
     </>
@@ -632,7 +654,7 @@ const ProviderDetail = () => {
 const StatItem = ({ icon: Icon, value, label, color }: { icon: any; value: string; label: string; color: string }) => (
   <div className="text-center flex flex-col items-center">
     <div className={`w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm mb-2`}>
-       <Icon size={20} className={color} />
+      <Icon size={20} className={color} />
     </div>
     <p className="text-[15px] font-extrabold text-foreground leading-tight">{value}</p>
     <p className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-widest mt-0.5">{label}</p>
@@ -641,10 +663,11 @@ const StatItem = ({ icon: Icon, value, label, color }: { icon: any; value: strin
 
 const TrustBadge = ({ icon: Icon, label }: { icon: any; label: string }) => (
   <div className="flex flex-col items-center gap-1.5 opacity-60">
-     <Icon size={22} className="text-primary" />
-     <span className="text-[9px] font-extrabold text-primary uppercase tracking-[0.1em]">{label}</span>
+    <Icon size={22} className="text-primary" />
+    <span className="text-[9px] font-extrabold text-primary uppercase tracking-[0.1em]">{label}</span>
   </div>
 );
 
 export default ProviderDetail;
+
 

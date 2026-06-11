@@ -1,4 +1,5 @@
 import { getPool } from '../config/database';
+import { isValidUuid } from '../utils/uuid';
 
 export interface Notification {
   id: string;
@@ -18,6 +19,9 @@ export const NotificationModel = {
   },
 
   async findByUserId(userId: string): Promise<Notification[]> {
+    if (!isValidUuid(userId)) {
+      return [];
+    }
     const res = await getPool().query(
       'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC',
       [userId]

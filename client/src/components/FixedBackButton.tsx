@@ -27,7 +27,6 @@ const FixedBackButton = () => {
         transition: 'all 0.2s ease',
         padding: '0',
         margin: '0',
-        border: 'none',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';

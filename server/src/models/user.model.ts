@@ -1,5 +1,6 @@
 import { getPool } from '../config/database';
 import { env } from '../config/env';
+import { isValidUuid } from '../utils/uuid';
 
 export interface User {
   id: string;
@@ -100,6 +101,7 @@ export const UserModel = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!isValidUuid(id)) return;
     await getPool().query('DELETE FROM users WHERE id = $1', [id]);
   },
 

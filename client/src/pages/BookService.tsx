@@ -429,21 +429,16 @@ const BookService = () => {
               </div>
 
               {/* Issue chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
                 {selectedProblems.map((problem, idx) => (
                   <motion.span
                     key={problem}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.06, type: "spring", stiffness: 300, damping: 22 }}
-                    className="inline-flex items-center gap-2 rounded-[14px] text-[13px] font-bold"
+                    className="inline-flex items-center gap-2 text-[14px] font-bold"
                     style={{
-                      background: "rgba(255,255,255,0.75)",
-                      backdropFilter: "blur(8px)",
-                      border: "1.5px solid rgba(245,158,11,0.4)",
                       color: "#78350F",
-                      padding: "6px 14px",
-                      boxShadow: "0 2px 8px rgba(245,158,11,0.12)",
                     }}
                   >
                     <span

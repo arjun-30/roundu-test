@@ -1,4 +1,5 @@
 import { getPool } from '../config/database';
+import { isValidUuid } from '../utils/uuid';
 
 export interface Provider {
   id: string;
@@ -66,6 +67,7 @@ export function matchesServiceCategory(providerCategory: any, requestedService: 
 
 export const ProviderModel = {
   async findByUserId(userId: string): Promise<any | null> {
+    if (!isValidUuid(userId)) return null;
     const res = await getPool().query('SELECT * FROM providers WHERE user_id = $1', [userId]);
     if (!res.rows[0]) return null;
     const provider = mapProvider(res.rows[0]);
@@ -75,6 +77,7 @@ export const ProviderModel = {
   },
 
   async findById(providerId: string): Promise<any | null> {
+    if (!isValidUuid(providerId)) return null;
     const res = await getPool().query(
       `SELECT p.*, u.name, u.phone, u.avatar_url, u.email 
        FROM providers p 
@@ -90,6 +93,7 @@ export const ProviderModel = {
   },
 
   async updateServiceRadiusByUserId(userId: string, radius: number): Promise<boolean> {
+    if (!isValidUuid(userId)) return false;
     const res = await getPool().query(
       'UPDATE providers SET service_radius = $1 WHERE user_id = $2',
       [radius, userId]
@@ -98,6 +102,7 @@ export const ProviderModel = {
   },
 
   async updateWorkingHoursByUserId(userId: string, workingHours: string): Promise<boolean> {
+    if (!isValidUuid(userId)) return false;
     const res = await getPool().query(
       'UPDATE providers SET working_hours = $1 WHERE user_id = $2',
       [workingHours, userId]
@@ -106,6 +111,15 @@ export const ProviderModel = {
   },
 
   async getStats(providerId: string): Promise<any> {
+    if (!isValidUuid(providerId)) {
+      return {
+        earningsToday: 0,
+        total_jobs: 0,
+        completed_jobs: 0,
+        rating: 5.0,
+        total_reviews: 0
+      };
+    }
     const earningsRes = await getPool().query(
       "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
       [providerId]
@@ -118,15 +132,24 @@ export const ProviderModel = {
       "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'",
       [providerId]
     );
+    const avgRatingRes = await getPool().query(
+      "SELECT AVG(rating) as avg, COUNT(*) as count FROM ratings WHERE provider_id = $1",
+      [providerId]
+    );
     const ratingRes = await getPool().query(
       "SELECT rating FROM providers WHERE id = $1",
       [providerId]
     );
+
+    const dbRating = parseFloat(ratingRes.rows[0]?.rating || '0');
+    const avgRating = avgRatingRes.rows[0]?.avg ? parseFloat(avgRatingRes.rows[0].avg) : (dbRating > 0 ? dbRating : 5.0);
+
     return {
       earningsToday: parseFloat(earningsRes.rows[0]?.total || '0'),
       total_jobs: parseInt(totalJobsRes.rows[0]?.count || '0'),
       completed_jobs: parseInt(completedJobsRes.rows[0]?.count || '0'),
-      rating: parseFloat(ratingRes.rows[0]?.rating || '0')
+      rating: avgRating,
+      total_reviews: parseInt(avgRatingRes.rows[0]?.count || '0')
     };
   },
 
