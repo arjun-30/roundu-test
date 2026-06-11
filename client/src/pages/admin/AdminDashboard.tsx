@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                 onApprove={handleApproveProvider}
                 onReject={handleRejectProvider}
                 isLoading={approveLoading}
-                onViewDetails={() => { setShowModal(false); navigate("/admin/provider-approvals"); }}
+                onViewDetails={() => { setShowModal(false); navigate("/admin/providers"); }}
             />
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="max-w-[1600px] mx-auto w-full">
@@ -250,20 +250,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                     {loading
                         ? Array.from({ length: 8 }).map((_, i) => <StatCard key={i} title="" value="" icon={<div />} loading />)
-                        : statCards.map(s =>
-                            s.title === "Pending Verifications" ? (
-                                <div
-                                    key={s.title}
-                                    onClick={() => navigate("/admin/provider-approvals")}
-                                    className="cursor-pointer"
-                                    title="View Provider Approvals"
-                                >
-                                    <StatCard {...s} />
-                                </div>
-                            ) : (
-                                <StatCard key={s.title} {...s} />
-                            )
-                        )
+                        : statCards.map(s => <StatCard key={s.title} {...s} />)
                     }
                 </div>
 

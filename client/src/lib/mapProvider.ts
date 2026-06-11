@@ -117,25 +117,13 @@ function createMapboxMapInstance(map: any, markersRef: any[]): MapInstance {
         pin: "#6366F1",
       };
 
-      const el = document.createElement("div");
-      el.style.cssText = `
-        width: 28px; height: 28px; border-radius: 50%;
-        background: ${colors[type]}; border: 2px solid #fff;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-size: 11px; font-weight: bold;
-        cursor: pointer;
-      `;
-      if (label) el.textContent = label;
-
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ color: colors[type] })
         .setLngLat([position.lng, position.lat])
         .addTo(map);
 
       if (popup) {
         const p = new mapboxgl.Popup({ offset: 25 }).setText(popup);
         marker.setPopup(p);
-        el.addEventListener("click", () => p.addTo(map));
       }
 
       markersRef.push(marker);

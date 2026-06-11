@@ -11,7 +11,8 @@ export async function getProviderActiveBookings(providerId: string): Promise<any
   const now = new Date();
   return res.rows.filter(booking => {
     const timeRef = booking.scheduled_at ? new Date(booking.scheduled_at) : null;
-    if (!timeRef || isNaN(timeRef.getTime())) return true;
+    // No date = can't determine overlap → treat as NOT busy (don't block the provider)
+    if (!timeRef || isNaN(timeRef.getTime())) return false;
 
     const ageHours = (now.getTime() - timeRef.getTime()) / (1000 * 60 * 60);
     // Ignore jobs scheduled more than 24 hours in the past
@@ -19,15 +20,25 @@ export async function getProviderActiveBookings(providerId: string): Promise<any
   });
 }
 
-export async function isProviderBusy(
-  providerId: string
-): Promise<boolean> {
-
-  // Allow scheduled jobs while another job is active
-  // Frontend already handles 6-hour validation
-
+export async function isProviderBusy(providerId: string): Promise<boolean> {
+  const activeBookings = await getProviderActiveBookings(providerId);
+  const now = new Date();
+  
+  for (const booking of activeBookings) {
+    if (['on_the_way', 'arrived', 'in_progress'].includes(booking.status)) {
+      return true;
+    }
+    if (['assigned', 'accepted'].includes(booking.status)) {
+      const start = new Date(booking.scheduled_at);
+      if (isNaN(start.getTime())) continue;
+      const durationHours = booking.duration || 2;
+      const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
+      if (now >= start && now <= end) {
+        return true;
+      }
+    }
+  }
   return false;
-
 }
 
 export async function checkScheduleConflict(

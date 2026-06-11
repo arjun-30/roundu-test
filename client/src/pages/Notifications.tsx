@@ -60,7 +60,7 @@ const Notifications = () => {
   const handleAcceptQuote = async (quote: any, notificationId: string) => {
     if (acceptingQuoteId) return;
     if (!user || !user.id) {
-      navigate("/auth");
+      navigate("/login");
       return;
     }
     setAcceptingQuoteId(quote.providerId);

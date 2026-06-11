@@ -98,7 +98,7 @@ const ProvidersPage = () => {
   const handleBook = async (id: string) => {
     if (!user || !user.id) {
       setError("Please log in to book a service");
-      navigate("/auth", { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
     setError("");

@@ -4,22 +4,39 @@ import crypto from 'crypto';
 
 const CASHFREE_BASE_URL = env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/verification';
 
-function getHeaders() {
-  const headers: any = {
+function getHeaders(apiVersion?: string) {
+  const headers: Record<string, string> = {
     'x-client-id': env.CASHFREE_CLIENT_ID,
     'x-client-secret': env.CASHFREE_CLIENT_SECRET,
     'content-type': 'application/json',
     'User-Agent': 'RoundU-Backend/1.0 (Node.js)'
   };
 
-  if (env.CASHFREE_PUBLIC_KEY) {
-    let key = env.CASHFREE_PUBLIC_KEY;
-    if (!key.includes('\n')) key = key.replace(/\\n/g, '\n');
-    const timestamp = Math.floor(Date.now() / 1000);
-    const data = env.CASHFREE_CLIENT_ID + '.' + timestamp;
-    const signature = crypto.publicEncrypt({ key, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, Buffer.from(data));
-    headers['x-cf-signature'] = signature.toString('base64');
+  if (apiVersion) {
+    headers['x-api-version'] = apiVersion;
   }
+
+  if (env.CASHFREE_PUBLIC_KEY) {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const payload = `${env.CASHFREE_CLIENT_ID}.${timestamp}`;
+    
+    try {
+      const publicKey = env.CASHFREE_PUBLIC_KEY.replace(/\\n/g, '\n');
+      const signature = crypto.publicEncrypt(
+        {
+          key: publicKey,
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+        },
+        Buffer.from(payload)
+      ).toString('base64');
+      
+      headers['x-cf-signature'] = signature;
+    } catch (err: any) {
+      console.error('[CashfreeService] Failed to generate RSA signature:', err);
+      throw new Error(`RSA Signature generation failed: ${err.message}`);
+    }
+  }
+
   return headers;
 }
 
@@ -99,7 +116,7 @@ export class CashfreeService {
     const response = await axios.post(
       `${CASHFREE_BASE_URL}/pan`,
       { pan, ...(name ? { name } : {}) },
-      { headers: { ...getHeaders(), 'x-api-version': '2022-10-26' } }
+      { headers: getHeaders('2022-10-26') }
     );
     return response.data;
     // { valid, registered_name, pan_status, reference_id, name_match_result,

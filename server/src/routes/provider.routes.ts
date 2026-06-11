@@ -12,6 +12,19 @@ router.post('/update-hours', updateWorkingHours);
 router.get('/exists', checkProviderExists);
 router.get('/:id', getProviderProfile);
 
+// Real-time count of providers actually connected via socket for a service room
+router.get('/online-count', async (req: Request, res: Response) => {
+  const { serviceId } = req.query;
+  if (!serviceId) return res.json({ success: true, count: 0 });
+  try {
+    const io = req.app.locals.io;
+    const sockets = await io.in(`service:${serviceId}`).fetchSockets();
+    return res.json({ success: true, count: sockets.length });
+  } catch (e: any) {
+    return res.json({ success: true, count: 0 });
+  }
+});
+
 // Temporary debug endpoint - check user/provider status
 router.get('/debug-status', async (req: Request, res: Response) => {
   const { phone } = req.query;

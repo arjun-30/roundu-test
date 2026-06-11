@@ -12,7 +12,6 @@ import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
-import { formatDistance } from "@/lib/utils";
 
 /**
  * MODERN SEARCHING EXPERIENCE
@@ -255,26 +254,6 @@ const SearchingProviders = () => {
     isLongWait,
   ]);
 
-  // Reset timer when a new service search starts (serviceId changes)
-  useEffect(() => {
-    // If we are not restoring from cached state or the serviceId differs, start fresh timer
-    if (!cachedState || cachedState.serviceId !== serviceId) {
-      const now = Date.now();
-      localStorage.setItem('search_start_time', String(now));
-      setSearchStartTime(now);
-      setRemainingSeconds(120);
-      setHasTimedOut(false);
-      setShowTimeoutModal(false);
-    }
-  }, [serviceId, cachedState]);
-
-  // Cleanup timer on component unmount
-  useEffect(() => {
-    return () => {
-      localStorage.removeItem('search_start_time');
-    };
-  }, []);
-
   // CACHE QUOTES
   useEffect(() => {
     if (receivedQuotes.length > 0) {
@@ -380,14 +359,18 @@ const SearchingProviders = () => {
         service_id: String(serviceId || ""),
         status: "assigned",
         scheduled_at: new Date().toISOString(),
-        address: user?.address || (currentLocation ? `${currentLocation?.lat},${currentLocation?.lng}` : "Customer Location"),
+        address:
+          user?.address ||
+          (currentLocation
+            ? `${currentLocation?.lat},${currentLocation?.lng}`
+            : "Customer Location"),
+        lat: currentLocation?.lat || null,
+        lng: currentLocation?.lng || null,
         price: Number(quote.price || 0),
         notes: bookingNotes || "",
         voice_note: bookingVoiceNote || false,
         voice_note_url: bookingVoiceNoteUrl || null,
         paid: false,
-        lat: currentLocation?.lat || null,
-        lng: currentLocation?.lng || null
       };
 
       console.log("BOOKING PAYLOAD", bookingData);
@@ -397,20 +380,6 @@ const SearchingProviders = () => {
       console.log("BOOKING RESPONSE", res);
 
       if (res?.success && res?.data?.id) {
-        // Emit accept_quote to socket so winning provider gets notified
-        socket.emit("accept_quote", {
-          broadcastId,
-          bookingId: res.data.id,
-          acceptedProviderId: quote.providerId,
-          price: Number(quote.price || 0),
-          serviceId: serviceId || "",
-          customerName: user.name,
-          customerPhone: user.phone || null,
-          address: user.address || "Client Address",
-          lat: currentLocation?.lat || null,
-          lng: currentLocation?.lng || null
-        });
-
         // Add booking to context and navigate to tracking page
         dispatch({ type: "ADD_BOOKING", booking: res.data });
         navigate(`/tracking/${res.data.id}`);
@@ -418,11 +387,11 @@ const SearchingProviders = () => {
       }
 
       throw new Error(res?.message || "Booking creation failed");
-    } catch (err: any) {
-      console.error("ACCEPT QUOTE ERROR", err);
+    } catch (error: any) {
+      console.error("ACCEPT QUOTE ERROR", error);
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
         "Failed to confirm booking"
       );
     } finally {
@@ -432,7 +401,11 @@ const SearchingProviders = () => {
 
   return (
     <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
- 
+  
+  {/* TIMER DISPLAY */}
+  <div className="px-5 mt-2 text-center text-sm text-amber-700 font-bold">
+    Time Remaining: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+  </div>
 
   {/* TIMEOUT MODAL */}
   {showTimeoutModal && (
@@ -446,24 +419,19 @@ const SearchingProviders = () => {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => {
-              // Reset timer for a new attempt
+              localStorage.removeItem('search_start_time');
+              setHasTimedOut(false);
+              setShowTimeoutModal(false);
               const now = Date.now();
               localStorage.setItem('search_start_time', String(now));
               setSearchStartTime(now);
-              setRemainingSeconds(120);
-              setHasTimedOut(false);
-              setShowTimeoutModal(false);
             }}
             className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
           >
             Try Again
           </button>
           <button
-            onClick={() => {
-              // Clear timer data when exiting
-              localStorage.removeItem('search_start_time');
-              navigate(-1);
-            }}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
           >
             Go Back
@@ -646,12 +614,6 @@ const SearchingProviders = () => {
               ? "Searching nearby providers"
               : "Providers available nearby"}
           </h2>
-          <div className="text-center mt-2">
-            <p className="text-sm font-medium text-slate-600">Time Remaining</p>
-            <p className={remainingSeconds <= 30 ? "text-2xl font-bold text-red-600" : "text-2xl font-bold text-amber-500"}>
-              {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
-            </p>
-          </div>
 
           {/* STATUS TEXT */}
           <div className="h-8 flex items-center justify-center overflow-hidden relative mb-6">
@@ -718,7 +680,7 @@ const SearchingProviders = () => {
                         </span>
 
                         <span>
-                          {formatDistance(q.distanceKm)}
+                          {q.distanceKm} km away
                         </span>
                       </div>
                     </div>
@@ -773,7 +735,7 @@ const SearchingProviders = () => {
 
         {/* CANCEL BUTTON */}
         <button
-          onClick={() => { localStorage.removeItem('search_start_time'); navigate(-1); }}
+          onClick={() => navigate(-1)}
           className="w-full h-14 rounded-2xl border border-red-100 bg-red-50 text-red-500 font-bold active:scale-95 transition"
         >
           Cancel Request

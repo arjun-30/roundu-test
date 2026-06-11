@@ -23,6 +23,75 @@ const Navigation = () => {
   const [error, setError] = useState("");
   const hasMapboxToken = !!import.meta.env.VITE_MAPBOX_TOKEN;
 
+  // Simulation State
+  const [isSimulating, setIsSimulating] = useState(false);
+  const isSimulatingRef = useRef(false);
+  const routeCoords = useRef<[number, number][]>([]);
+  const simulationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startSimulation = () => {
+    if (routeCoords.current.length === 0) {
+      setError("No route available to simulate yet.");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+    setIsSimulating(true);
+    isSimulatingRef.current = true;
+    let currentIndex = 0;
+
+    if (simulationInterval.current) {
+      clearInterval(simulationInterval.current);
+    }
+
+    simulationInterval.current = setInterval(() => {
+      if (currentIndex >= routeCoords.current.length) {
+        clearInterval(simulationInterval.current!);
+        simulationInterval.current = null;
+        setIsSimulating(false);
+        isSimulatingRef.current = false;
+        
+        // Auto-arrived status
+        socket.emit("update_job_status", { bookingId: id, status: "arrived" });
+        return;
+      }
+
+      const coords = routeCoords.current[currentIndex]; // [lng, lat]
+      setCurrentLocation(coords);
+
+      if (providerMarker.current) {
+        providerMarker.current.setLngLat(coords);
+      }
+
+      // Broadcast location via server room relay
+      socket.emit("provider_location_update", {
+        jobId: id,
+        lat: coords[1],
+        lng: coords[0],
+      });
+
+      // Update global context location
+      dispatch({ type: "SET_CURRENT_LOCATION", lat: coords[1], lng: coords[0] });
+      currentIndex++;
+    }, 1500);
+  };
+
+  const stopSimulation = () => {
+    if (simulationInterval.current) {
+      clearInterval(simulationInterval.current);
+      simulationInterval.current = null;
+    }
+    setIsSimulating(false);
+    isSimulatingRef.current = false;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (simulationInterval.current) {
+        clearInterval(simulationInterval.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const found = providerRequests.find((r) => r.id === id);
     if (found) {
@@ -52,6 +121,7 @@ const Navigation = () => {
     // Watch GPS position continuously
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        if (isSimulatingRef.current) return; // Skip actual GPS coordinates if simulating
         const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
         setCurrentLocation(coords);
         setLocating(false);
@@ -72,11 +142,15 @@ const Navigation = () => {
         });
       },
       (err) => {
+        if (isSimulatingRef.current) return; // Ignore failure if simulating
         console.error("Error getting location:", err);
-        setError("Failed to get GPS location. Using default location.");
+        setError("Failed to get GPS location. Using proximity fallback.");
         setTimeout(() => setError(""), 3000);
-        // Fallback to Chennai coordinates
-        const fallback: [number, number] = [80.27, 13.08];
+        
+        // Fallback next to customer location
+        const destLat = (booking as any)?.lat || 13.08;
+        const destLng = (booking as any)?.lng || 80.27;
+        const fallback: [number, number] = [destLng + 0.003, destLat + 0.003];
         setCurrentLocation(fallback);
         setLocating(false);
       },
@@ -86,7 +160,7 @@ const Navigation = () => {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [id, dispatch]);
+  }, [id, dispatch, booking]);
 
   useEffect(() => {
     if (!mapContainer.current || !currentLocation || !booking) return;
@@ -124,6 +198,7 @@ const Navigation = () => {
         if (json.routes && json.routes.length > 0) {
           const data = json.routes[0];
           const route = data.geometry.coordinates;
+          routeCoords.current = route;
           setSteps(data.legs[0].steps);
 
           // Add route to map
@@ -280,7 +355,17 @@ const Navigation = () => {
       <div className="p-5 bg-card border-t border-border max-h-[40vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-foreground">Turn-by-Turn Directions</h2>
-          <span className="text-xs text-muted-foreground">{steps.length} steps</span>
+          <button
+            onClick={isSimulating ? stopSimulation : startSimulation}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 flex items-center gap-1.5 border ${
+              isSimulating
+                ? "bg-red-500 text-white border-red-600 hover:bg-red-600"
+                : "bg-primary text-white border-primary/20 hover:opacity-90"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isSimulating ? 'bg-white animate-pulse' : 'bg-green-400 animate-ping'}`} />
+            {isSimulating ? "Stop Sim" : "Simulate Trip"}
+          </button>
         </div>
         
         <div className="space-y-4">
