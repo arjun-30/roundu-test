@@ -82,14 +82,8 @@ const SearchingProviders = () => {
   );
 
   // Timer state for provider search timeout
-  const [searchStartTime, setSearchStartTime] = useState<number>(() => {
-    const stored = localStorage.getItem('search_start_time');
-    if (stored) return Number(stored);
-    const now = Date.now();
-    localStorage.setItem('search_start_time', String(now));
-    return now;
-  });
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(120);
+  const [searchStartTime, setSearchStartTime] = useState<number>(Date.now());
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(300);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [showTimeoutModal, setShowTimeoutModal] = useState<boolean>(false);
 
@@ -98,7 +92,7 @@ const SearchingProviders = () => {
     const update = () => {
       const now = Date.now();
       const elapsed = Math.floor((now - searchStartTime) / 1000);
-      const secs = Math.max(120 - elapsed, 0);
+      const secs = Math.max(300 - elapsed, 0);
       setRemainingSeconds(secs);
       if (secs <= 0 && !hasTimedOut) {
         setHasTimedOut(true);
@@ -401,50 +395,53 @@ const SearchingProviders = () => {
 
   return (
     <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
-  
-  {/* TIMER DISPLAY */}
-  <div className="px-5 mt-2 text-center text-sm text-amber-700 font-bold">
-    Time Remaining: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
-  </div>
 
-  {/* TIMEOUT MODAL */}
-  {showTimeoutModal && (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">No Providers Available</h2>
-        <p className="text-gray-600 mb-6">
-          We couldn't find an available provider within 5 km of your location right now.
-          Please try again later or schedule the service for another time.
-        </p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => {
-              localStorage.removeItem('search_start_time');
-              setHasTimedOut(false);
-              setShowTimeoutModal(false);
-              const now = Date.now();
-              localStorage.setItem('search_start_time', String(now));
-              setSearchStartTime(now);
-            }}
-            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
-          >
-            Try Again
-          </button>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-          >
-            Go Back
-          </button>
+
+
+      {/* TIMEOUT MODAL */}
+      {showTimeoutModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">No Providers Available</h2>
+            <p className="text-gray-600 mb-6">
+              We couldn't find an available provider within 5 km of your location right now.
+              Please try again later or schedule the service for another time.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  localStorage.removeItem('search_start_time');
+                  setHasTimedOut(false);
+                  setShowTimeoutModal(false);
+                  const now = Date.now();
+                  setSearchStartTime(now);
+                  setRemainingSeconds(300);
+                }}
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("search_start_time");
+                  navigate(-1);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  )}
+      )}
 
       {/* TOP BAR */}
       <div className="px-5 pt-6 pb-3 flex items-center gap-4 z-20 relative">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            localStorage.removeItem("search_start_time");
+            navigate(-1);
+          }}
           className="w-11 h-11 rounded-full bg-white/90 backdrop-blur-xl border border-white shadow-[0_6px_18px_rgba(0,0,0,0.06)] flex items-center justify-center active:scale-95 transition"
         >
           <ArrowLeft size={20} className="text-slate-700" />
@@ -543,8 +540,8 @@ const SearchingProviders = () => {
               <div className="relative cursor-pointer" onClick={() => {
                 // Find the quote for this provider and navigate to details
                 const quote = receivedQuotes.find(q => q.providerId === p.id);
-                navigate(`/provider/${p.id}`, { 
-                  state: { 
+                navigate(`/provider/${p.id}`, {
+                  state: {
                     provider: {
                       id: p.id,
                       name: p.name,
@@ -615,6 +612,13 @@ const SearchingProviders = () => {
               : "Providers available nearby"}
           </h2>
 
+          {/* TIMER BELOW TITLE */}
+          <div className="text-center text-sm text-amber-700 font-bold mt-2">
+            Time Remaining
+          </div>
+          <div className="text-center text-2xl font-bold text-amber-700 mb-4">
+            {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
+          </div>
           {/* STATUS TEXT */}
           <div className="h-8 flex items-center justify-center overflow-hidden relative mb-6">
             <p
@@ -642,11 +646,11 @@ const SearchingProviders = () => {
                 key={q.providerId}
                 className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm"
               >
-                <div 
+                <div
                   className="flex justify-between cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => {
-                    navigate(`/provider/${q.providerId}`, { 
-                      state: { 
+                    navigate(`/provider/${q.providerId}`, {
+                      state: {
                         provider: {
                           id: q.providerId,
                           name: q.providerName,

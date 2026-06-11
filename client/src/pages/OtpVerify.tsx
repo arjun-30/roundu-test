@@ -156,7 +156,7 @@ const OtpVerify = () => {
       <div className="mt-12 mb-10 relative z-10 animate-fade-in">
         <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
           Enter your <br />
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">verification code</span>
+          verification code
         </h1>
         <p className="text-muted-foreground mt-4 text-[15px] leading-relaxed">
           We sent a 6-digit code to <span className="font-bold text-foreground whitespace-nowrap">+91 {phone}</span>

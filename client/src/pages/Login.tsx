@@ -21,7 +21,6 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isValid } } = useForm<LoginFormData>({
@@ -32,7 +31,6 @@ const Login = () => {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/send-otp`, { phone: data.phone });
@@ -40,19 +38,17 @@ const Login = () => {
       if (response.data.success) {
         dispatch({ type: "SET_PHONE", phone: data.phone });
         localStorage.setItem("roundu_pending_phone", data.phone);
-        setSuccess("OTP sent successfully!");
-        setTimeout(() => navigate("/otp"), 800);
+        navigate("/otp");
       } else {
         setError(response.data.message || "Failed to send OTP");
       }
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
-
       if (import.meta.env.DEV) {
         console.warn('[Login] Using Mock OTP fallback');
         dispatch({ type: "SET_PHONE", phone: data.phone });
-        setSuccess("OTP sent (Mock Mode)");
-        setTimeout(() => navigate("/otp"), 800);
+        localStorage.setItem("roundu_pending_phone", data.phone);
+        navigate("/otp");
       } else {
         setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
       }
@@ -88,7 +84,7 @@ const Login = () => {
         className="mt-12 mb-10 relative z-10"
       >
         <h1 className="text-4xl font-extrabold text-foreground leading-[1.15] tracking-tight">
-          {isSignUp ? "Create an account" : "Welcome to "}<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">RoundU</span>
+          {isSignUp ? "Create an account" : "Welcome to "}<span><span style={{ color: "#152E4B" }}>round</span><span style={{ color: "#A95D06" }}>u</span> </span>
         </h1>
         <p className="text-muted-foreground mt-4 text-[15px] max-w-[260px] leading-relaxed">
           {isSignUp ? "Quick Sign-Up, Instant Access" : "Enter your phone number to continue."}
@@ -104,17 +100,6 @@ const Login = () => {
             className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-red-100 shadow-sm relative z-10"
           >
             {error}
-          </motion.div>
-        )}
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-sm relative z-10 flex items-center gap-2"
-          >
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-            {success}
           </motion.div>
         )}
       </AnimatePresence>
@@ -189,6 +174,7 @@ const Login = () => {
               </motion.div>
             </>
           )}
+
         </motion.button>
       </form>
 
