@@ -5,23 +5,76 @@ import { env } from './config/env';
 import { getPool, closePool } from './config/database';
 import { createApp } from './app';
 import { ChatModel } from './models/chat.model';
-import { ProviderModel } from './models/provider.model';
+import { ProviderModel, mapProvider, matchesServiceCategory } from './models/provider.model';
 import { isProviderBusy, checkScheduleConflict, parseDateTime } from './utils/bookingHelper';
+import { logProviderDecision } from './utils/logger';
 
 async function main() {
   console.log(`[server] Starting RoundU backend on port ${process.env.PORT || 5000}...`);
   const db = getPool();
   try {
     // ── Column migrations ───────────────────────────────────────────────────
+    // Create bookings table if it doesn't exist
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS bookings (
+          id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          customer_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          provider_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          service_id      VARCHAR(255),
+          status          VARCHAR(50) NOT NULL DEFAULT 'pending',
+          scheduled_at    TIMESTAMPTZ,
+          address         TEXT,
+          lat             NUMERIC(10, 7),
+          lng             NUMERIC(10, 7),
+          price           NUMERIC(10, 2),
+          notes           TEXT,
+          voice_note      BOOLEAN DEFAULT FALSE,
+          voice_note_url  VARCHAR(500),
+          paid            BOOLEAN DEFAULT FALSE,
+          created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      console.log('[server] Bookings table ready');
+    } catch (tableErr: any) {
+      console.log('[server] Bookings table creation note:', tableErr.message);
+      // Table might already exist, continue anyway
+    }
+    
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
-    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DECIMAL(9, 6);');
-    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lng DECIMAL(9, 6);');
-    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_lat DECIMAL(9, 6);');
-    await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_lng DECIMAL(9, 6);');
-    // Single-session enforcement: session_version invalidates old JWTs on new login
-    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER DEFAULT 1;');
+
+
+    // Add location storage columns to users and providers tables
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
+
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7);');
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS lng NUMERIC(10, 7);');
+    await db.query('ALTER TABLE providers ADD COLUMN IF NOT EXISTS display_location VARCHAR(255);');
+
+    // Set service_radius default to 20
+    await db.query('ALTER TABLE providers ALTER COLUMN service_radius SET DEFAULT 20;');
+    await db.query('UPDATE providers SET service_radius = 20 WHERE service_radius = 5 OR service_radius IS NULL;');
+
+    // Add service_category column to providers table
+    await db.query("ALTER TABLE providers ADD COLUMN IF NOT EXISTS service_category VARCHAR(255)[] DEFAULT '{}';");
+    await db.query(`
+      UPDATE providers p
+      SET service_category = COALESCE(
+        (
+          SELECT array_agg(s.label)
+          FROM provider_services ps
+          JOIN services s ON ps.service_id = s.id
+          WHERE ps.provider_id = p.id
+        ),
+        '{}'::VARCHAR[]
+      )
+      WHERE service_category IS NULL OR service_category = '{}';
+    `);
 
     // ── Wallets table (needed by WalletModel / provider dashboard) ──────────
     await db.query(`
@@ -37,8 +90,6 @@ async function main() {
     await db.query(`CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);`);
 
     // ── Ensure all services used by the app exist in the services table ────
-    // This prevents FK violations on bookings.service_id when providers
-    // register with service IDs that aren't in the base schema seed.
     await db.query(`
       INSERT INTO services (id, label, description, price_per_hr) VALUES
         ('plumber',                'Plumber',         'Pipes & drainage',            299),
@@ -55,6 +106,14 @@ async function main() {
         ('srv-d7orcli8qa3s738r9qe0','Expert Services', 'Premium customized services', 599)
       ON CONFLICT (id) DO NOTHING;
     `);
+
+    // ── Provider approval status & blocking ────────────────────────────────
+    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending';`);
+    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;`);
+    await db.query(`ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;`);
+    // Back-fill: already-verified providers get approved status
+    await db.query(`UPDATE providers SET approval_status = 'approved', is_active = true WHERE is_verified = true AND approval_status = 'pending';`);
+
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
@@ -94,11 +153,29 @@ async function main() {
     socket.on('register', async (data: any) => {
       socket.data.userId = data.userId;
       socket.data.role = data.role;
+      socket.data.lat = data.lat != null ? Number(data.lat) : null;
+      socket.data.lng = data.lng != null ? Number(data.lng) : null;
+      socket.data.displayLocation = data.displayLocation || null;
 
-      // Join user-specific room (always, for all roles)
+      // Persist coordinates to database on registration/connect
+      if (data.userId && data.lat != null && data.lng != null) {
+        try {
+          const { UserModel } = require('./models/user.model');
+          await UserModel.update(data.userId, {
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            display_location: data.displayLocation || null
+          });
+          console.log(`[socket] saved location coordinates for user ${data.userId} on registration`);
+        } catch (err) {
+          console.error(`[socket] failed to save location for user ${data.userId}:`, err);
+        }
+      }
+
+      // Join user-specific room
       if (data.userId) {
         socket.join(`user:${data.userId}`);
-        console.log(`[socket] user ${data.userId} (${data.role}) joined room: user:${data.userId}`);
+        console.log(`[socket] user ${data.userId} joined room: user:${data.userId}`);
 
         // Track online status
         let userSockets = onlineUserConnections.get(data.userId);
@@ -108,18 +185,6 @@ async function main() {
           broadcastStatus(data.userId, true); // First connection
         }
         userSockets.add(socket.id);
-      }
-
-      // If customer: ensure they are NOT in any provider/service rooms (stale from previous session)
-      if (data.role === 'customer') {
-        socket.leave('providers');
-        // Leave any service rooms they may have joined previously
-        const rooms = Array.from(socket.rooms);
-        rooms.forEach((room: any) => {
-          if (room.startsWith('service:')) socket.leave(room);
-        });
-        console.log(`[socket] customer ${data.userId} cleaned from provider/service rooms`);
-        return;
       }
 
       if (data.role === 'provider') {
@@ -177,9 +242,7 @@ async function main() {
     socket.on('join_job_room', (data: { jobId: string }) => {
       const room = `job:${data.jobId}`;
       socket.join(room);
-      socket.join(`chat:${data.jobId}`);
-      socket.join(`booking:${data.jobId}`);
-      console.log(`[socket] ${socket.id} joined job room: ${room}, chat room, and booking room`);
+      console.log(`[socket] ${socket.id} joined room: ${room}`);
     });
 
     socket.on('new_booking', async (data: any) => {
@@ -205,19 +268,128 @@ async function main() {
         const sockets = await io.in('providers').fetchSockets();
         const target = sockets.find((s: any) => s.data.userId === data.providerId);
         if (target) {
-          target.emit('incoming_request', payload);
-          console.log(`[socket] direct request sent to provider ${data.providerId}`);
+          try {
+            const { getPool } = require('./config/database');
+            const pRes = await getPool().query(
+              'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+              [target.data.userId]
+            );
+            const providerRow = pRes.rows[0];
+            if (providerRow) {
+              const provider = mapProvider(providerRow);
+              // Get service label
+              const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+              const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+              // Calculate distance
+              let dist = 0;
+              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+                const { getDistanceKm } = require('./utils/locationHelper');
+                dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
+              }
+
+              const isOnline = provider.isOnline === true;
+              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+              const inRadius = dist <= (provider.serviceRadius || 20);
+
+              let decision = "ACCEPTED";
+              if (!isOnline) {
+                decision = "REJECTED (Offline)";
+              } else if (!isApproved) {
+                decision = "REJECTED (Unverified)";
+              } else if (!matchesCategory) {
+                decision = "REJECTED (Category mismatch)";
+              } else if (!inRadius) {
+                decision = "REJECTED (Outside radius)";
+              }
+
+              logProviderDecision({
+                requestedCategory: serviceLabel,
+                providerId: provider.id,
+                providerName: providerRow.name || "Unknown",
+                providerCategories: provider.serviceCategory || [],
+                onlineStatus: isOnline,
+                distance: dist,
+                verificationStatus: isApproved,
+                decision
+              });
+
+              if (isOnline && isApproved && matchesCategory && inRadius) {
+                target.emit('incoming_request', payload);
+                console.log(`[socket] direct request sent to provider ${data.providerId}`);
+              }
+            }
+          } catch (err) {
+            console.error('[socket] error validating direct request provider:', err);
+          }
           return;
         }
       }
 
       // 2. Room-based Broadcast
       const roomName = `service:${data.serviceId}`;
-      console.log(`[socket] broadcasting request to room: ${roomName}`);
-      io.to(roomName).emit('incoming_request', payload);
+      console.log(`[socket] broadcasting request to room: ${roomName} filtered by radius`);
+      const targetSockets = await io.in(roomName).fetchSockets();
+      for (const s of targetSockets) {
+        try {
+          const { getPool } = require('./config/database');
+          const pRes = await getPool().query(
+            'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+            [s.data.userId]
+          );
+          const providerRow = pRes.rows[0];
+          if (!providerRow) continue;
 
-      // 3. Optional: broadcast to 'providers' room as well if roomName might be empty
-      // but to avoid double notification we rely on service room.
+          const provider = mapProvider(providerRow);
+          // Get service label
+          const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+          const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+          // Calculate distance
+          let dist = 0;
+          if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+            const { getDistanceKm } = require('./utils/locationHelper');
+            dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
+          }
+
+          const isOnline = provider.isOnline === true;
+          const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+          const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                  matchesServiceCategory(provider.serviceCategory, serviceLabel);
+          const inRadius = dist <= (provider.serviceRadius || 20);
+
+          let decision = "ACCEPTED";
+          if (!isOnline) {
+            decision = "REJECTED (Offline)";
+          } else if (!isApproved) {
+            decision = "REJECTED (Unverified/Blocked)";
+          } else if (!matchesCategory) {
+            decision = "REJECTED (Category mismatch)";
+          } else if (!inRadius) {
+            decision = "REJECTED (Outside radius)";
+          }
+
+          logProviderDecision({
+            requestedCategory: serviceLabel,
+            providerId: provider.id,
+            providerName: providerRow.name || "Unknown",
+            providerCategories: provider.serviceCategory || [],
+            onlineStatus: isOnline,
+            distance: dist,
+            verificationStatus: isApproved,
+            decision
+          });
+
+          if (isOnline && isApproved && matchesCategory && inRadius) {
+            s.emit('incoming_request', payload);
+            console.log(`[socket] request sent to provider ${s.data.userId}`);
+          }
+        } catch (err) {
+          console.error('[socket] error validating room broadcast provider:', err);
+        }
+      }
     });
 
     socket.on('broadcast_job', (data: any) => {
@@ -259,11 +431,84 @@ async function main() {
         return;
       }
 
-      // Emit to service room + all providers room on every call
-      // Chaining .to() ensures socket.io deduplicates if a provider is in both rooms
+      // Emit to service room + all providers room filtered by matching radius
       const roomName = `service:${data.serviceId}`;
-      io.to(roomName).to('providers').emit('incoming_broadcast', broadcastPayload);
-      console.log(`[socket] broadcast sent to ${roomName} + providers room (isNew=${isNew})`);
+      console.log(`[socket] broadcasting job to room: ${roomName} + providers filtered by radius`);
+      
+      const broadcastAndFilter = async () => {
+        try {
+          const targetSockets = await io.in(roomName).in('providers').fetchSockets();
+          
+          // Deduplicate sockets in case a socket is in both rooms
+          const uniqueSockets = Array.from(new Map(targetSockets.map((s: any) => [s.id, s])).values());
+
+          for (const s of uniqueSockets) {
+            // Skip the customer themselves
+            if (s.data.userId === data.customerId) continue;
+
+            try {
+              const { getPool } = require('./config/database');
+              const pRes = await getPool().query(
+                'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+                [s.data.userId]
+              );
+              const providerRow = pRes.rows[0];
+              if (!providerRow) continue;
+
+              const provider = mapProvider(providerRow);
+              // Get service label
+              const sRes = await getPool().query('SELECT label FROM services WHERE id = $1', [data.serviceId]);
+              const serviceLabel = sRes.rows[0]?.label || data.serviceId;
+
+              // Calculate distance
+              let dist = 0;
+              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+                const { getDistanceKm } = require('./utils/locationHelper');
+                dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
+              }
+
+              const isOnline = provider.isOnline === true;
+              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
+                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+              const inRadius = dist <= (provider.serviceRadius || 20);
+
+              let decision = "ACCEPTED";
+              if (!isOnline) {
+                decision = "REJECTED (Offline)";
+              } else if (!isApproved) {
+                decision = "REJECTED (Unverified)";
+              } else if (!matchesCategory) {
+                decision = "REJECTED (Category mismatch)";
+              } else if (!inRadius) {
+                decision = "REJECTED (Outside radius)";
+              }
+
+              logProviderDecision({
+                requestedCategory: serviceLabel,
+                providerId: provider.id,
+                providerName: providerRow.name || "Unknown",
+                providerCategories: provider.serviceCategory || [],
+                onlineStatus: isOnline,
+                distance: dist,
+                verificationStatus: isApproved,
+                decision
+              });
+
+              if (isOnline && isApproved && matchesCategory && inRadius) {
+                s.emit('incoming_broadcast', broadcastPayload);
+                console.log(`[socket] job broadcast sent to provider ${s.data.userId}`);
+              }
+            } catch (err) {
+              console.error('[socket] error validating job broadcast provider:', err);
+            }
+          }
+        } catch (err) {
+          console.error('[socket] error in broadcast_job filtering:', err);
+        }
+      };
+      
+      broadcastAndFilter();
     });
 
     socket.on('accept_quote', (data: any) => {
@@ -314,22 +559,19 @@ async function main() {
       console.log(`[socket] submit_quote for ${data.broadcastId} from provider ${data.providerId}`);
 
       try {
-        // Resolve provider DB id — fall back to raw userId if not found or DB error
-        let providerId = data.providerId;
-        try {
-          const provider = await ProviderModel.findByUserId(data.providerId);
-          if (provider) providerId = provider.id;
-        } catch (dbErr) {
-          console.warn('[socket] submit_quote: provider DB lookup failed, using raw userId:', dbErr);
-        }
+        const provider = await ProviderModel.findByUserId(data.providerId);
+        const providerId = provider ? provider.id : data.providerId;
 
-        // Resolve customerId early — needed even if conflict checks fail
         const broadcast = activeBroadcasts.get(data.broadcastId);
-        const customerId = data.customerId || broadcast?.customerId;
 
-        if (!customerId) {
-          console.warn(`[socket] submit_quote: no customerId for broadcast ${data.broadcastId} — quote dropped`);
-          socket.emit('quote_error', { message: 'Could not identify customer. Please try again.' });
+        // Check if provider has any active jobs
+        const { getProviderActiveBookings } = require('./utils/bookingHelper');
+        const activeBookings = await getProviderActiveBookings(providerId);
+        
+        if (activeBookings && activeBookings.length > 0) {
+          socket.emit('quote_error', {
+            message: 'You cannot send quotes while you have an active job. Please complete your current job first.'
+          });
           return;
         }
 
@@ -342,54 +584,64 @@ async function main() {
           (proposedStart.getTime() - Date.now()) /
           (1000 * 60 * 60);
 
-        // Check if provider is currently busy on an active job
-        try {
-          const isBusy = await isProviderBusy(providerId);
-          if (isBusy) {
-            // Allow scheduled jobs only if 6+ hours away
-            if (hoursFromNow < 6) {
-              socket.emit('quote_error', {
-                message: 'Finish your current job before accepting another immediate booking.'
-              });
-              return;
-            }
+        const isBusy = await isProviderBusy(providerId);
+
+        // Provider is active
+        if (isBusy) {
+
+          // Allow scheduled jobs only if 6+ hours away
+          if (hoursFromNow < 6) {
+            socket.emit('quote_error', {
+              message:
+                'Finish your current job before accepting another immediate booking.'
+            });
+            return;
           }
-        } catch (busyErr) {
-          console.warn('[socket] submit_quote: isProviderBusy check failed (non-fatal), continuing:', busyErr);
         }
 
-        // Check schedule conflict
+        // Check schedule conflicts
         if (broadcast) {
-          try {
-            const proposedDuration = broadcast.duration || 2;
-            const conflictCheck = await checkScheduleConflict(providerId, proposedStart, proposedDuration);
-            if (conflictCheck.conflict) {
-              socket.emit('quote_error', {
-                message: conflictCheck.message || 'Schedule conflict: You have another booking at this time.'
-              });
-              return;
-            }
-          } catch (conflictErr) {
-            console.warn('[socket] submit_quote: conflict check failed (non-fatal), continuing:', conflictErr);
+
+          const proposedDuration =
+            broadcast.duration || 2;
+
+          const conflictCheck =
+            await checkScheduleConflict(
+              providerId,
+              proposedStart,
+              proposedDuration
+            );
+
+          if (conflictCheck.conflict) {
+            socket.emit('quote_error', {
+              message:
+                conflictCheck.message ||
+                'Schedule conflict: You have another booking that overlaps with this request.'
+            });
+            return;
           }
         }
+        const customerId = data.customerId || broadcast?.customerId;
 
-        // Send quote to customer
-        io.to(`user:${customerId}`).emit('new_quote_received', {
-          broadcastId: data.broadcastId,
-          serviceId: broadcast?.serviceId || data.serviceId,
-          providerId: data.providerId,
-          providerName: data.providerName,
-          providerAvatar: data.providerAvatar,
-          providerPhone: data.providerPhone,
-          price: data.price,
-          rating: data.rating,
-          distanceKm: data.distanceKm,
-          etaMin: data.etaMin,
-          reviews: data.reviews,
-          submittedAt: Date.now()
-        });
-        console.log(`[socket] new_quote_received sent to customer user:${customerId} from provider ${data.providerId}`);
+        if (customerId) {
+          io.to(`user:${customerId}`).emit('new_quote_received', {
+            broadcastId: data.broadcastId,
+            serviceId: broadcast?.serviceId || data.serviceId,
+            providerId: providerId,
+            providerName: data.providerName,
+            providerAvatar: data.providerAvatar,
+            providerPhone: data.providerPhone,
+            price: data.price,
+            rating: data.rating,
+            distanceKm: data.distanceKm,
+            etaMin: data.etaMin,
+            reviews: data.reviews,
+            submittedAt: Date.now()
+          });
+          console.log(`[socket] new_quote_received sent to customer user:${customerId}`);
+        } else {
+          console.warn(`[socket] submit_quote: no customerId found for broadcast ${data.broadcastId}`);
+        }
 
         socket.emit('quote_sent_confirmation', {
           broadcastId: data.broadcastId,
@@ -399,7 +651,9 @@ async function main() {
         });
       } catch (err) {
         console.error('[socket] error handling submit_quote:', err);
-        socket.emit('quote_error', { message: 'An error occurred while processing your quote.' });
+        socket.emit('quote_error', {
+          message: 'An error occurred while processing your quote.'
+        });
       }
     });
 
@@ -407,9 +661,7 @@ async function main() {
     socket.on('join_chat_room', (data: { bookingId: string }) => {
       const room = `chat:${data.bookingId}`;
       socket.join(room);
-      socket.join(`job:${data.bookingId}`);
-      socket.join(`booking:${data.bookingId}`);
-      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}, job room, and booking room`);
+      console.log(`[socket] Socket ${socket.id} joined chat room: ${room}`);
     });
 
     socket.on('send_chat_message', (data: { bookingId: string; text: string; senderId: string; senderRole: string; time: string; audioBase64?: string }) => {
@@ -495,30 +747,21 @@ async function main() {
 
     socket.on('provider_location_update', async (data: { jobId: string; lat: number; lng: number }) => {
       const room = `job:${data.jobId}`;
-      
-      // Emit update with bookingId so front-end context matches it correctly
-      socket.to(room).emit('provider_location_update', { 
-        bookingId: data.jobId, 
-        lat: data.lat, 
-        lng: data.lng 
-      });
+      socket.to(room).emit('provider_location_update', { lat: data.lat, lng: data.lng });
 
-      // Emit to booking: room as well for compatibility with tracking service observers
-      io.to(`booking:${data.jobId}`).emit('provider:location_updated', {
-        bookingId: data.jobId,
-        lat: data.lat,
-        lng: data.lng
-      });
-
-      // Persist the coordinates to the database bookings table
-      const dbId = String(data.jobId).replace('req-', '');
-      try {
-        await getPool().query(
-          'UPDATE bookings SET provider_lat = $1, provider_lng = $2 WHERE id = $3',
-          [data.lat, data.lng, dbId]
-        );
-      } catch (err) {
-        console.error('[socket] Failed to update provider coordinates in DB:', err);
+      const userId = socket.data.userId;
+      if (userId && data.lat != null && data.lng != null) {
+        try {
+          socket.data.lat = Number(data.lat);
+          socket.data.lng = Number(data.lng);
+          const { UserModel } = require('./models/user.model');
+          await UserModel.update(userId, {
+            lat: Number(data.lat),
+            lng: Number(data.lng)
+          });
+        } catch (err) {
+          console.error('[socket] failed to update coordinates in database during tracking:', err);
+        }
       }
     });
 

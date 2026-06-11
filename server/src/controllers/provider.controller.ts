@@ -7,7 +7,7 @@ import { isProviderBusy } from '../utils/bookingHelper';
 
 export const getProviderDashboard = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req.query; // In real app, this comes from JWT
     if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
 
     let provider = null;
@@ -28,22 +28,19 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
     }
     if (!provider) return res.status(404).json({ success: false, message: 'Provider profile not found' });
 
-    // Stats and wallet are non-fatal — return zeros on failure
-    let stats = { earningsToday: 0, completedJobs: 0, total_jobs: 0, rating: provider.rating || 0 };
-    try {
-      stats = await ProviderModel.getStats(provider.id);
-    } catch (statsErr) {
-      console.warn('Provider stats query failed (non-fatal):', statsErr);
+    if (provider.approval_status === 'rejected' || provider.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Provider account has been suspended.',
+        code: 'ACCOUNT_REJECTED',
+        rejection_reason: provider.rejection_reason ?? null,
+      });
     }
 
-    let walletBalance = 0;
-    try {
-      const walletModel = new WalletModel(getPool());
-      const wallet = await walletModel.findOrCreate(userId as string);
-      walletBalance = wallet.balance / 100;
-    } catch (walletErr) {
-      console.warn('Wallet query failed (non-fatal):', walletErr);
-    }
+    const stats = await ProviderModel.getStats(provider.id);
+
+    const walletModel = new WalletModel(getPool());
+    const wallet = await walletModel.findOrCreate(userId as string);
 
     res.json({
       success: true,
@@ -51,8 +48,8 @@ export const getProviderDashboard = async (req: Request, res: Response) => {
         provider,
         stats,
         wallet: {
-          balance: walletBalance,
-          currency: 'INR'
+          balance: wallet.balance / 100, // Convert paise to rupees
+          currency: wallet.currency
         }
       }
     });
@@ -103,8 +100,8 @@ export const searchProviders = async (req: Request, res: Response) => {
       const busy = await isProviderBusy(p.id);
       if (busy) continue;
 
-      // Enforce that candidate providers are currently online and verified/approved
-      if (!p.is_online || !p.is_verified) {
+      // Enforce that candidate providers are online, verified, active and not rejected
+      if (!p.is_online || !p.is_verified || p.is_active === false || p.approval_status === 'rejected') {
         continue;
       }
 
@@ -156,8 +153,8 @@ export const registerProvider = async (req: Request, res: Response) => {
   try {
     const { userId, bio, experienceYears, workingHours, serviceRadius, serviceIds } = req.body;
     
-    if (!userId || !serviceIds || serviceIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
     const provider = await ProviderModel.register(userId, {
@@ -231,11 +228,28 @@ export const checkProviderExists = async (req: Request, res: Response) => {
 export const getProviderProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    if (!id) return res.status(400).json({ success: false, message: 'Provider ID required' });
+    if (!id) {
+      console.log('[getProviderProfile] Missing ID');
+      return res.status(400).json({ success: false, message: 'Provider ID required' });
+    }
 
+    console.log('[getProviderProfile] Fetching provider with ID:', id);
     const provider = await ProviderModel.findById(id);
-    if (!provider) return res.status(404).json({ success: false, message: 'Provider not found' });
+    
+    if (!provider) {
+      console.warn('[getProviderProfile] Provider not found for ID:', id);
+      console.log('[getProviderProfile] Attempting fallback: search all providers');
+      
+      // Fallback: Search all providers to debug
+      const allRes = await getPool().query(
+        'SELECT id, name FROM providers LIMIT 5'
+      );
+      console.log('[getProviderProfile] Available provider IDs:', allRes.rows);
+      
+      return res.status(404).json({ success: false, message: 'Provider not found', requestedId: id });
+    }
 
+    console.log('[getProviderProfile] Found provider:', { id: provider.id, name: provider.name });
     const stats = await ProviderModel.getStats(provider.id);
 
     res.json({
@@ -251,12 +265,17 @@ export const getProviderProfile = async (req: Request, res: Response) => {
           is_online: provider.is_online,
           rating: parseFloat(provider.rating || '5.0'),
           serviceId: provider.service_id,
+          serviceIds: provider.serviceIds || [],
+          lat: provider.lat,
+          lng: provider.lng,
+          display_location: provider.display_location,
+          service_radius: provider.service_radius,
         },
         stats
       }
     });
-  } catch (error) {
-    console.error('Get provider profile error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+  } catch (error: any) {
+    console.error('[getProviderProfile] Error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Server error', error: error?.message });
   }
 };

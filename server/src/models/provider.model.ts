@@ -8,12 +8,16 @@ export interface Provider {
   rating: number;
   response_rate: number;
   is_online: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
   service_radius: number;
   working_hours: string | null;
   lat?: number | null;
   lng?: number | null;
   display_location?: string | null;
-  
+
   // camelCase fields for client matching & verification
   serviceCategory?: string[];
   isOnline?: boolean;
@@ -30,7 +34,11 @@ export function mapProvider(dbRow: any): any {
     serviceCategory: dbRow.service_category || [],
     service_category: dbRow.service_category || [],
     isOnline: dbRow.is_online,
-    is_online: dbRow.is_online,
+    is_online: dbRow.is_online ?? false,
+    is_verified: dbRow.is_verified ?? false,
+    is_active: dbRow.is_active ?? true,
+    approval_status: dbRow.approval_status ?? 'pending',
+    rejection_reason: dbRow.rejection_reason ?? null,
     serviceRadius: dbRow.service_radius,
     service_radius: dbRow.service_radius,
     latitude: dbRow.lat != null ? Number(dbRow.lat) : null,
@@ -98,48 +106,28 @@ export const ProviderModel = {
   },
 
   async getStats(providerId: string): Promise<any> {
-    let earningsToday = 0;
-    let completedJobs = 0;
-    let totalJobs = 0;
-    let rating = 0;
-
-    try {
-      const earningsRes = await getPool().query(
-        `SELECT COALESCE(SUM(amount), 0) as total
-         FROM wallet_transactions
-         WHERE user_id = (SELECT user_id FROM providers WHERE id = $1)
-           AND type = 'credit'
-           AND created_at >= CURRENT_DATE`,
-        [providerId]
-      );
-      earningsToday = parseFloat(earningsRes.rows[0]?.total || '0');
-    } catch (_) { /* wallet_transactions may not exist yet */ }
-
-    try {
-      const jobsRes = await getPool().query(
-        `SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'`,
-        [providerId]
-      );
-      completedJobs = parseInt(jobsRes.rows[0]?.count || '0');
-    } catch (_) { /* bookings query failed */ }
-
-    try {
-      const totalRes = await getPool().query(
-        `SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1`,
-        [providerId]
-      );
-      totalJobs = parseInt(totalRes.rows[0]?.count || '0');
-    } catch (_) { /* ignore */ }
-
-    try {
-      const ratingRes = await getPool().query(
-        `SELECT COALESCE(AVG(rating), 0) as avg_rating FROM ratings WHERE provider_id = $1`,
-        [providerId]
-      );
-      rating = parseFloat(ratingRes.rows[0]?.avg_rating || '0');
-    } catch (_) { /* ratings table may not exist */ }
-
-    return { earningsToday, completedJobs, total_jobs: totalJobs, rating };
+    const earningsRes = await getPool().query(
+      "SELECT SUM(amount) as total FROM wallet_transactions WHERE user_id = (SELECT user_id FROM providers WHERE id = $1) AND type = 'credit' AND created_at >= CURRENT_DATE",
+      [providerId]
+    );
+    const totalJobsRes = await getPool().query(
+      "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1",
+      [providerId]
+    );
+    const completedJobsRes = await getPool().query(
+      "SELECT COUNT(*) as count FROM bookings WHERE provider_id = $1 AND status = 'completed'",
+      [providerId]
+    );
+    const ratingRes = await getPool().query(
+      "SELECT rating FROM providers WHERE id = $1",
+      [providerId]
+    );
+    return {
+      earningsToday: parseFloat(earningsRes.rows[0]?.total || '0'),
+      total_jobs: parseInt(totalJobsRes.rows[0]?.count || '0'),
+      completed_jobs: parseInt(completedJobsRes.rows[0]?.count || '0'),
+      rating: parseFloat(ratingRes.rows[0]?.rating || '0')
+    };
   },
 
   async findByServiceId(serviceId: string): Promise<any[]> {

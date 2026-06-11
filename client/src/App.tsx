@@ -86,6 +86,8 @@ const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
 const DbCheck = lazy(() => import("@/pages/DbCheck"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const ProviderTabLayout = lazy(() => import("@/components/ProviderTabLayout"));
+
 
 const queryClient = new QueryClient();
 
@@ -219,7 +221,12 @@ const AppRoutes = () => (
 
         {/* Provider Routes */}
         <Route element={<RequireProviderRole><Outlet /></RequireProviderRole>}>
-          <Route path="/provider" element={<ProviderDashboard />} />
+          <Route path="/provider" element={<ProviderTabLayout />}>
+            <Route index element={null} />
+            <Route path="jobs" element={null} />
+            <Route path="earnings" element={null} />
+            <Route path="profile" element={null} />
+          </Route>
           <Route path="/provider/select-service" element={<SelectService />} />
           <Route path="/provider/personal-details" element={<PersonalDetails />} />
           <Route path="/provider/digilocker-kyc" element={<DigiLockerKYC />} />
@@ -229,9 +236,6 @@ const AppRoutes = () => (
           <Route path="/provider/job/:id" element={<ProviderJob />} />
           <Route path="/provider/job/:id/report" element={<ServiceReport />} />
           <Route path="/provider/navigation/:id" element={<Navigation />} />
-          <Route path="/provider/jobs" element={<Jobs />} />
-          <Route path="/provider/earnings" element={<ProviderEarnings />} />
-          <Route path="/provider/profile" element={<ProviderProfile />} />
           <Route path="/provider/portfolio" element={<Portfolio />} />
           <Route path="/provider/documents" element={<Documents />} />
           <Route path="/provider/gps-monitor" element={<GPSMonitor />} />

@@ -57,8 +57,17 @@ export const fetchProviderBookings = async (providerId: string) => {
 };
 
 export const createBooking = async (bookingData: any) => {
-  const res = await api.post('/bookings', bookingData);
-  return res.data;
+  try {
+    const res = await api.post('/bookings', bookingData);
+    return res.data;
+  } catch (error: any) {
+    console.error('[API] createBooking error:', error.response?.status, error.response?.data);
+    // Return error response in consistent format
+    return { 
+      success: false, 
+      message: 'Booking failed. Please try again.'
+    };
+  }
 };
 
 export const updateUser = async (userId: string, data: any) => {

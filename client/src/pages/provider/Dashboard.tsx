@@ -9,7 +9,6 @@ import {
 import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
-import ProviderBottomNav from "@/components/ProviderBottomNav";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
@@ -440,10 +439,7 @@ const Dashboard = () => {
       )}
 
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+      <div
         className="sticky top-0 z-[80] px-4 sm:px-5 pt-3 pb-3 flex items-center justify-between gap-3 bg-white shadow-sm pointer-events-auto isolate"
       >
         <div className="flex items-start gap-3 flex-1 min-w-0 pointer-events-auto">
@@ -499,20 +495,16 @@ const Dashboard = () => {
             </span>
           </div>
           <div className="flex gap-2">
-            <motion.button
+            <button
               type="button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/provider/profile")}
               className="relative z-[83] w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm pointer-events-auto"
               title="Provider Profile"
             >
               <User size={20} className="text-primary" strokeWidth={2.5} />
-            </motion.button>
-            <motion.button
+            </button>
+            <button
               type="button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/notifications")}
               className="relative z-[83] w-[42px] h-[42px] rounded-[14px] bg-[#F8FAFC] border-2 border-transparent hover:border-primary/10 flex items-center justify-center transition-all shadow-sm pointer-events-auto"
               title="Notifications"
@@ -524,15 +516,12 @@ const Dashboard = () => {
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-white" />
                 </span>
               )}
-            </motion.button>
+            </button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+      <div
         className="relative z-0 flex-1 overflow-y-auto pt-3 pb-6"
       >
         {isFrozen && (
@@ -643,7 +632,7 @@ const Dashboard = () => {
 
         {/* Live Job Broadcasts (Moved to Top) */}
         {isOnline && !isBusy && liveBroadcasts.length > 0 && (
-          <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
+          <div className="px-5 mb-6 mt-4">
             <h2 className="text-[16px] font-extrabold text-foreground mb-3 flex items-center gap-2 tracking-tight">
               <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
               Live Job Requests
@@ -653,9 +642,7 @@ const Dashboard = () => {
                 const service = getServiceById(b.serviceId);
                 const isQuoted = b.status === "waiting_for_customer" || (quotedBroadcasts && quotedBroadcasts.includes(b.broadcastId));
                 return (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                  <div
                     key={b.broadcastId}
                     className="bg-[#FFFBEB] border-2 border-[#FDE68A] rounded-[24px] p-5 shadow-[0_8px_30px_rgba(245,158,11,0.06)] relative overflow-hidden"
                   >
@@ -699,37 +686,33 @@ const Dashboard = () => {
                             </button>
                           ) : (
                             <>
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                              <button
                                 disabled={isBusy}
                                 onClick={() => setQuotingBroadcast(b)}
                                 className={`flex-1 py-3 rounded-[16px] text-[13px] font-bold shadow-md ${isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-accent text-white shadow-accent/20'
                                   }`}
                               >
                                 Provide Quote
-                              </motion.button>
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                              </button>
+                              <button
                                 onClick={() => dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId })}
                                 className="px-4 py-3 border-2 border-transparent hover:border-[#FDE68A] text-[#B45309] rounded-[16px] text-[13px] font-bold bg-[#FEF3C7]"
                               >
                                 Skip
-                              </motion.button>
+                              </button>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
-          </motion.div>
+          </div>
         )}
         {/* Provider Wallet & Compliance */}
-        <motion.div variants={itemVariants} className="px-5 mb-6">
+        <div className="px-5 mb-6">
           <div
             className={`rounded-[24px] p-5 shadow-lg ${isFrozen
               ? "bg-gradient-to-r from-red-600 to-red-700"
@@ -793,47 +776,47 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
         {/* Stats Row */}
-        <motion.div variants={itemVariants} className="px-5 mb-6 mt-4">
+        <div className="px-5 mb-6 mt-4">
           <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar -mx-5 px-5">
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+            <div className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
               <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
                 <Wallet size={14} strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Earnings</span>
               </div>
               <p className="text-[24px] font-black text-foreground tracking-tight">₹{formatRupees(todayEarnings)}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Earned Today</p>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+            </div>
+            <div className="bg-white border-2 border-transparent hover:border-primary/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
               <div className="flex items-center gap-2 mb-3 text-primary bg-primary/10 w-fit px-2.5 py-1 rounded-lg">
                 <Briefcase size={14} strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Completed</span>
               </div>
               <p className="text-[24px] font-black text-foreground tracking-tight">{completedJobs.length}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Total Jobs</p>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-accent/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+            </div>
+            <div className="bg-white border-2 border-transparent hover:border-accent/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
               <div className="flex items-center gap-2 mb-3 text-accent bg-accent/10 w-fit px-2.5 py-1 rounded-lg">
                 <Star size={14} fill="currentColor" strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
               </div>
               <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.rating}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
+            </div>
+            <div className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
               <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
                 <TrendingUp size={14} strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Response</span>
               </div>
               <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.responseRate}%</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Acceptance Rate</p>
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* AI Tip Card */}
-        <motion.div variants={itemVariants} className="px-5 mb-6">
+        <div className="px-5 mb-6">
           <div className="bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 rounded-[20px] p-5 flex gap-4 items-start shadow-sm relative overflow-hidden">
             <div className="w-12 h-12 rounded-[16px] bg-white shadow-sm flex items-center justify-center flex-shrink-0 relative z-10">
               <Lightbulb size={24} className="text-primary" />
@@ -846,15 +829,13 @@ const Dashboard = () => {
             </div>
             <div className="absolute top-[-20%] right-[-10%] w-[100px] h-[100px] bg-primary/10 rounded-full blur-[30px] pointer-events-none" />
           </div>
-        </motion.div>
+        </div>
 
         {/* Quick Actions */}
-        <motion.div variants={itemVariants} className="px-5 mb-8">
+        <div className="px-5 mb-8">
           <h2 className="text-[16px] font-extrabold text-foreground mb-4 tracking-tight">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => navigate('/provider/jobs')}
               className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-primary/10 transition-colors text-left"
             >
@@ -865,11 +846,9 @@ const Dashboard = () => {
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Jobs</p>
                 <p className="text-[11px] font-bold text-muted-foreground mt-0.5">{accepted.length + pending.length} active jobs</p>
               </div>
-            </motion.button>
+            </button>
 
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => navigate('/provider/earnings')}
               className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-emerald-500/10 transition-colors text-left"
             >
@@ -880,11 +859,9 @@ const Dashboard = () => {
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Earnings</p>
                 <p className="text-[11px] font-bold text-muted-foreground mt-0.5">₹{formatRupees(earnings)} earned</p>
               </div>
-            </motion.button>
+            </button>
 
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => navigate('/provider/portfolio')}
               className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-purple-500/10 transition-colors text-left"
             >
@@ -895,11 +872,9 @@ const Dashboard = () => {
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">My Portfolio</p>
                 <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Showcase work</p>
               </div>
-            </motion.button>
+            </button>
 
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => navigate('/provider/documents')}
               className="bg-white rounded-[24px] p-5 flex flex-col items-start gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-blue-500/10 transition-colors text-left"
             >
@@ -910,12 +885,12 @@ const Dashboard = () => {
                 <p className="text-[14px] font-extrabold text-foreground tracking-tight">Documents</p>
                 <p className="text-[11px] font-bold text-muted-foreground mt-0.5">KYC & Verify</p>
               </div>
-            </motion.button>
+            </button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Incoming Requests */}
-        <motion.div variants={itemVariants} className="px-5 mb-8">
+        <div className="px-5 mb-8">
           <h2 className="text-[16px] font-extrabold text-foreground mb-4 tracking-tight">Incoming Direct Requests</h2>
           {!isOnline ? (
             <div className="bg-[#F8FAFC] border-2 border-dashed border-[#E2E8F0] rounded-[24px] p-8 text-center">
@@ -940,9 +915,7 @@ const Dashboard = () => {
               {pending.map((r) => {
                 const service = getServiceById(r.serviceId);
                 return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <div
                     key={r.id}
                     className="bg-white border-2 border-transparent hover:border-primary/10 rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-colors"
                   >
@@ -962,9 +935,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-5">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      <button
                         onClick={() => {
 
                           // Account Frozen Check
@@ -1045,36 +1016,32 @@ const Dashboard = () => {
                               ? "Payment Pending"
                               : "Accept"
                         }
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      </button>
+                      <button
                         onClick={() => setSelectedJob(r)}
                         className="flex-1 py-3 rounded-[16px] bg-[#F8FAFC] text-foreground text-[13px] font-bold flex items-center justify-center gap-2"
                       >
                         <Eye size={16} strokeWidth={2.5} /> Details
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      </button>
+                      <button
                         onClick={() => {
                           dispatch({ type: "REJECT_REQUEST", id: r.id });
                         }}
                         className="flex-1 py-3 rounded-[16px] bg-red-50 text-red-600 text-[13px] font-bold flex items-center justify-center gap-2"
                       >
                         <X size={16} strokeWidth={2.5} /> Reject
-                      </motion.button>
+                      </button>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           )}
-        </motion.div>
+        </div>
 
         {/* Upcoming Bookings */}
         {accepted.length > 0 && (
-          <motion.div variants={itemVariants} className="px-5 mb-8">
+          <div className="px-5 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] font-extrabold text-foreground tracking-tight">Upcoming Bookings</h2>
               <button className="text-[12px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
@@ -1083,9 +1050,7 @@ const Dashboard = () => {
             </div>
             <div className="space-y-4">
               {accepted.map((r) => (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   key={r.id}
                   onClick={() => navigate(`/provider/job/${r.id}`)}
                   className="w-full bg-primary rounded-[24px] p-5 text-left shadow-[0_8px_30px_rgba(21,46,75,0.2)] flex items-center justify-between relative overflow-hidden group"
@@ -1101,14 +1066,14 @@ const Dashboard = () => {
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center relative z-10 backdrop-blur-sm group-hover:bg-white/20 transition-colors">
                     <ChevronRight size={20} className="text-white" strokeWidth={2.5} />
                   </div>
-                </motion.button>
+                </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Recent Activity */}
-        <motion.div variants={itemVariants} className="px-5 pb-6">
+        <div className="px-5 pb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[16px] font-extrabold text-foreground tracking-tight">Recent Activity</h2>
           </div>
@@ -1137,11 +1102,9 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
-      </motion.div>
-
-      <ProviderBottomNav />
+      </div>
 
       {/* Floating Window for Job Details */}
       {selectedJob && (

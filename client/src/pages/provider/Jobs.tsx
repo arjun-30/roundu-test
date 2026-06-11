@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Clock, Calendar, MapPin, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import ProviderBottomNav from "@/components/ProviderBottomNav";
 import EmptyState from "@/components/EmptyState";
 import { Calendar as DateRangeCalendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
@@ -411,7 +410,7 @@ const Jobs = () => {
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative">
       {/* Header */}
-      <div className="px-5 pt-3 pb-2 flex items-center gap-3 animate-fade-in bg-white sticky top-0 z-10 shadow-sm">
+      <div className="px-5 pt-3 pb-2 flex items-center gap-3 bg-white sticky top-0 z-10 shadow-sm">
         <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
@@ -678,8 +677,6 @@ const Jobs = () => {
           </div>
         </div>
       )}
-
-      <ProviderBottomNav />
     </div>
   );
 };

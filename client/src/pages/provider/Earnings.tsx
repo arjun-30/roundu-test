@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import ProviderBottomNav from "@/components/ProviderBottomNav";
 import AvailableBalanceCard from '@/components/AvailableBalanceCard';
 
 import axios from "axios";
@@ -48,7 +47,14 @@ const Earnings = () => {
 
           const bookingsRes = await axios.get(`/api/v1/bookings/provider/${providerId}`);
           if (bookingsRes.data.success) {
-            const completed = bookingsRes.data.data.filter((b: any) => b.status === 'completed');
+            const completed = bookingsRes.data.data.filter(
+              (b: any) =>
+                b.status === "completed" ||
+                b.status === "paid"
+            );
+
+            console.log("Completed Jobs:", completed);
+
             setCompletedJobs(completed);
           }
         }
@@ -63,13 +69,22 @@ const Earnings = () => {
     }
   }, [user.id]);
 
+
   const now = Date.now();
   const filteredJobs = completedJobs.filter((j) => {
-    const jobDate = new Date(j.scheduled_at || j.date || Date.now()).getTime();
+    const jobDate = new Date(
+      j.completed_at ||
+      j.created_at ||
+      j.updated_at ||
+      j.scheduled_at ||
+      j.date
+    )
+      .getTime();
     if (timeframe === "Today") return now - jobDate < 86400000;
     if (timeframe === "This Week") return now - jobDate < 7 * 86400000;
     return now - jobDate < 30 * 86400000;
   });
+
 
   const timeframeTotal = filteredJobs.reduce(
     (s, j) => s + (Number(j.price) || 0),
@@ -78,12 +93,11 @@ const Earnings = () => {
 
   const withdrawableAmount = Math.max(
     0,
-    walletBalance - commissionDue
+    walletBalance
   );
-
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
+      <div className="px-5 pt-6 pb-4 flex items-center gap-3">
         <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
@@ -162,7 +176,6 @@ const Earnings = () => {
           </div>
         )}
       </div>
-      <ProviderBottomNav />
     </div>
   );
 };

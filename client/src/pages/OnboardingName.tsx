@@ -92,11 +92,9 @@ const OnboardingName = () => {
         >
           {/* Typography Header */}
           <motion.div variants={itemVariants} className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight sm:text-4xl">
+            <h1 className="text-3xl font-extrabold text-black tracking-tight leading-tight sm:text-4xl">
               What should we <br />
-              <span className="bg-gradient-to-r from-primary via-indigo-600 to-accent bg-clip-text text-transparent">
-                call you?
-              </span>
+              call you?
             </h1>
             <p className="text-slate-500 font-medium text-[15px] mt-3 leading-relaxed max-w-sm mx-auto">
               Enter your name to personalize your RoundU experience.
@@ -165,7 +163,7 @@ const OnboardingName = () => {
             disabled={name.trim().length < 2 || loading}
             className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
               name.trim().length >= 2
-                ? "bg-gradient-to-r from-primary to-indigo-600 text-white shadow-[0_8px_25px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_30px_rgba(37,99,235,0.3)] cursor-pointer"
+                ? "bg-[#152E4B] text-white shadow-[0_8px_25px_rgba(21,46,75,0.2)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.3)] cursor-pointer"
                 : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
             }`}
           >

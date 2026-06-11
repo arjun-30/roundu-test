@@ -13,11 +13,11 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
   codPendingCount,
   onWithdraw,
 }) => {
-  const platformFee = walletBalance * 0.15;
+  const platformFee = 0;
 
   const withdrawableBalance = Math.max(
     0,
-    walletBalance - platformFee - commissionDue
+    walletBalance
   );
 
   return (
@@ -33,18 +33,20 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
       <div className="mt-6 space-y-3 text-sm">
         <div className="flex justify-between text-slate-300">
           <span>Wallet Balance</span>
-          <span className="font-bold">
+          <span
+            className={`font-bold ${walletBalance < 0 ? "text-red-400" : ""
+              }`}
+          >
             ₹{walletBalance.toLocaleString('en-IN')}
           </span>
         </div>
 
         <div className="flex justify-between text-red-300">
-          <span>Platform Fee (15%)</span>
+          <span>Platform Fee</span>
           <span className="font-bold">
-            ₹{platformFee.toFixed(0)}
+            Already Deducted
           </span>
         </div>
-
         <div className="flex justify-between text-yellow-300">
           <span>Commission Due</span>
           <span className="font-bold">

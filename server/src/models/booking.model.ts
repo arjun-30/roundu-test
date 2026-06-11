@@ -8,16 +8,14 @@ export interface Booking {
   status: string;
   scheduled_at: string;
   address: string;
+  lat?: number;
+  lng?: number;
   price: number;
   notes: string;
   voice_note_url?: string;
   paid?: boolean;
-  lat?: number;
-  lng?: number;
   providerLat?: number;
   providerLng?: number;
-  provider_lat?: number;
-  provider_lng?: number;
 }
 
 export const BookingModel = {
@@ -27,29 +25,8 @@ export const BookingModel = {
     console.log(JSON.stringify(booking, null, 2));
 
     const res = await getPool().query(
-      `INSERT INTO bookings (
-        customer_id, provider_id, service_id, status, scheduled_at, 
-        address, price, notes, voice_note, voice_note_url, paid,
-        lat, lng, provider_lat, provider_lng
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
-      RETURNING *`,
-      [
-        booking.customer_id, 
-        booking.provider_id, 
-        booking.service_id, 
-        booking.status || 'pending', 
-        booking.scheduled_at, 
-        booking.address, 
-        booking.price, 
-        booking.notes, 
-        booking.voice_note || false, 
-        booking.voice_note_url || null, 
-        booking.paid || false,
-        booking.lat || null,
-        booking.lng || null,
-        booking.provider_lat || booking.providerLat || null,
-        booking.provider_lng || booking.providerLng || null
-      ]
+      'INSERT INTO bookings (customer_id, provider_id, service_id, status, scheduled_at, address, lat, lng, price, notes, voice_note, voice_note_url, paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+      [booking.customer_id, booking.provider_id, booking.service_id, booking.status || 'pending', booking.scheduled_at, booking.address, booking.lat || null, booking.lng || null, booking.price, booking.notes, booking.voice_note || false, booking.voice_note_url || null, booking.paid || false]
     );
     return res.rows[0];
   },
@@ -59,15 +36,8 @@ export const BookingModel = {
     return res.rows;
   },
 
-  async findByProviderId(providerId: string): Promise<any[]> {
-    const res = await getPool().query(
-      `SELECT b.*, u.name AS customer_name, u.phone AS customer_phone
-       FROM bookings b
-       LEFT JOIN users u ON b.customer_id = u.id
-       WHERE b.provider_id = $1
-       ORDER BY b.created_at DESC`,
-      [providerId]
-    );
+  async findByProviderId(providerId: string): Promise<Booking[]> {
+    const res = await getPool().query('SELECT * FROM bookings WHERE provider_id = $1 ORDER BY created_at DESC', [providerId]);
     return res.rows;
   },
 

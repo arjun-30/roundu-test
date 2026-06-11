@@ -178,19 +178,78 @@ export async function updateProviderVerification(
   providerId: string,
   isVerified: boolean
 ): Promise<{ success: boolean; error?: string }> {
+  return isVerified ? approveProvider(providerId) : rejectProvider(providerId, "");
+}
+
+export async function approveProvider(
+  providerId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
+    // Try full update with new columns first
     const { error } = await supabase
       .from("providers")
-      .update({ is_verified: isVerified })
+      .update({
+        is_verified: true,
+        approval_status: "approved",
+        is_active: true,
+        rejection_reason: null,
+      })
       .eq("id", providerId);
 
     if (error) {
-      console.error("[AdminService] Error updating provider verification:", error);
+      // Column may not exist yet in Supabase — fall back to is_verified only
+      if (error.message?.includes("column") || error.code === "42703" || error.code === "PGRST204") {
+        console.warn("[AdminService] New columns missing in Supabase, falling back to is_verified only");
+        const { error: fallbackError } = await supabase
+          .from("providers")
+          .update({ is_verified: true })
+          .eq("id", providerId);
+        if (fallbackError) return { success: false, error: fallbackError.message };
+        return { success: true };
+      }
+      console.error("[AdminService] Error approving provider:", error);
       return { success: false, error: error.message };
     }
     return { success: true };
   } catch (error: any) {
-    console.error("[AdminService] Exception updating provider verification:", error);
+    console.error("[AdminService] Exception approving provider:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function rejectProvider(
+  providerId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Try full update with new columns first
+    const { error } = await supabase
+      .from("providers")
+      .update({
+        is_verified: false,
+        approval_status: "rejected",
+        is_active: false,
+        rejection_reason: reason || null,
+      })
+      .eq("id", providerId);
+
+    if (error) {
+      // Column may not exist yet in Supabase — fall back to is_verified only
+      if (error.message?.includes("column") || error.code === "42703" || error.code === "PGRST204") {
+        console.warn("[AdminService] New columns missing in Supabase, falling back to is_verified only");
+        const { error: fallbackError } = await supabase
+          .from("providers")
+          .update({ is_verified: false })
+          .eq("id", providerId);
+        if (fallbackError) return { success: false, error: fallbackError.message };
+        return { success: true };
+      }
+      console.error("[AdminService] Error rejecting provider:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error("[AdminService] Exception rejecting provider:", error);
     return { success: false, error: error.message };
   }
 }
