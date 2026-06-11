@@ -128,44 +128,11 @@ const OtpVerify = () => {
     } catch (err: any) {
       console.error("Verify Error:", err);
 
-      // Development Fallback
-      if (import.meta.env.DEV) {
-        console.warn("[OtpVerify] Using Mock Login fallback");
-
-        const mockUser = {
-          id: "mock-user-" + Date.now(),
-          name: "Test User",
-          phone: phone || "9999999999",
-          email: "",
-          address: "",
-          role: "customer",
-          accountType: "customer" as const,
-        };
-
-        localStorage.removeItem("roundu_token");
-        localStorage.removeItem("roundu_user");
-        localStorage.removeItem("roundu_role");
-        safeSetItem("roundu_token", "mock-token");
-        saveUserToLocalStorage(mockUser);
-        safeSetItem("roundu_role", "customer");
-
-        dispatch({ type: "SET_AUTH", value: true });
-        dispatch({ type: "SET_USER_ID", id: mockUser.id });
-        dispatch({
-          type: "UPDATE_USER",
-          user: { name: mockUser.name, email: "", address: "", role: "customer", accountType: "customer" as const },
-        });
-
-        const userPhone = phone || "9999999999";
-        const savedRole = getSavedRoleForPhone(userPhone);
-        if (savedRole) {
-          navigateByRole(userPhone, savedRole);
-        } else {
-          navigate("/role", { replace: true });
-        }
-      } else {
-        setError(err.response?.data?.error || "Verification failed. Check the code.");
-      }
+      setError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "OTP verification failed. Check backend logs."
+      );
     } finally {
       setLoading(false);
     }
@@ -249,7 +216,7 @@ const OtpVerify = () => {
               </>
             )}
           </button>
-          
+
           <div className="mt-6 flex items-center gap-2 justify-center text-[13px] font-medium text-muted-foreground">
             <ShieldCheck size={16} className="text-emerald-500" />
             Secured with end-to-end encryption

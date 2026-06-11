@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { getServiceById } from "@/data/mockData";
-import ProviderBottomNav from "@/components/ProviderBottomNav";
 import AvailableBalanceCard from '@/components/AvailableBalanceCard';
 
 import axios from "axios";
@@ -98,7 +97,7 @@ const Earnings = () => {
   );
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-3 animate-fade-in">
+      <div className="px-5 pt-6 pb-4 flex items-center gap-3">
         <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
@@ -177,7 +176,6 @@ const Earnings = () => {
           </div>
         )}
       </div>
-      <ProviderBottomNav />
     </div>
   );
 };

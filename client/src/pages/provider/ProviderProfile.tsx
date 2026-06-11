@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Briefcase, Wallet, LogOut, ChevronRight, User, SwitchCamera, MapPin, Clock, Image as ImageIcon, FileText, Settings } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import ProviderBottomNav from "@/components/ProviderBottomNav";
 import axios from "axios";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 
@@ -98,7 +97,7 @@ const ProviderProfile = () => {
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-28">
-      <div className="px-5 pt-3 pb-2 flex items-center gap-3 animate-fade-in">
+      <div className="px-5 pt-3 pb-2 flex items-center gap-3">
         <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-input border border-border flex items-center justify-center active:scale-95">
           <ArrowLeft size={20} />
         </button>
@@ -175,7 +174,7 @@ const ProviderProfile = () => {
               </button>
             </div>
             {isEditingHours && (
-              <div className="flex flex-wrap gap-2 mt-3 animate-fade-in">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {["9:00 AM - 6:00 PM", "8:00 AM - 8:00 PM", "24 Hours", "10:00 AM - 5:00 PM"].map((hrs) => (
                   <button
                     key={hrs}
@@ -210,7 +209,7 @@ const ProviderProfile = () => {
             </div>
             
             {isEditingRadius && (
-              <div className="flex gap-2 mt-3 animate-fade-in">
+              <div className="flex gap-2 mt-3">
                 {[2, 5, 10, 15, 25, 50].map((rad) => (
                   <button
                     key={rad}
@@ -253,8 +252,6 @@ const ProviderProfile = () => {
         alt={user.name}
         onClose={() => setIsImagePreviewOpen(false)}
       />
-
-      <ProviderBottomNav />
     </div>
   );
 };
