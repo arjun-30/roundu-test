@@ -81,7 +81,7 @@ export const searchProviders = async (req: Request, res: Response) => {
         if (userRes.rows[0]) {
           customerLat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
           customerLng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
-        }
+        } console.log("CUSTOMER", customerLat, customerLng);
       } catch (err) {
         console.error('Failed to get customer coordinates from database:', err);
       }
@@ -94,7 +94,7 @@ export const searchProviders = async (req: Request, res: Response) => {
       // No serviceId — return all online providers (for Nearby Professionals)
       providers = await ProviderModel.findAllOnline();
     }
-    
+
     const filteredProviders = [];
     for (const p of providers) {
       const busy = await isProviderBusy(p.id);
@@ -119,15 +119,17 @@ export const searchProviders = async (req: Request, res: Response) => {
               plat = userRes.rows[0].lat ? Number(userRes.rows[0].lat) : null;
               plng = userRes.rows[0].lng ? Number(userRes.rows[0].lng) : null;
             }
-          } catch (_) {}
+          } catch (_) { }
         }
 
         if (plat != null && plng != null) {
+          console.log("PROVIDER", plat, plng, p.name);
           const { getDistanceKm } = require('../utils/locationHelper');
           const dist = getDistanceKm(
             { lat: customerLat, lng: customerLng },
             { lat: plat, lng: plng }
           );
+          console.log("DISTANCE", dist);
 
           const maxRadius = p.service_radius || 20;
           if (dist > maxRadius) {
@@ -152,7 +154,7 @@ export const searchProviders = async (req: Request, res: Response) => {
 export const registerProvider = async (req: Request, res: Response) => {
   try {
     const { userId, bio, experienceYears, workingHours, serviceRadius, serviceIds } = req.body;
-    
+
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
@@ -235,17 +237,17 @@ export const getProviderProfile = async (req: Request, res: Response) => {
 
     console.log('[getProviderProfile] Fetching provider with ID:', id);
     const provider = await ProviderModel.findById(id);
-    
+
     if (!provider) {
       console.warn('[getProviderProfile] Provider not found for ID:', id);
       console.log('[getProviderProfile] Attempting fallback: search all providers');
-      
+
       // Fallback: Search all providers to debug
       const allRes = await getPool().query(
         'SELECT id, name FROM providers LIMIT 5'
       );
       console.log('[getProviderProfile] Available provider IDs:', allRes.rows);
-      
+
       return res.status(404).json({ success: false, message: 'Provider not found', requestedId: id });
     }
 

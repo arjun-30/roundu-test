@@ -208,6 +208,7 @@ export const getCustomerBookings = async (req: Request, res: Response) => {
     const bookings = await BookingModel.findByCustomerId(req.params.id);
     res.json({ success: true, data: bookings });
   } catch (error) {
+    console.error('getCustomerBookings error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -217,6 +218,7 @@ export const getProviderBookings = async (req: Request, res: Response) => {
     const bookings = await BookingModel.findByProviderId(req.params.id);
     res.json({ success: true, data: bookings });
   } catch (error) {
+    console.error('getProviderBookings error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

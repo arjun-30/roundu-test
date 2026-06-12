@@ -9,6 +9,7 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@capacitor/geolocation": "^8.2.0",
+    "@paper-design/shaders-react": "^0.0.76",
     "concurrently": "^9.2.1",
     "leaflet": "^1.9.4",
     "react-leaflet": "^5.0.0"

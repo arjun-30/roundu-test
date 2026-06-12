@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,6 +12,8 @@ import { useApp, ProviderQuote } from "@/context/AppContext";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
+import { getServiceById } from "@/data/mockData";
+import { motion } from "framer-motion";
 
 /**
  * MODERN SEARCHING EXPERIENCE
@@ -82,7 +84,17 @@ const SearchingProviders = () => {
   );
 
   // Timer state for provider search timeout
-  const [searchStartTime, setSearchStartTime] = useState<number>(Date.now());
+  const [searchStartTime, setSearchStartTime] = useState<number>(() => {
+    const cached = getCachedSearchState(serviceId);
+    if (cached) {
+      const stored = sessionStorage.getItem('search_start_time') || localStorage.getItem('search_start_time');
+      if (stored) return Number(stored);
+    }
+    const now = Date.now();
+    sessionStorage.setItem('search_start_time', String(now));
+    localStorage.setItem('search_start_time', String(now));
+    return now;
+  });
   const [remainingSeconds, setRemainingSeconds] = useState<number>(300);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [showTimeoutModal, setShowTimeoutModal] = useState<boolean>(false);
@@ -116,6 +128,30 @@ const SearchingProviders = () => {
     selectedDate,
     selectedTime,
   } = useApp();
+
+  const [activeFilter, setActiveFilter] = useState<'all' | 'price' | 'rating'>('all');
+  const [selectedQuote, setSelectedQuote] = useState<ProviderQuote | null>(null);
+
+  const sortedQuotes = useMemo(() => {
+    const quotesCopy = [...receivedQuotes];
+    if (activeFilter === 'price') {
+      return quotesCopy.sort((a, b) => Number(a.price) - Number(b.price));
+    }
+    if (activeFilter === 'rating') {
+      return quotesCopy.sort((a, b) => Number(b.rating) - Number(a.rating));
+    }
+    return quotesCopy;
+  }, [receivedQuotes, activeFilter]);
+
+  useEffect(() => {
+    if (sortedQuotes.length > 0) {
+      if (!selectedQuote || !sortedQuotes.some(q => q.providerId === selectedQuote.providerId)) {
+        setSelectedQuote(sortedQuotes[0]);
+      }
+    } else {
+      setSelectedQuote(null);
+    }
+  }, [sortedQuotes, selectedQuote]);
 
   const isRestoredRef = useRef(!!cachedState);
 
@@ -280,7 +316,15 @@ const SearchingProviders = () => {
         console.error("Failed to restore quotes", e);
       }
     } else {
-      dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+        dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+        // New quick‑fix request – clear any persisted start time so a fresh timer begins.
+        sessionStorage.removeItem('search_start_time');
+        localStorage.removeItem('search_start_time');
+        // Re‑initialise the start timestamp for this new session.
+        const freshNow = Date.now();
+        sessionStorage.setItem('search_start_time', String(freshNow));
+        localStorage.setItem('search_start_time', String(freshNow));
+        setSearchStartTime(freshNow);
     }
 
     const buildPayload = () => ({
@@ -393,40 +437,44 @@ const SearchingProviders = () => {
     }
   };
 
+  const service = getServiceById(serviceId || "");
+
   return (
-    <div className="min-h-screen bg-[#EEF3F8] flex flex-col relative font-['DM_Sans',sans-serif] overflow-y-auto overflow-x-hidden">
-
-
-
+    <div className="min-h-screen bg-[#F4F7FB] flex flex-col relative font-sans overflow-hidden">
+      
       {/* TIMEOUT MODAL */}
       {showTimeoutModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">No Providers Available</h2>
-            <p className="text-gray-600 mb-6">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 mx-4">
+            <h2 className="text-xl font-bold mb-3 text-[#152E4B]">No Providers Available</h2>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
               We couldn't find an available provider within 5 km of your location right now.
               Please try again later or schedule the service for another time.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
+                  sessionStorage.removeItem('search_start_time');
                   localStorage.removeItem('search_start_time');
                   setHasTimedOut(false);
                   setShowTimeoutModal(false);
                   const now = Date.now();
+                  sessionStorage.setItem('search_start_time', String(now));
+                  localStorage.setItem('search_start_time', String(now));
                   setSearchStartTime(now);
                   setRemainingSeconds(300);
                 }}
-                className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+                className="px-5 py-2.5 bg-[#A95D06] hover:bg-[#A95D06]/90 text-white rounded-2xl font-bold text-sm active:scale-95 transition"
               >
                 Try Again
               </button>
               <button
                 onClick={() => {
+                  sessionStorage.removeItem("search_start_time");
                   localStorage.removeItem("search_start_time");
                   navigate(-1);
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-sm active:scale-95 transition"
               >
                 Go Back
               </button>
@@ -435,376 +483,259 @@ const SearchingProviders = () => {
         </div>
       )}
 
-      {/* TOP BAR */}
-      <div className="px-5 pt-6 pb-3 flex items-center gap-4 z-20 relative">
-        <button
-          onClick={() => {
-            localStorage.removeItem("search_start_time");
-            navigate(-1);
-          }}
-          className="w-11 h-11 rounded-full bg-white/90 backdrop-blur-xl border border-white shadow-[0_6px_18px_rgba(0,0,0,0.06)] flex items-center justify-center active:scale-95 transition"
-        >
-          <ArrowLeft size={20} className="text-slate-700" />
-        </button>
+      {/* HEADER BAR */}
+      <div className="flex items-center justify-between px-5 pt-6 pb-4 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.02)] sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              sessionStorage.removeItem("search_start_time");
+              localStorage.removeItem("search_start_time");
+              navigate(-1);
+            }}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-[#152E4B]/10 text-[#152E4B] hover:bg-slate-50 transition active:scale-95"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-xl font-extrabold text-[#152E4B]">
+              {service?.label || "Quick Fix"}
+            </h1>
+            <p className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#A95D06] animate-ping" />
+              Searching... {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+            </p>
+          </div>
+        </div>
+        <div className="bg-[#152E4B]/5 border border-[#152E4B]/10 rounded-2xl px-4 py-2 text-right flex flex-col justify-center">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#A95D06]">
+            Providers
+          </span>
+          <span className="text-sm font-extrabold text-[#152E4B]">
+            {foundCount} Available
+          </span>
+        </div>
       </div>
 
-      {/* MAP */}
-      <div className="h-[320px] w-full flex-shrink-0 relative overflow-hidden">
+      {/* FILTER CHIPS */}
+      <div className="flex gap-2 px-5 py-3 bg-white border-b border-slate-100 overflow-x-auto scrollbar-hide">
+        {(['all', 'price', 'rating'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`px-5 py-2 rounded-full font-bold text-xs capitalize transition active:scale-95 border ${
+              activeFilter === f
+                ? "bg-[#A95D06] text-white border-transparent shadow-sm shadow-[#A95D06]/20"
+                : "bg-transparent text-[#152E4B] border-[#152E4B]/20 hover:bg-[#152E4B]/5"
+            }`}
+          >
+            {f === 'all' ? 'All' : f === 'price' ? 'Best Price' : 'Top Rated'}
+          </button>
+        ))}
+      </div>
 
-        {/* GRID BACKGROUND */}
-        <div
-          className="absolute inset-0 opacity-[0.4]"
-          style={{
-            backgroundImage:
-              "linear-gradient(#DCE5EF 1px, transparent 1px), linear-gradient(90deg, #DCE5EF 1px, transparent 1px)",
-            backgroundSize: "34px 34px",
-          }}
-        />
-
-        {/* MAIN ROADS */}
-        <div className="absolute left-1/2 top-0 w-[10px] h-full bg-white/70 -translate-x-1/2" />
-
-        <div className="absolute top-1/2 left-0 h-[10px] w-full bg-white/70 -translate-y-1/2" />
-
-        {/* RADAR RINGS */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute w-[110px] h-[110px] rounded-full border border-[#152E4B]/30 animate-pulse" />
-
-          <div className="absolute w-[180px] h-[180px] rounded-full border border-[#152E4B]/20" />
-
-          <div className="absolute w-[250px] h-[250px] rounded-full border border-[#152E4B]/10" />
-        </div>
-
-        {/* CENTER POINT */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="relative flex items-center justify-center">
-
-            <div className="absolute w-20 h-20 rounded-full bg-[#152E4B]/10 animate-ping" />
-
-            <div className="absolute w-12 h-12 rounded-full bg-[#152E4B]/10" />
-
-            <div className="w-5 h-5 rounded-full bg-[#152E4B] border-4 border-white shadow-lg" />
-          </div>
-        </div>
-
-        {/* MODERN STATUS BADGE */}
-        <div className="absolute top-5 right-5 z-20">
-          <div className="bg-white/75 backdrop-blur-2xl border border-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] rounded-2xl px-4 py-3 flex items-center gap-3">
-
-            <div className="relative">
-              <div
-                className={`w-3 h-3 rounded-full ${foundCount > 0
-                  ? "bg-emerald-500"
-                  : "bg-amber-400"
-                  }`}
-              />
-
-              <div
-                className={`absolute inset-0 rounded-full animate-ping ${foundCount > 0
-                  ? "bg-emerald-400"
-                  : "bg-amber-300"
-                  }`}
-              />
-            </div>
-
-            <div className="flex flex-col leading-tight">
-              <span className="text-[10px] uppercase tracking-[0.18em] font-black text-slate-400">
-                Live Search
-              </span>
-
-              <span className="text-[13px] font-bold text-slate-800">
-                {foundCount === 0
-                  ? "No providers nearby"
-                  : `${foundCount} provider${foundCount > 1 ? "s" : ""
-                  } found`}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* PROVIDER MARKERS */}
-        {Object.values(nearbyProviders).map((p) => {
-          const pos = getProviderPos(p.lat, p.lng);
-
-          return (
-            <div
-              key={p.id}
-              className="absolute transition-all duration-500"
-              style={{
-                top: `${pos.y}px`,
-                left: `${pos.x}px`,
-                opacity: pos.opacity,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <div className="relative cursor-pointer" onClick={() => {
-                // Find the quote for this provider and navigate to details
-                const quote = receivedQuotes.find(q => q.providerId === p.id);
-                navigate(`/provider/${p.id}`, {
-                  state: {
-                    provider: {
-                      id: p.id,
-                      name: p.name,
-                      avatar_url: p.avatar_url,
-                      rating: p.rating || 0,
-                      lat: p.lat,
-                      lng: p.lng,
-                      distance_km: p.distance_km || 0
-                    },
-                    quote: quote || {
-                      providerId: p.id,
-                      providerName: p.name,
-                      providerAvatar: p.avatar_url || p.name?.charAt(0),
-                      rating: p.rating || 0,
-                      price: quote?.price || 500,
-                      distanceKm: p.distance_km || 0,
-                      etaMin: quote?.etaMin || 15
-                    },
-                    broadcastId
-                  }
-                });
-              }}>
-
-                <div className="absolute inset-0 rounded-full bg-[#152E4B]/20 animate-ping" />
-
-                <div className="w-11 h-11 rounded-full bg-white p-[2px] shadow-xl border border-white hover:scale-110 transition-transform">
-
-                  {p.avatar_url ? (
-                    <img
-                      src={p.avatar_url}
-                      alt={p.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-[#152E4B] flex items-center justify-center text-white font-bold text-sm">
-                      {p.name?.charAt(0)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl text-[9px] px-2 py-1 rounded-full font-bold shadow">
-                  {p.name?.split(" ")[0]}
-                </div>
+      {/* SCROLLABLE MAIN CONTENT */}
+      <div className="flex-1 flex flex-col justify-between overflow-y-auto min-h-0">
+        
+        {/* RADAR ANIMATION / INCOMING QUOTES SUMMARY */}
+        {sortedQuotes.length === 0 ? (
+          <div className="flex-1 flex flex-col justify-center items-center py-8 px-5">
+            {/* Themed Pulse Radar */}
+            <div className="relative w-44 h-44 flex items-center justify-center mb-8">
+              <div className="absolute inset-0 rounded-full border border-[#A95D06]/10 animate-ping duration-[3000ms]" />
+              <div className="absolute w-32 h-32 rounded-full border border-[#152E4B]/15 animate-pulse duration-[2000ms]" />
+              <div className="absolute w-20 h-20 rounded-full border border-[#A95D06]/20" />
+              <div className="w-12 h-12 rounded-full bg-[#152E4B] border-4 border-white shadow-xl flex items-center justify-center z-10">
+                <span className="text-lg animate-bounce">🔍</span>
               </div>
             </div>
-          );
-        })}
+            
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-[#152E4B] mb-2">
+                Matching nearby experts...
+              </h3>
+              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                Broadcasting your request to vetted technicians. Available quotes will appear below instantly.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col justify-center items-center py-8 px-5">
+            {/* Match Indicator */}
+            <div className="relative w-36 h-36 flex items-center justify-center mb-6">
+              <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#A95D06]/20 animate-spin duration-[15s]" />
+              <div className="absolute w-28 h-28 rounded-full bg-[#152E4B]/5 flex items-center justify-center">
+                <span className="text-4xl animate-pulse">🤝</span>
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <h3 className="text-[17px] font-bold text-[#152E4B] mb-2">
+                Technicians are ready to help!
+              </h3>
+              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                Review available quotes, check ratings and proximity, then select a provider to accept.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* PROVIDERS SCROLL ROW */}
+        <div className="pb-6">
+          {sortedQuotes.length === 0 ? (
+            /* Loading Skeletons */
+            <div className="flex gap-4 overflow-x-auto px-5 py-2 scrollbar-hide">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="w-[270px] shrink-0 bg-white rounded-3xl p-5 border border-slate-100 shadow-sm animate-pulse flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full bg-slate-100" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-slate-100 rounded w-2/3 mb-2" />
+                        <div className="h-3 bg-slate-100 rounded w-1/3" />
+                      </div>
+                    </div>
+                    <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-5/6" />
+                  </div>
+                  <div className="mt-6">
+                    <div className="flex justify-between border-t border-slate-50 pt-3 mb-4">
+                      <div className="h-4 bg-slate-100 rounded w-1/4" />
+                      <div className="h-4 bg-slate-100 rounded w-1/3" />
+                    </div>
+                    <div className="h-9 bg-slate-100 rounded-2xl w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Actual Quotes List */
+            <div className="flex gap-4 overflow-x-auto px-5 py-2 scrollbar-hide snap-x snap-mandatory">
+              {sortedQuotes.map((q) => (
+                <div
+                  key={q.providerId}
+                  onClick={() => setSelectedQuote(q)}
+                  className={`w-[270px] shrink-0 bg-white rounded-3xl p-5 border flex flex-col justify-between snap-start cursor-pointer transition-all duration-300 ${
+                    selectedQuote?.providerId === q.providerId
+                      ? "border-2 border-[#A95D06] shadow-lg shadow-[#A95D06]/10 scale-[1.01]"
+                      : "border-slate-100 shadow-sm hover:shadow-md"
+                  }`}
+                >
+                  <div>
+                    {/* Card Header: Avatar & Name */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full border border-slate-100 flex items-center justify-center font-bold text-white bg-[#152E4B] overflow-hidden">
+                        {q.providerAvatar && q.providerAvatar.length > 2 ? (
+                          <img src={q.providerAvatar} alt={q.providerName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{q.providerAvatar || q.providerName?.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-slate-800 truncate text-[15px]">
+                          {q.providerName}
+                        </h3>
+                        <div className="flex items-center gap-1 text-[12px] text-[#A95D06] font-semibold mt-0.5">
+                          <Star size={12} className="fill-[#A95D06]" />
+                          <span>{q.rating}</span>
+                          <span className="text-slate-400 font-normal">(Verified)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Service Description */}
+                    <p className="text-[12px] text-slate-500 line-clamp-2 mb-4 min-h-[32px] leading-relaxed">
+                      Expert {service?.label || "Service"} provider. Specializes in quick installations, troubleshooting, and repairs.
+                    </p>
+                  </div>
+
+                  <div>
+                    {/* Details Row: Price, Distance, ETA */}
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-3 mb-4">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block leading-none mb-1">
+                          Price
+                        </span>
+                        <span className="text-[17px] font-black text-[#152E4B]">
+                          ₹{q.price}/hr
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block leading-none mb-1">
+                          Distance & ETA
+                        </span>
+                        <span className="text-[12px] font-bold text-slate-700">
+                          {q.distanceKm} km · <span className="text-[#A95D06]">{q.etaMin} mins</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Select Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedQuote(q);
+                      }}
+                      className={`w-full py-2.5 rounded-2xl font-bold text-xs transition active:scale-95 ${
+                        selectedQuote?.providerId === q.providerId
+                          ? "bg-[#A95D06] text-white shadow-sm shadow-[#A95D06]/20"
+                          : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {selectedQuote?.providerId === q.providerId ? "Selected" : "Select Provider"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* BOTTOM SHEET */}
-      <div className="bg-white/92 backdrop-blur-2xl rounded-t-[34px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] px-6 pt-4 pb-8 relative z-20">
-
-        {/* HANDLE */}
-        <div className="w-14 h-1.5 rounded-full bg-slate-200 mx-auto mb-7" />
-
+      {/* BOTTOM ACTIONS BAR */}
+      <div className="mt-auto px-5 py-5 bg-white border-t border-slate-100 z-30 flex flex-col gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
         {error && (
-          <div className="text-red-500 text-sm font-semibold text-center mb-4">
+          <div className="text-red-500 text-xs font-semibold text-center mb-1">
             {error}
           </div>
         )}
 
-        {/* TITLE */}
-        <div className="text-center">
-          <h2 className="text-[32px] leading-[1.05] font-black tracking-[-0.04em] text-slate-900 mb-3">
-
-            {foundCount === 0
-              ? "Searching nearby providers"
-              : "Providers available nearby"}
-          </h2>
-
-          {/* TIMER BELOW TITLE */}
-          <div className="text-center text-sm text-amber-700 font-bold mt-2">
-            Time Remaining
-          </div>
-          <div className="text-center text-2xl font-bold text-amber-700 mb-4">
-            {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
-          </div>
-          {/* STATUS TEXT */}
-          <div className="h-8 flex items-center justify-center overflow-hidden relative mb-6">
-            <p
-              key={statusIndex + (isLongWait ? "wait" : "")}
-              className="absolute text-[14px] text-slate-500 font-medium animate-status-fade"
-            >
-              {receivedQuotes.length > 0
-                ? "Nearby providers are responding..."
-                : isLongWait
-                  ? "Still searching nearby areas..."
-                  : SECONDARY_STATUS_MESSAGES[statusIndex]}
-            </p>
-          </div>
-        </div>
-
-        {/* QUOTES */}
-        {receivedQuotes.length > 0 ? (
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="flex flex-col gap-3 mb-6"
-          >
-            {receivedQuotes.map((q) => (
-              <div
-                key={q.providerId}
-                className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm"
-              >
-                <div
-                  className="flex justify-between cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => {
-                    navigate(`/provider/${q.providerId}`, {
-                      state: {
-                        provider: {
-                          id: q.providerId,
-                          name: q.providerName,
-                          avatar_url: q.providerAvatar,
-                          rating: q.rating || 0
-                        },
-                        quote: q,
-                        broadcastId
-                      }
-                    });
-                  }}
-                >
-
-                  <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[#152E4B]">
-                      {q.providerAvatar}
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-slate-800">
-                        {q.providerName}
-                      </h3>
-
-                      <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                        <span className="flex items-center gap-1 text-yellow-500 font-bold">
-                          <Star
-                            size={13}
-                            className="fill-yellow-500"
-                          />
-                          {q.rating}
-                        </span>
-
-                        <span>
-                          {q.distanceKm} km away
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-[20px] font-black text-[#152E4B]">
-                      ₹{q.price}
-                    </div>
-
-                    <div className="text-xs text-green-600 font-semibold">
-                      ETA {q.etaMin} mins
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  disabled={acceptingQuoteId === q.providerId}
-                  onClick={() => handleAcceptQuote(q)}
-                  className="w-full mt-4 bg-[#152E4B] text-white py-3 rounded-2xl font-bold active:scale-95 transition"
-                >
-                  {acceptingQuoteId === q.providerId
-                    ? "Confirming..."
-                    : "Accept Quote"}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* LOADING DOTS */}
-            <div className="flex justify-center gap-3 mb-7">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`transition-all duration-300 rounded-full ${i === activeDotIndex
-                    ? "w-3 h-3 bg-amber-400 scale-125"
-                    : "w-2 h-2 bg-slate-300"
-                    }`}
-                />
-              ))}
-            </div>
-
-            {/* TRUST BADGES */}
-            <div className="bg-slate-50 rounded-2xl p-4 flex justify-between mb-6">
-              <TrustIndicator label="Verified" />
-              <TrustIndicator label="Trusted" />
-              <TrustIndicator label="Fast Response" />
-            </div>
-          </>
-        )}
-
-        {/* CANCEL BUTTON */}
         <button
-          onClick={() => navigate(-1)}
-          className="w-full h-14 rounded-2xl border border-red-100 bg-red-50 text-red-500 font-bold active:scale-95 transition"
+          disabled={!selectedQuote || acceptingQuoteId !== null}
+          onClick={() => selectedQuote && handleAcceptQuote(selectedQuote)}
+          className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition active:scale-95 flex items-center justify-center gap-2 ${
+            !selectedQuote
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+              : acceptingQuoteId
+              ? "bg-[#152E4B]/80 text-white cursor-wait"
+              : "bg-[#152E4B] text-white hover:bg-[#152E4B]/95 shadow-[#152E4B]/15"
+          }`}
+        >
+          {acceptingQuoteId ? (
+            "Confirming Booking..."
+          ) : selectedQuote ? (
+            `Accept Quote — ₹${selectedQuote.price}`
+          ) : (
+            "Select a Provider to Accept"
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            sessionStorage.removeItem("search_start_time");
+            localStorage.removeItem("search_start_time");
+            navigate(-1);
+          }}
+          className="w-full py-3.5 rounded-2xl border-2 border-[#A95D06] bg-transparent text-[#A95D06] font-bold text-[14px] hover:bg-[#A95D06]/5 transition active:scale-95"
         >
           Cancel Request
         </button>
       </div>
 
-      {/* ANIMATIONS */}
-      <style>{`
-        @keyframes status-fade {
-          0% {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-
-          10% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-
-          90% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-
-          100% {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-        }
-
-        .animate-status-fade {
-          animation: status-fade 2s ease-in-out forwards;
-        }
-      `}</style>
     </div>
   );
 };
-
-const TrustIndicator = ({
-  label,
-}: {
-  label: string;
-}) => (
-  <div className="flex items-center gap-2">
-    <div className="w-5 h-5 rounded-full bg-[#152E4B] flex items-center justify-center">
-      <svg
-        width="10"
-        height="8"
-        viewBox="0 0 10 8"
-        fill="none"
-      >
-        <path
-          d="M1 4L3.5 6.5L9 1"
-          stroke="white"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-
-    <span className="text-[12px] font-semibold text-slate-700">
-      {label}
-    </span>
-  </div>
-);
 
 export default SearchingProviders;

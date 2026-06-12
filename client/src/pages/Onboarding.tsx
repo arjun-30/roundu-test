@@ -53,6 +53,13 @@ const Onboarding = () => {
     }
 
     if (step === 2 && (!homeType || !householdSize)) {
+      // Directly navigate to service selection for providers
+      if (user?.role === "provider") {
+        // Clear any previously selected services
+        dispatch({ type: "UPDATE_REGISTRATION_DRAFT", patch: { serviceIds: [] } });
+        navigate("/provider/select-service", { replace: true });
+        return;
+      }
       setError("Please complete all selections");
       return;
     }
@@ -186,19 +193,14 @@ const Onboarding = () => {
           >
             {/* TITLE */}
             <div>
-              <h1
-                className="text-[36px] font-extrabold tracking-tight leading-[1.05]"
-                style={{
+              <h1 className="text-[36px] font-extrabold tracking-tight leading-[1.05]" style={{
                   color: "#0F172A",
-                }}
-              >
-                What services do
-                <br />
-                you{" "}
-                <span className="bg-gradient-to-r from-[#8B6B2E] via-[#D89B1D] to-[#F4B942] bg-clip-text text-transparent">
-                  need?
-                </span>
-              </h1>
+                }}>
+                  What services do
+                  <br />
+                  you 
+                  <span style={{ color: "#0F172A" }}>need?</span>
+                </h1>
 
               <p
                 className="text-[15px] mt-3 leading-relaxed font-medium"

@@ -72,7 +72,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
       <div className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col relative">
         {/* Timer Bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-muted">
-          <div 
+          <div
             className={`h-full transition-all duration-1000 ease-linear ${timeLeft < 30 ? 'bg-destructive' : 'bg-primary'}`}
             style={{ width: `${percentage}%` }}
           />
@@ -95,7 +95,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
             {isBroadcast ? "Live Job Alert" : "New Request"}
           </h2>
           <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label || request.serviceId}</h1>
-          
+
           <div className="flex items-center gap-4 mt-4 bg-muted/50 rounded-2xl p-3 border border-border/50">
             <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center text-lg font-bold">
               {request.customerName[0]}
@@ -137,16 +137,72 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
         <div className="p-6">
           <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
           {isBroadcast ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground italic">"{request.notes || "No notes provided."}"</p>
-              {request.voiceNoteUrl && (
-                <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Voice Note Attached
+            <div className="space-y-4">
+
+              {/* Job Type */}
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/10 rounded-xl p-3">
+                <span className="text-xs font-bold uppercase text-muted-foreground">
+                  Job Type
+                </span>
+                <span className="text-sm font-bold text-primary">
+                  {request.jobType === "scheduled"
+                    ? "Scheduled Service"
+                    : "Quick Fix"}
+                </span>
+              </div>
+
+              {/* Issue Photos */}
+              <div>
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                  Issue Photos
+                </p>
+
+                {request.images?.length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {request.images.map((img: string, index: number) => (
+                      <img
+                        key={index}
+                        src={img}
+                        alt={`Issue ${index + 1}`}
+                        className="w-24 h-24 rounded-xl object-cover border border-border flex-shrink-0"
+                      />
+                    ))}
                   </div>
-                  <audio src={request.voiceNoteUrl} controls className="w-full h-8" />
+                ) : (
+                  <div className="text-xs text-muted-foreground italic">
+                    No photos attached
+                  </div>
+                )}
+              </div>
+
+              {/* Voice Note */}
+              {request.voiceNoteUrl && (
+                <div className="bg-primary/5 border border-primary/10 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-primary uppercase tracking-wider mb-2">
+                    🎤 Voice Note Attached
+                  </div>
+
+                  <audio
+                    src={request.voiceNoteUrl}
+                    controls
+                    className="w-full h-8"
+                  />
                 </div>
               )}
+
+              {/* Description */}
+              <div>
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                  Description
+                </p>
+
+                <div className="bg-muted/50 rounded-xl p-3 border border-border">
+                  <p className="text-sm text-foreground">
+                    {request.notes || "No description provided."}
+                  </p>
+                </div>
+              </div>
+
             </div>
           ) : (
             <>
@@ -175,9 +231,8 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
           <button
             onClick={onAccept}
             disabled={isBusy}
-            className={`py-4 rounded-2xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-primary/30 relative overflow-hidden group ${
-              isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-primary text-primary-foreground'
-            }`}
+            className={`py-4 rounded-2xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-primary/30 relative overflow-hidden group ${isBusy ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60 shadow-none' : 'bg-primary text-primary-foreground'
+              }`}
           >
             <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform" />
             <Check size={18} /> {isBroadcast ? "Provide Quote" : "Accept"}

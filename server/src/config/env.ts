@@ -47,6 +47,7 @@ const envSchema = z.object({
   CASHFREE_CLIENT_SECRET: z.string(),
   CASHFREE_PUBLIC_KEY: z.string(),
   CASHFREE_BASE_URL: z.string().default('https://sandbox.cashfree.com/verification'),
+  CASHFREE_PUBLIC_KEY: z.string().optional(),
   CASHFREE_WEBHOOK_SECRET: z.string().optional(),
 });
 

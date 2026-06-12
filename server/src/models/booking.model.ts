@@ -1,4 +1,5 @@
 import { getPool } from '../config/database';
+import { isValidUuid } from '../utils/uuid';
 
 export interface Booking {
   id: string;
@@ -32,11 +33,17 @@ export const BookingModel = {
   },
 
   async findByCustomerId(customerId: string): Promise<Booking[]> {
+    if (!isValidUuid(customerId)) {
+      return [];
+    }
     const res = await getPool().query('SELECT * FROM bookings WHERE customer_id = $1 ORDER BY created_at DESC', [customerId]);
     return res.rows;
   },
 
   async findByProviderId(providerId: string): Promise<Booking[]> {
+    if (!isValidUuid(providerId)) {
+      return [];
+    }
     const res = await getPool().query('SELECT * FROM bookings WHERE provider_id = $1 ORDER BY created_at DESC', [providerId]);
     return res.rows;
   },
