@@ -190,6 +190,16 @@ async function main() {
       if (data.role === 'provider') {
         socket.join('providers');
 
+        if (data.userId) {
+          try {
+            const { getPool } = require('./config/database');
+            await getPool().query('UPDATE providers SET is_online = true WHERE user_id = $1', [data.userId]);
+            console.log(`[socket] provider ${data.userId} marked online in DB on register`);
+          } catch (err) {
+            console.error('[socket] failed to set provider online on register:', err);
+          }
+        }
+
         let serviceIds: string[] = Array.isArray(data.serviceIds) ? data.serviceIds : [];
 
         // If client didn't send serviceIds, fetch from DB as fallback
@@ -237,6 +247,17 @@ async function main() {
     socket.on('join_provider', () => {
       socket.join('providers');
       console.log(`[socket] ${socket.id} joined generic providers room`);
+    });
+
+    socket.on('toggle_online', async (data: { userId: string; isOnline: boolean }) => {
+      try {
+        const { getPool } = require('./config/database');
+        await getPool().query('UPDATE providers SET is_online = $1 WHERE user_id = $2', [data.isOnline, data.userId]);
+        console.log(`[socket] updated provider ${data.userId} is_online to ${data.isOnline} in DB`);
+        broadcastStatus(data.userId, data.isOnline);
+      } catch (err) {
+        console.error('[socket] failed to toggle provider online status in DB:', err);
+      }
     });
 
     socket.on('join_job_room', (data: { jobId: string }) => {
@@ -789,12 +810,13 @@ async function main() {
       });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       if (env.isDevelopment) {
         console.log(`[socket] client disconnected: ${socket.id}`);
       }
 
       const userId = socket.data.userId;
+      const role = socket.data.role;
       if (userId) {
         const userSockets = onlineUserConnections.get(userId);
         if (userSockets) {
@@ -802,6 +824,15 @@ async function main() {
           if (userSockets.size === 0) {
             onlineUserConnections.delete(userId);
             broadcastStatus(userId, false); // Last connection closed
+            if (role === 'provider') {
+              try {
+                const { getPool } = require('./config/database');
+                await getPool().query('UPDATE providers SET is_online = false WHERE user_id = $1', [userId]);
+                console.log(`[socket] provider ${userId} went offline in DB due to disconnect`);
+              } catch (err) {
+                console.error('[socket] failed to set provider offline on disconnect:', err);
+              }
+            }
           }
         }
       }

@@ -142,6 +142,24 @@ const ProviderDetail = () => {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [providerServices, setProviderServices] = useState<string[]>([]);
+  const [video, setVideo] = useState<any | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(true);
+
+  useEffect(() => {
+    const fetchVideo = async () => {
+      if (!provider?.id) return;
+      try {
+        setLoadingVideo(true);
+        const activeVideo = await getProviderVideo(provider.id);
+        setVideo(activeVideo);
+      } catch (err) {
+        console.error("Error fetching provider video:", err);
+      } finally {
+        setLoadingVideo(false);
+      }
+    };
+    fetchVideo();
+  }, [provider?.id]);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -483,6 +501,33 @@ const ProviderDetail = () => {
             <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View Full Details</button>
           </div>
         </div>
+
+          {/* Video Introduction Section */}
+          {loadingVideo ? (
+            <div className="mb-8 px-1">
+              <h3 className="text-[17px] font-extrabold text-foreground mb-3">Video Introduction</h3>
+              <div className="aspect-video bg-slate-100 animate-pulse rounded-[24px] flex flex-col items-center justify-center gap-2">
+                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <span className="text-xs text-muted-foreground font-semibold">Loading video intro...</span>
+              </div>
+            </div>
+          ) : video ? (
+            <div className="mb-8 px-1">
+              <h3 className="text-[17px] font-extrabold text-foreground mb-3 flex items-center gap-2">
+                Video Introduction
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">Active</span>
+              </h3>
+              <div className="aspect-video bg-black rounded-[24px] overflow-hidden flex items-center justify-center border border-slate-200 shadow-sm relative group">
+                <video 
+                  src={video.video_url} 
+                  controls 
+                  className="w-full h-full object-contain" 
+                  preload="metadata"
+                  playsInline
+                />
+              </div>
+            </div>
+          ) : null}
 
           {/* Experience & Skills */}
           <div className="mb-8">

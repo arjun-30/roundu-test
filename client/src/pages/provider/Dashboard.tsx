@@ -148,7 +148,9 @@ const Dashboard = () => {
   });
 
   const toggleOnline = () => {
-    dispatch({ type: "SET_ONLINE", value: !isOnline });
+    const nextStatus = !isOnline;
+    dispatch({ type: "SET_ONLINE", value: nextStatus });
+    socket.emit("toggle_online", { userId: user.id, isOnline: nextStatus });
   };
 
   // Alert provider when a new direct request arrives
