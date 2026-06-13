@@ -16,7 +16,7 @@ import {
   Image,
 } from "lucide-react";
 
-import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+
 import { compressImage, uploadImage } from "@/lib/imageUpload";
 
 import {
@@ -62,80 +62,28 @@ const BookService = () => {
   const [uploadError, setUploadError] = useState("");
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     dispatch({ type: "SET_IMAGES", images });
   }, [images, dispatch]);
 
-  const handleTakePhoto = async () => {
-    try {
-      setUploadError("");
-      if (images.length >= 5) {
-        setUploadError("You can upload up to 5 photos only.");
-        return;
-      }
-      setIsProcessing(true);
-
-      const photo = await CapCamera.getPhoto({
-        quality: 80,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Camera
-      });
-
-      if (photo.webPath) {
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-        const compressedBlob = await compressImage(blob);
-        const url = await uploadImage(compressedBlob, `photo_${Date.now()}.jpg`);
-        setImages(prev => [...prev, url]);
-      }
-    } catch (err: any) {
-      console.warn("Camera failed:", err);
-      if (err.message !== "User cancelled photos app" && err.name !== "CapacitorException") {
-        setUploadError(err.message || "Failed to access camera.");
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleChooseGallery = async () => {
+  const handleTakePhoto = () => {
     setUploadError("");
     if (images.length >= 5) {
       setUploadError("You can upload up to 5 photos only.");
       return;
     }
+    cameraInputRef.current?.click();
+  };
 
-    try {
-      const { Capacitor } = await import("@capacitor/core");
-      if (Capacitor.isNativePlatform()) {
-        setIsProcessing(true);
-        const result = await CapCamera.pickImages({
-          limit: 5 - images.length,
-          quality: 80
-        });
-
-        const newUrls: string[] = [];
-        for (const photo of result.photos) {
-          const response = await fetch(photo.webPath);
-          const blob = await response.blob();
-          const compressed = await compressImage(blob);
-          const url = await uploadImage(compressed, `gallery_${Date.now()}.jpg`);
-          newUrls.push(url);
-        }
-        setImages(prev => [...prev, ...newUrls]);
-      } else {
-        fileInputRef.current?.click();
-      }
-    } catch (err: any) {
-      console.warn("Gallery picker failed:", err);
-      if (err.message !== "User cancelled photos app") {
-        setUploadError(err.message || "Failed to open gallery.");
-      }
-    } finally {
-      setIsProcessing(false);
+  const handleChooseGallery = () => {
+    setUploadError("");
+    if (images.length >= 5) {
+      setUploadError("You can upload up to 5 photos only.");
+      return;
     }
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -617,6 +565,14 @@ const BookService = () => {
             ref={fileInputRef}
             accept="image/jpeg,image/png,image/jpg"
             multiple
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/jpeg,image/png,image/jpg"
+            capture="environment"
             style={{ display: "none" }}
             onChange={handleFileChange}
           />

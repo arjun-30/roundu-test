@@ -43,6 +43,7 @@ const BookingPayment = lazy(() => import("@/pages/BookingPayment"));
 const BookingSuccess = lazy(() => import("@/pages/BookingSuccess"));
 const BookService = lazy(() => import("@/pages/BookService"));
 const SearchingProviders = lazy(() => import("@/pages/SearchingProviders"));
+const SelectProvider = lazy(() => import("@/pages/SelectProvider"));
 const ActingDriverBooking = lazy(() => import("@/pages/ActingDriverBooking"));
 const Tracking = lazy(() => import("@/pages/Tracking"));
 const Rating = lazy(() => import("@/pages/Rating"));
@@ -212,6 +213,7 @@ const AppRoutes = () => (
         <Route path="/provider/:id" element={<RequireAuth><ProviderDetail /></RequireAuth>} />
         <Route path="/book-service/:serviceId" element={<RequireAuth><BookService /></RequireAuth>} />
         <Route path="/searching-providers/:serviceId" element={<RequireAuth><SearchingProviders /></RequireAuth>} />
+        <Route path="/select-provider/:serviceId" element={<RequireAuth><SelectProvider /></RequireAuth>} />
         <Route path="/book-driver/:serviceId" element={<RequireAuth><ActingDriverBooking /></RequireAuth>} />
         <Route path="/booking/date" element={<RequireAuth><BookingDate /></RequireAuth>} />
         <Route path="/booking/time" element={<RequireAuth><BookingTime /></RequireAuth>} />
