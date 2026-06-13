@@ -251,9 +251,17 @@ const initialState: State = {
       { id: "sa-2", label: "Work", address: "Tech Park, Whitefield, Bangalore", lat: 12.9698, lng: 77.7499 },
     ],
   },
-  commissionDue: 0,
-  codPendingCount: 0,
-  isFrozen: false,
+  commissionDue: Number(
+    localStorage.getItem("roundu_commission_due") || 0
+  ),
+  codPendingCount: Number(
+    localStorage.getItem(
+      "roundu_cod_pending_count"
+    ) || 0
+  ), isFrozen:
+    Number(
+      localStorage.getItem("roundu_cod_pending_count") || 0
+    ) >= 2,
   selectedServiceId: null,
   selectedProviderId: null,
   selectedDate: null,
@@ -748,26 +756,44 @@ function reducer(state: State, action: Action): State {
         walletBalance: state.walletBalance + action.amount
       };
 
-    case "ADD_COMMISSION_DUE":
+    case "ADD_COMMISSION_DUE": {
+      const newCommission =
+        state.commissionDue + action.amount;
+
+      localStorage.setItem(
+        "roundu_commission_due",
+        String(newCommission)
+      );
+
       return {
         ...state,
-        commissionDue:
-          state.commissionDue + action.amount
+        commissionDue: newCommission
       };
+    }
+    case "CLEAR_COMMISSION_DUE": {
+      const newCommission = Math.max(
+        0,
+        state.commissionDue - action.amount
+      );
 
-    case "CLEAR_COMMISSION_DUE":
+      localStorage.setItem(
+        "roundu_commission_due",
+        String(newCommission)
+      );
+
       return {
         ...state,
-        commissionDue: Math.max(
-          0,
-          state.commissionDue - action.amount
-        )
+        commissionDue: newCommission
       };
-
+    }
     case "INCREMENT_COD_COUNT": {
-
       const nextCount =
         state.codPendingCount + 1;
+
+      localStorage.setItem(
+        "roundu_cod_pending_count",
+        String(nextCount)
+      );
 
       return {
         ...state,
@@ -1040,7 +1066,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const doRegister = () => {
         let serviceIds: string[] = [];
         if (state.role === "provider") {
-          serviceIds = 
+          serviceIds =
             state.providerRegistrationDraft?.serviceIds?.length
               ? state.providerRegistrationDraft.serviceIds
               : (state.user as any).serviceIds?.length
