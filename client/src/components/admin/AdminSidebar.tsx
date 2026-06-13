@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, Users, Briefcase, CalendarCheck,
-    DollarSign, BarChart2, LogOut, X
+    DollarSign, BarChart2, LogOut, X, ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/providers", label: "Providers", icon: Briefcase },
+    { to: "/admin/provider-approvals", label: "Provider Approvals", icon: ShieldCheck },
     { to: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
     { to: "/admin/earnings", label: "Earnings", icon: DollarSign },
     { to: "/admin/reports", label: "Reports", icon: BarChart2 },
