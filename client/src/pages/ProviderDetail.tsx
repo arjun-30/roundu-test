@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase,
   MessageCircle, Phone, Share2, MoreVertical, ShieldCheck,
-  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X, Play, CreditCard
+  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X, Play
 } from "lucide-react";
 import FixedBackButton from "@/components/FixedBackButton";
 import { getProviderById, getServiceById } from "@/data/mockData";
@@ -106,13 +106,15 @@ const ProviderDetail = () => {
       rating: fromApi ? (stats?.rating ?? 0) : (baseProfile?.rating || quote?.rating || 0),
       jobs: fromApi ? (stats?.total_jobs ?? 0) : (baseProfile?.jobs || 0),
       reviews: fromApi ? (stats?.total_jobs ?? 0) : (baseProfile?.reviews || 0),
-      experienceYrs: baseProfile?.experienceYrs || baseProfile?.experience_years || 2,
-      verified: baseProfile?.verified !== undefined ? baseProfile.verified : (baseProfile?.is_verified ?? true),
+      experienceYrs: baseProfile?.experience_years || baseProfile?.experienceYrs || 2,
+      workingHours: baseProfile?.working_hours || "All day",
+      verified: baseProfile?.is_verified !== undefined ? baseProfile.is_verified : (baseProfile?.verified !== undefined ? baseProfile.verified : true),
       bio: baseProfile?.bio || "Independent professional dedicated to quality service.",
       tags: baseProfile?.tags || ["Fast", "Reliable"],
       available: baseProfile?.available !== undefined ? baseProfile.available : (baseProfile?.is_online ?? true),
       serviceId: baseProfile?.serviceId || baseProfile?.service_id || "",
       serviceIds: baseProfile?.serviceIds || baseProfile?.service_ids || [],
+      serviceCategory: baseProfile?.service_category || [],
       lat: baseProfile?.lat,
       lng: baseProfile?.lng,
       display_location: baseProfile?.display_location || "Service Area",
@@ -142,26 +144,7 @@ const ProviderDetail = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
-  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [providerServices, setProviderServices] = useState<string[]>([]);
-  const [video, setVideo] = useState<any | null>(null);
-  const [loadingVideo, setLoadingVideo] = useState(true);
-
-  useEffect(() => {
-    const fetchVideo = async () => {
-      if (!provider?.id) return;
-      try {
-        setLoadingVideo(true);
-        const activeVideo = await getProviderVideo(provider.id);
-        setVideo(activeVideo);
-      } catch (err) {
-        console.error("Error fetching provider video:", err);
-      } finally {
-        setLoadingVideo(false);
-      }
-    };
-    fetchVideo();
-  }, [provider?.id]);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -200,6 +183,26 @@ const ProviderDetail = () => {
     { id: 8, user: "Manoj P.", rating: 5, comment: "Absolute expert. Solved a persistent plumbing issue no one else could fix in months.", date: "2 months ago", verified: true },
   ];
 
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [video, setVideo] = useState<any | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(true);
+
+  useEffect(() => {
+    const fetchVideo = async () => {
+      if (!provider?.id) return;
+      try {
+        setLoadingVideo(true);
+        const activeVideo = await getProviderVideo(provider.id);
+        setVideo(activeVideo);
+      } catch (err) {
+        console.error("Error fetching provider video:", err);
+      } finally {
+        setLoadingVideo(false);
+      }
+    };
+    fetchVideo();
+  }, [provider?.id]);
+
   const handleShare = async () => {
     const shareUrl = `https://roundu.in/provider/${provider?.id}`;
     const shareText = `Check out ${provider?.name} on RoundU — ${service?.label || "Professional Service"} starting at ₹${provider?.pricePerHr}/hr. Book now!`;
@@ -210,6 +213,7 @@ const ProviderDetail = () => {
     }
   };
 
+
   const handleCall = () => {
     showNotification("Connecting via secure masked number...");
     window.open("tel:+911234567890", "_self");
@@ -218,19 +222,8 @@ const ProviderDetail = () => {
 
   const handleBook = async () => {
     // Validation checks
-    if (!user?.id) {
-      showNotification("❌ Please log in to book a service.");
-      return;
-    }
-
     if (!provider) {
       showNotification("❌ Provider information not available.");
-      return;
-    }
-
-    if (!currentLocation?.lat || !currentLocation?.lng) {
-      showNotification("❌ Location access required. Please enable location.");
-      navigate("/home");
       return;
     }
 
@@ -242,14 +235,14 @@ const ProviderDetail = () => {
 
     try {
       const bookingData = {
-        customer_id: user.id,
+        customer_id: user?.id || "demo-user",
         provider_id: provider.id,
-        service_id: provider.serviceId || (quote?.broadcastId?.split('-')?.[2] ?? 'service'),
+        service_id: provider.serviceId || provider.serviceIds?.[0] || provider.serviceCategory?.[0] || (quote?.broadcastId?.split('-')?.[2] ?? 'plumber'),
         status: "assigned",
         scheduled_at: new Date(Date.now() + (provider.etaMin || 15) * 60000).toISOString(),
-        address: user.address || "Client Address",
-        lat: currentLocation?.lat,
-        lng: currentLocation?.lng,
+        address: user?.address || "Client Address",
+        lat: currentLocation?.lat || 12.9716,
+        lng: currentLocation?.lng || 77.5946,
         price: provider.pricePerHr,
         notes: quote ? `Accepting quote for ${provider.name}` : "Booking from provider profile",
       };
@@ -275,22 +268,25 @@ const ProviderDetail = () => {
             broadcastId: quote.broadcastId,
             acceptedProviderId: provider.id,
             bookingId: res.data.id,
-            customerName: user.name,
-            customerPhone: user.phone,
-            address: user.address || "Customer Location",
+            customerName: user?.name || "Customer",
+            customerPhone: user?.phone || "1234567890",
+            address: user?.address || "Customer Location",
             serviceId: provider.serviceId,
             price: provider.pricePerHr,
-            lat: currentLocation?.lat,
-            lng: currentLocation?.lng,
+            lat: currentLocation?.lat || 12.9716,
+            lng: currentLocation?.lng || 77.5946,
             scheduled_at: res.data.scheduled_at,
           });
-          showNotification("✅ Quote accepted! Opening chat...");
+          showNotification("✅ Quote accepted! Redirecting to tracking...");
         } else {
-          showNotification("✅ Booking confirmed!");
+          showNotification("✅ Booking confirmed! Redirecting to tracking...");
         }
 
         setBookingSuccess(true);
-        setTimeout(() => navigate(`/chat/${res.data.id}`), 1000);
+        setTimeout(() => {
+          navigate('/home', { replace: true });
+          navigate(`/tracking/${res.data.id}`);
+        }, 1000);
       } else {
         showNotification("❌ Booking failed. Please try again.");
         setIsBooking(false);
@@ -336,7 +332,7 @@ const ProviderDetail = () => {
             muted
             playsInline
             className="w-full h-full object-cover opacity-80"
-            src="https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"
+            src={video?.video_url || "https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"}
           />
 
           {/* Fallback: Show first portfolio image if video fails */}
@@ -365,7 +361,7 @@ const ProviderDetail = () => {
           {/* Floating Avatar at Top Center */}
           <div className="flex justify-center -mt-16 mb-6 relative z-20">
             <div className="relative">
-              <div 
+              <div
                 onClick={() => provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) && setIsImagePreviewOpen(true)}
                 className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden ${provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) ? 'cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200' : ''}`}
               >
@@ -388,13 +384,12 @@ const ProviderDetail = () => {
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{provider.name}</h1>
                 {provider.verified && <BadgeCheck className="text-blue-500" size={24} />}
               </div>
-              <p className="text-sm sm:text-base text-muted-foreground font-medium">{providerServices.length > 0 ? providerServices.join(", ") : service?.label || "Professional Service"}</p>
             </div>
 
             <div className="text-center mb-4">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-sm font-bold text-foreground">{provider.rating || 0}</span>
+                <span className="text-sm font-bold text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
                 <span className="text-xs text-muted-foreground">({provider.reviews || 0} reviews)</span>
               </div>
             </div>
@@ -413,7 +408,7 @@ const ProviderDetail = () => {
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
               <MapPin size={20} className="text-red-500 mx-auto mb-2" />
               <p className="text-xs font-bold text-foreground mb-1">{provider.display_location || "Service Area"}</p>
-              <p className="text-[10px] text-muted-foreground">{provider.lat && provider.lng ? `${provider.lat.toFixed(4)}, ${provider.lng.toFixed(4)}` : provider.service_radius ? `Up to ${provider.service_radius} km radius` : "Coordinates available"}</p>
+              <p className="text-[10px] text-muted-foreground">Location</p>
             </div>
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
               <Clock size={20} className="text-blue-500 mx-auto mb-2" />
@@ -431,7 +426,7 @@ const ProviderDetail = () => {
           <div className="grid grid-cols-3 gap-3 mb-8 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <span className="text-2xl sm:text-3xl font-black text-foreground">{provider.rating || 0}</span>
+                <span className="text-2xl sm:text-3xl font-black text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
                 <Star size={16} className="text-yellow-500 fill-yellow-500" />
               </div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase">Rating</p>
@@ -448,6 +443,7 @@ const ProviderDetail = () => {
 
           {/* Services & Work Details - Two Column */}
           <div className="grid grid-cols-2 gap-4 mb-8">
+            {/* Services Card */}
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -455,17 +451,24 @@ const ProviderDetail = () => {
                 </div>
                 <h3 className="font-bold text-foreground text-sm">Services</h3>
               </div>
-              <div className="space-y-2">
-                {(provider.tags || ['Bike Taxi', 'Quick Pickups', 'Safe Rides']).slice(0, 4).map((svc: string) => (
-                  <div key={svc} className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm text-foreground font-medium line-clamp-1">{svc}</span>
+              <div className="flex flex-wrap gap-2">
+                {(provider.serviceCategory && provider.serviceCategory.length > 0
+                  ? provider.serviceCategory
+                  : provider.serviceIds && provider.serviceIds.length > 0
+                    ? provider.serviceIds.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+                    : providerServices.length > 0
+                      ? providerServices
+                      : [service?.label || "Professional"]
+                ).map((svc: string) => (
+                  <div key={svc} className="flex items-center gap-1.5 bg-blue-50 rounded-full px-3 py-1">
+                    <CheckCircle2 size={12} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-blue-700">{svc}</span>
                   </div>
                 ))}
               </div>
-              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View All Services</button>
             </div>
 
+            {/* Work Details Card */}
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
@@ -474,36 +477,43 @@ const ProviderDetail = () => {
                 <h3 className="font-bold text-foreground text-sm">Work Details</h3>
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Working Hours</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Clock size={12} className="text-blue-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">All day</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Hours</p>
+                    <p className="text-xs font-bold text-foreground">{provider.workingHours || "All day"}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Service Radius</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={12} className="text-orange-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">Up to 5 km</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Radius</p>
+                    <p className="text-xs font-bold text-foreground">Up to {provider.service_radius || 20} km</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Languages</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <Zap size={12} className="text-purple-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">3 langs</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Experience</p>
+                    <p className="text-xs font-bold text-foreground">{provider.experienceYrs || 1} {provider.experienceYrs === 1 ? "yr" : "yrs"}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Payment</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck size={12} className="text-green-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">Cash, UPI</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Verified</p>
+                    <p className="text-xs font-bold text-green-600">{provider.verified ? "Verified ✓" : "Pending"}</p>
+                  </div>
                 </div>
               </div>
-              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View Full Details</button>
             </div>
           </div>
 
@@ -523,10 +533,10 @@ const ProviderDetail = () => {
                 <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">Active</span>
               </h3>
               <div className="aspect-video bg-black rounded-[24px] overflow-hidden flex items-center justify-center border border-slate-200 shadow-sm relative group">
-                <video 
-                  src={video.video_url} 
-                  controls 
-                  className="w-full h-full object-contain" 
+                <video
+                  src={video.video_url}
+                  controls
+                  className="w-full h-full object-contain"
                   preload="metadata"
                   playsInline
                 />
@@ -612,7 +622,9 @@ const ProviderDetail = () => {
             <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200">
               <div className="flex justify-between">
                 <div>
-                  <p className="text-4xl font-black text-foreground">{provider.rating || 0}.0</p>
+                  <p className="text-4xl font-black text-foreground">
+                    {Number(provider.rating || 0).toFixed(1)}
+                  </p>
                   <div className="flex gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
@@ -674,13 +686,18 @@ const ProviderDetail = () => {
         )}
 
         {/* Floating Book Button at Bottom */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-30 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 z-30 flex gap-3">
           <button
             onClick={handleBook}
             disabled={isBooking || bookingSuccess}
-            className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${
-              bookingSuccess ? "bg-green-500" : isBooking ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${bookingSuccess
+                ? "bg-green-500"
+                : isBooking
+                  ? "bg-blue-400"
+                  : quote
+                    ? "bg-[#152E4B]"
+                    : "bg-blue-600 hover:bg-blue-700"
+              }`}
           >
             <span>
               {bookingSuccess ? (

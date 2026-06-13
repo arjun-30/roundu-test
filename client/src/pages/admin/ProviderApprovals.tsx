@@ -680,7 +680,7 @@ function DetailsModal({ provider, onClose }: { provider: ProviderRow; onClose: (
           {/* Rating */}
           {provider.rating !== null && (
             <Section title="Performance" icon={Star}>
-              <Row label="Rating" value={`${provider.rating.toFixed(1)} / 5.0`} />
+              <Row label="Rating" value={`${provider.rating.toFixed(1)}`} />
             </Section>
           )}
 

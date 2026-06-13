@@ -596,7 +596,7 @@ const Dashboard = () => {
               warning = {
                 type: "caution",
                 title: "Rating Dropping",
-                message: `Your rating is ${providerStats.rating}. Try to provide better service to get 5-star reviews.`,
+                message: `Your rating is ${Number(providerStats.rating || 0).toFixed(1)}. Try to provide better service to get 5-star reviews.`,
                 bg: "bg-[#FEFCE8]",
                 border: "border-[#FEF08A]",
                 text: "text-[#854D0E]",
@@ -803,7 +803,7 @@ const Dashboard = () => {
                 <Star size={14} fill="currentColor" strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.rating}</p>
+              <p className="text-[24px] font-black text-foreground tracking-tight">{Number(providerStats.rating || 0).toFixed(1)}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
             </div>
             <div className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">

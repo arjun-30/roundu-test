@@ -110,7 +110,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
               <p className="text-sm font-bold text-foreground">{request.customerName}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="flex items-center gap-1 text-xs font-medium text-warning">
-                  <Star size={12} fill="currentColor" /> {request.customerRating || "4.8"}
+                  <Star size={12} fill="currentColor" /> {Number(request.customerRating || 4.8).toFixed(1)}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">

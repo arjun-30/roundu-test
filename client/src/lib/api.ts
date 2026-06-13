@@ -63,8 +63,8 @@ export const createBooking = async (bookingData: any) => {
   } catch (error: any) {
     console.error('[API] createBooking error:', error.response?.status, error.response?.data);
     // Return error response in consistent format
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: 'Booking failed. Please try again.'
     };
   }

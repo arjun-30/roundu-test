@@ -7,6 +7,16 @@ import { useApp } from "@/context/AppContext";
 const ServicesPage = () => {
   const navigate = useNavigate();
   const { dispatch } = useApp();
+
+  const handleQuickFix = (serviceId: string) => {
+    sessionStorage.removeItem("search_start_time");
+    localStorage.removeItem("search_start_time");
+    sessionStorage.removeItem("searching_providers_state");
+    sessionStorage.removeItem("searching_providers_quotes");
+    dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
+    navigate(`/searching-providers/${serviceId}`);
+  };
+
   return (
     <div className="min-h-full flex flex-col bg-background">
       <ScreenHeader title="All Services" />
@@ -23,6 +33,7 @@ const ServicesPage = () => {
                 onClick={() => {
                   navigate(`/service-select/${s.id}`);
                 }}
+                onQuickFix={() => handleQuickFix(s.id)}
               />
             </div>
           ))}
