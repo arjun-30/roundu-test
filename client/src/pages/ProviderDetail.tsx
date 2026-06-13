@@ -11,6 +11,7 @@ import { useApp } from "@/context/AppContext";
 import api, { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
 import { getProviderVideo } from "@/lib/supabase";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 const ProviderDetail = () => {
   const { id = "" } = useParams();
@@ -141,6 +142,7 @@ const ProviderDetail = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [providerServices, setProviderServices] = useState<string[]>([]);
   const [video, setVideo] = useState<any | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(true);
@@ -363,8 +365,11 @@ const ProviderDetail = () => {
           {/* Floating Avatar at Top Center */}
           <div className="flex justify-center -mt-16 mb-6 relative z-20">
             <div className="relative">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden">
-                {provider.avatar && typeof provider.avatar === 'string' && provider.avatar.startsWith('http') ? (
+              <div 
+                onClick={() => provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) && setIsImagePreviewOpen(true)}
+                className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden ${provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) ? 'cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200' : ''}`}
+              >
+                {provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) ? (
                   <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-6xl sm:text-7xl font-bold text-white">{provider.name?.charAt(0)}</span>
@@ -691,6 +696,12 @@ const ProviderDetail = () => {
           </button>
         </div>
 
+        <ImagePreviewModal
+          isOpen={isImagePreviewOpen}
+          imageUrl={provider.avatar || ""}
+          alt={provider.name}
+          onClose={() => setIsImagePreviewOpen(false)}
+        />
       </div>
     </>
   );

@@ -52,6 +52,8 @@ const EditProfile = () => {
   }, [user.role, user.id]);
 
   const [profilePicture, setProfilePicture] = useState(user.profilePicture || "");
+  const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
+  const [saving, setSaving] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showWebcamModal, setShowWebcamModal] = useState(false);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
@@ -91,9 +93,22 @@ const EditProfile = () => {
     };
   }, [webcamStream]);
 
+  const dataURLtoBlob = (dataurl: string) => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfilePicture(reader.result as string);
@@ -154,6 +169,8 @@ const EditProfile = () => {
         ctx.drawImage(video, startX, startY, size, size, 0, 0, 300, 300);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
         setProfilePicture(dataUrl);
+        const blob = dataURLtoBlob(dataUrl);
+        setSelectedFile(blob);
         toast.success("Snapshot captured!");
       }
 
@@ -174,12 +191,27 @@ const EditProfile = () => {
     }
     setEmailError('');
 
+    setSaving(true);
     try {
+      let finalAvatarUrl = profilePicture;
+
+      if (selectedFile) {
+        toast.loading("Uploading profile picture to Supabase...", { id: "avatar-upload" });
+        try {
+          const { uploadProviderAvatar } = await import("@/lib/supabase");
+          finalAvatarUrl = await uploadProviderAvatar(user.id, selectedFile);
+          toast.success("Profile picture uploaded to Supabase!", { id: "avatar-upload" });
+        } catch (uploadErr) {
+          console.error("Supabase avatar upload failed, using base64 fallback:", uploadErr);
+          toast.error("Avatar upload failed, saving locally...", { id: "avatar-upload" });
+        }
+      }
+
       await updateUser(user.id, { 
         name,
         email,
         phone,
-        avatar_url: profilePicture,
+        avatar_url: finalAvatarUrl,
         serviceIds: user.role === "provider" ? [serviceId] : undefined
       });
       dispatch({
@@ -188,8 +220,8 @@ const EditProfile = () => {
           name,
           email,
           phone,
-          profilePicture,
-          avatar_url: profilePicture,
+          profilePicture: finalAvatarUrl,
+          avatar_url: finalAvatarUrl,
         },
       });
       if (user.role === "provider" && providerRegistrationDraft) {
@@ -208,6 +240,8 @@ const EditProfile = () => {
     } catch (err) {
       console.error("Failed to save profile", err);
       toast.error("Unable to save profile. Try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -326,9 +360,10 @@ const EditProfile = () => {
 
         <button 
           onClick={handleSave}
-          className="w-full mt-10 py-3.5 rounded-xl bg-primary text-white font-bold text-[15px] shadow-[0_4px_14px_rgba(21,46,75,0.2)] hover:bg-[#1C3D63] active:scale-[0.98] transition-all"
+          disabled={saving}
+          className={`w-full mt-10 py-3.5 rounded-xl bg-primary text-white font-bold text-[15px] shadow-[0_4px_14px_rgba(21,46,75,0.2)] hover:bg-[#1C3D63] active:scale-[0.98] transition-all ${saving ? "opacity-75 cursor-not-allowed" : ""}`}
         >
-          Save Changes
+          {saving ? "Saving Changes..." : "Save Changes"}
         </button>
       </div>
 
