@@ -11,7 +11,6 @@ const OnboardingName = () => {
   const [name, setName] = useState(user.name || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
   const handleContinue = async () => {
@@ -20,13 +19,12 @@ const OnboardingName = () => {
       return;
     }
     setError("");
-    
+
     setLoading(true);
     try {
       await updateUser(user.id, { name });
       dispatch({ type: "UPDATE_USER", user: { name } });
-      setSuccess(`Welcome, ${name.split(" ")[0]}!`);
-      setTimeout(() => navigate("/role", { replace: true }), 1200);
+      navigate("/role", { replace: true });
     } catch (error) {
       setError("Failed to save name");
     } finally {
@@ -48,7 +46,7 @@ const OnboardingName = () => {
   } as any;
 
   return (
-    <div 
+    <div
       className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden font-sans"
       style={{
         backgroundImage: 'radial-gradient(circle, rgba(148, 163, 184, 0.05) 1px, transparent 1px)',
@@ -61,22 +59,22 @@ const OnboardingName = () => {
 
       {/* Main Container - Centered Content */}
       <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 py-8 justify-between relative z-10">
-        
+
         {/* Header Navigation/Indicator */}
         <div className="flex items-center justify-between mb-12 flex-shrink-0">
-        {/* Back Arrow */}
-        <button
-  onClick={() => navigate(-1)}
-  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shadow-sm mr-2"
->
-  <ChevronLeft size={18} className="text-white" />
-</button>
-          
+          {/* Back Arrow */}
+          <button
+            onClick={() => navigate(-1)}
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shadow-sm mr-2"
+          >
+            <ChevronLeft size={18} className="text-white" />
+          </button>
+
           {/* Subtle Segmented Progress */}
           <div className="flex items-center gap-1.5 bg-slate-200/50 p-1.5 rounded-full border border-slate-100">
             {[1, 2, 3].map(s => (
-              <div 
-                key={s} 
+              <div
+                key={s}
                 className={`h-1.5 rounded-full transition-all duration-300 ${s === 1 ? "w-8 bg-primary" : "w-2 bg-slate-400/50"}`}
               />
             ))}
@@ -84,7 +82,7 @@ const OnboardingName = () => {
         </div>
 
         {/* Form Body - Centered Card */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -104,7 +102,7 @@ const OnboardingName = () => {
           {/* Feedback Messages */}
           <AnimatePresence mode="wait">
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -113,24 +111,15 @@ const OnboardingName = () => {
                 {error}
               </motion.div>
             )}
-            {success && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-[0_4px_12px_rgba(16,185,129,0.05)] flex items-center justify-center gap-2"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                {success}
-              </motion.div>
-            )}
+
           </AnimatePresence>
 
           {/* Input Section */}<motion.div variants={itemVariants} className="space-y-6">
-          
+
             <div className="relative">
               <div className="flex flex-col">
                 <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Full Name</label>
-            </div>
+              </div>
               <div className="relative">
                 <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-slate-400'}`}>
                   <User size={20} strokeWidth={2.2} />
@@ -161,15 +150,14 @@ const OnboardingName = () => {
             whileTap={name.trim().length >= 2 ? { scale: 0.99 } : {}}
             onClick={handleContinue}
             disabled={name.trim().length < 2 || loading}
-            className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${
-              name.trim().length >= 2
+            className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${name.trim().length >= 2
                 ? "bg-[#152E4B] text-white shadow-[0_8px_25px_rgba(21,46,75,0.2)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.3)] cursor-pointer"
                 : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
-            }`}
+              }`}
           >
             <span>{loading ? "Saving..." : "Continue"}</span>
             {!loading && (
-              <motion.div 
+              <motion.div
                 className="relative"
                 animate={name.trim().length >= 2 ? { x: [0, 4, 0] } : {}}
                 transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -178,7 +166,7 @@ const OnboardingName = () => {
               </motion.div>
             )}
           </motion.button>
-          
+
           <p className="text-center text-xs font-semibold text-slate-400 mt-4">
             You can always change this later in your profile.
           </p>

@@ -1295,7 +1295,7 @@ const Dashboard = () => {
 
       {/* Quote Modal */}
       {quotingBroadcast && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 animate-fade-in backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center px-4 animate-fade-in backdrop-blur-[2px]">
           <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
             <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>

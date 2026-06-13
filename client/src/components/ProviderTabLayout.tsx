@@ -25,7 +25,7 @@ const ProviderTabLayout = () => {
       <div className={activePath === "/provider/profile" ? "block flex-1 h-full w-full" : "hidden"}>
         <ProviderProfile />
       </div>
-      
+
       <ProviderBottomNav />
     </div>
   );
