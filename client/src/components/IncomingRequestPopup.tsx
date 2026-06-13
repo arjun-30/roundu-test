@@ -95,11 +95,17 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
             {isBroadcast ? "Live Job Alert" : "New Request"}
           </h2>
           <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label || request.serviceId}</h1>
+          <div className="mt-2">
+            <span className="text-sm font-bold text-primary uppercase tracking-wide">
+              {request.jobType === "scheduled"
+                ? "Scheduled Service"
+                : "Quick Fix"}
+            </span>
+          </div>
 
           <div className="flex items-center gap-4 mt-4 bg-muted/50 rounded-2xl p-3 border border-border/50">
             <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center text-lg font-bold">
-              {request.customerName[0]}
-            </div>
+              {request.customerName?.[0] || "U"}            </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-foreground">{request.customerName}</p>
               <div className="flex items-center gap-2 mt-0.5">
@@ -135,21 +141,10 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
         </div>
 
         <div className="p-6">
-          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
           {isBroadcast ? (
             <div className="space-y-4">
 
               {/* Job Type */}
-              <div className="flex items-center justify-between bg-primary/5 border border-primary/10 rounded-xl p-3">
-                <span className="text-xs font-bold uppercase text-muted-foreground">
-                  Job Type
-                </span>
-                <span className="text-sm font-bold text-primary">
-                  {request.jobType === "scheduled"
-                    ? "Scheduled Service"
-                    : "Quick Fix"}
-                </span>
-              </div>
 
               {/* Issue Photos */}
               <div>
@@ -179,7 +174,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
               {request.voiceNoteUrl && (
                 <div className="bg-primary/5 border border-primary/10 rounded-xl p-3">
                   <div className="flex items-center gap-2 text-[11px] font-bold text-primary uppercase tracking-wider mb-2">
-                    🎤 Voice Note Attached
+                    Voice Note Attached
                   </div>
 
                   <audio
@@ -192,15 +187,13 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
 
               {/* Description */}
               <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-1">
                   Description
                 </p>
 
-                <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                  <p className="text-sm text-foreground">
-                    {request.notes || "No description provided."}
-                  </p>
-                </div>
+                <p className="text-sm text-foreground leading-relaxed">
+                  {request.notes || "No description provided."}
+                </p>
               </div>
 
             </div>

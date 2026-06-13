@@ -303,15 +303,15 @@ function reducer(state: State, action: Action): State {
       }
 
       const providerServices =
-        state.onboardingData?.serviceIds ||
-        state.providerRegistrationDraft?.serviceIds ||
-        [];
+        state.role === "provider"
+          ? (state.providerRegistrationDraft?.serviceIds || [])
+          : (state.onboardingData?.serviceIds || []);
 
       console.log("Provider Services:", providerServices);
       console.log("Incoming Service:", request.serviceId);
 
       if (
-        providerServices.length === 0 ||
+        providerServices.length > 0 &&
         !providerServices.includes(request.serviceId)
       ) {
         return state;
@@ -982,6 +982,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const dashboard = await fetchProviderDashboard(state.user.id);
             if (dashboard.success) {
               dispatch({ type: "UPDATE_STATS", patch: dashboard.data.stats });
+              dispatch({
+                type: "UPDATE_REGISTRATION_DRAFT",
+                patch: {
+                  serviceIds: dashboard.data.provider.serviceIds || [],
+                  serviceRadius: dashboard.data.provider.serviceRadius || dashboard.data.provider.service_radius || 10,
+                  bio: dashboard.data.provider.bio || "",
+                  experienceYears: dashboard.data.provider.experience_years || 1,
+                  workingHours: dashboard.data.provider.working_hours || "9 AM - 6 PM"
+                }
+              });
               const providerId = dashboard.data.provider.id;
               const pbRes = await fetchProviderBookings(providerId);
               if (pbRes.success) {
@@ -1027,24 +1037,47 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state.isAuthenticated && state.user.id && state.role) {
-      const registerPayload = {
-        userId: state.user.id,
-        role: state.role,
-        // Only send serviceIds for providers — customers must NOT join service rooms
-        serviceIds: state.role === 'provider' ? (state.providerRegistrationDraft?.serviceIds || []) : []
-      };
-      socket.emit("register", registerPayload);
+      const doRegister = () => {
+        let serviceIds: string[] = [];
+        if (state.role === "provider") {
+          serviceIds = 
+            state.providerRegistrationDraft?.serviceIds?.length
+              ? state.providerRegistrationDraft.serviceIds
+              : (state.user as any).serviceIds?.length
+                ? (state.user as any).serviceIds
+                : (state.user as any).serviceId
+                  ? [(state.user as any).serviceId]
+                  : [];
+        }
 
-      // Re-register on every reconnect so the user:${id} room is always active
-      // Without this, Provider 2's quote arrives AFTER a reconnect and goes nowhere
-      const handleReconnect = () => {
-        console.log("[socket] reconnected — re-registering user:", state.user.id);
-        socket.emit("register", registerPayload);
+        console.log(`[socket] registering ${state.user.id} (${state.role}) services:`, serviceIds);
+        socket.emit("register", {
+          userId: state.user.id,
+          role: state.role,
+          serviceIds,
+          lat: state.currentLocation?.lat || (state.user as any).lat || null,
+          lng: state.currentLocation?.lng || (state.user as any).lng || null,
+          displayLocation: state.user.address || null
+        });
       };
-      socket.on("connect", handleReconnect);
-      return () => { socket.off("connect", handleReconnect); };
+
+      if (socket.connected) {
+        doRegister();
+      }
+
+      socket.on("connect", doRegister);
+      return () => {
+        socket.off("connect", doRegister);
+      };
     }
-  }, [state.isAuthenticated, state.user.id, state.role, state.providerRegistrationDraft?.serviceIds]);
+  }, [
+    state.isAuthenticated,
+    state.user.id,
+    state.role,
+    state.providerRegistrationDraft?.serviceIds,
+    (state.user as any).serviceIds,
+    (state.user as any).serviceId
+  ]);
 
   useEffect(() => {
     socket.connect();
@@ -1254,38 +1287,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return () => { socket.off('connect', joinRooms); };
   }, [state.bookings, state.providerRequests, state.isAuthenticated]);
 
-  useEffect(() => {
-    if (!state.isAuthenticated || !state.user.id) return;
-
-    const doRegister = () => {
-      // serviceIds: prefer onboardingData, fallback to user.serviceId if available
-      const serviceIds: string[] =
-        (state.onboardingData?.serviceIds?.length
-          ? state.onboardingData.serviceIds
-          : (state.user as any).serviceId
-            ? [(state.user as any).serviceId]
-            : []);
-
-      console.log(`[socket] registering ${state.user.id} (${state.role}) services:`, serviceIds);
-      socket.emit("register", {
-        userId: state.user.id,
-        role: state.role,
-        serviceIds,
-      });
-    };
-
-    // Register immediately if already connected
-    if (socket.connected) {
-      doRegister();
-    }
-
-    // Re-register on every (re)connect to fix race condition
-    socket.on("connect", doRegister);
-
-    return () => {
-      socket.off("connect", doRegister);
-    };
-  }, [state.isAuthenticated, state.user.id, state.role, state.onboardingData.serviceIds]);
+  // Consolidated into the first registration useEffect above to avoid conflicting socket registrations
 
   const refreshLocation = useCallback(async () => {
     try {
