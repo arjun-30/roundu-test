@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
 import SupportChatbot from "@/components/SupportChatbot";
+import { useProviderApprovalStatus } from "@/hooks/useProviderApprovalStatus";
 
 // Admin Imports
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -18,6 +19,7 @@ import AdminProviders from "@/pages/admin/AdminProviders";
 import AdminBookings from "@/pages/admin/AdminBookings";
 import AdminEarnings from "@/pages/admin/AdminEarnings";
 import AdminReports from "@/pages/admin/AdminReports";
+import AdminProviderApprovals from "@/pages/admin/ProviderApprovals";
 
 // Lazy Loaded Pages
 const Splash = lazy(() => import("@/pages/Splash"));
@@ -77,6 +79,7 @@ const PersonalDetails = lazy(() => import("@/pages/provider/PersonalDetails"));
 const DigiLockerKYC = lazy(() => import("@/pages/provider/DigiLockerKYC"));
 const GpsConsent = lazy(() => import("@/pages/provider/GpsConsent"));
 const PendingApproval = lazy(() => import("@/pages/provider/PendingApproval"));
+const ApplicationRejected = lazy(() => import("@/pages/provider/ApplicationRejected"));
 const Portfolio = lazy(() => import("@/pages/provider/Portfolio"));
 const Documents = lazy(() => import("@/pages/provider/Documents"));
 const GPSMonitor = lazy(() => import("@/pages/provider/GPSMonitor"));
@@ -98,9 +101,12 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-// Provider Route Guard
+// Provider Route Guard — enforces approval status on every render
 const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, role, user, dispatch } = useApp();
+  const { status: approvalStatus, loading: statusLoading } = useProviderApprovalStatus(
+    isAuthenticated && user?.accountType === "provider" ? (user?.id ?? null) : null
+  );
 
   useEffect(() => {
     if (isAuthenticated && user?.accountType === "provider" && role !== "provider") {
@@ -109,9 +115,28 @@ const RequireProviderRole = ({ children }: { children: JSX.Element }) => {
   }, [isAuthenticated, user?.accountType, role, dispatch]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user.accountType !== "provider") {
-    return <Navigate to="/home" replace />;
+  if (user.accountType !== "provider") return <Navigate to="/home" replace />;
+
+  // Wait for DB status before deciding
+  if (statusLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-4 border-[#17375E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
+
+  // Rejected — hard block, show rejection page
+  if (approvalStatus === "rejected") {
+    return <Navigate to="/provider/application-rejected" replace />;
+  }
+
+  // Pending — submitted but not yet approved, show waiting page
+  if (approvalStatus === "pending") {
+    return <Navigate to="/provider/pending-approval" replace />;
+  }
+
+  // null = no provider record yet (still in onboarding), approved = cleared
   return children;
 };
 
@@ -219,7 +244,7 @@ const AppRoutes = () => (
         <Route path="/cancellation" element={<RequireAuth><Cancellation /></RequireAuth>} />
         <Route path="/assistant" element={<RequireAuth><Assistant /></RequireAuth>} />
 
-        {/* Provider Routes */}
+        {/* Provider Routes — approval-gated */}
         <Route element={<RequireProviderRole><Outlet /></RequireProviderRole>}>
           <Route path="/provider" element={<ProviderTabLayout />}>
             <Route index element={null} />
@@ -232,7 +257,6 @@ const AppRoutes = () => (
           <Route path="/provider/digilocker-kyc" element={<DigiLockerKYC />} />
           <Route path="/provider/video-portfolio" element={<ProviderVideoPortfolio />} />
           <Route path="/provider/gps-consent" element={<GpsConsent />} />
-          <Route path="/provider/pending-approval" element={<PendingApproval />} />
           <Route path="/provider/job/:id" element={<ProviderJob />} />
           <Route path="/provider/job/:id/report" element={<ServiceReport />} />
           <Route path="/provider/navigation/:id" element={<Navigation />} />
@@ -240,6 +264,10 @@ const AppRoutes = () => (
           <Route path="/provider/documents" element={<Documents />} />
           <Route path="/provider/gps-monitor" element={<GPSMonitor />} />
         </Route>
+
+        {/* Status pages — outside RequireProviderRole so pending/rejected can always reach them */}
+        <Route path="/provider/pending-approval" element={<RequireAuth><PendingApproval /></RequireAuth>} />
+        <Route path="/provider/application-rejected" element={<RequireAuth><ApplicationRejected /></RequireAuth>} />
 
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
@@ -253,6 +281,7 @@ const AppRoutes = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/providers" element={<AdminProviders />} />
+          <Route path="/admin/provider-approvals" element={<AdminProviderApprovals />} />
           <Route path="/admin/bookings" element={<AdminBookings />} />
           <Route path="/admin/earnings" element={<AdminEarnings />} />
           <Route path="/admin/reports" element={<AdminReports />} />

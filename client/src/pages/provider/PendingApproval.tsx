@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, MoreHorizontal, MessageCircleQuestion, BellRing } from 'lucide-react';
+import { Clock, CheckCircle2, MoreHorizontal, Mail, LogOut } from 'lucide-react';
 import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 
@@ -123,8 +123,31 @@ const PendingApproval = () => {
         </button>
       </div>
 
+      {/* Contact Admin Card */}
+      <div className="w-full max-w-[320px] bg-blue-50 border border-blue-100 rounded-[24px] p-5 mb-6 text-left relative z-10">
+        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.15em] mb-3">Need Help?</p>
+        <p className="text-sm text-slate-600 mb-3 leading-relaxed">
+          If you have questions about your application status, contact the admin team directly.
+        </p>
+        <a
+          href={`mailto:admin@roundu.com?subject=Provider Application Status — ${user?.name ?? ""}&body=Hello,%0A%0APlease update me on the status of my provider application.%0A%0AUser ID: ${user?.id ?? ""}%0APhone: ${user?.phone ?? ""}%0A%0AThank you.`}
+          className="flex items-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#17375E] text-white text-sm font-bold justify-center hover:bg-[#0f2644] transition-all active:scale-[0.98]"
+        >
+          <Mail size={14} />
+          admin@roundu.com
+        </a>
+        <p className="text-center text-[10px] text-blue-400 mt-2">Test email — replace before production</p>
+      </div>
+
+      <button
+        onClick={() => { dispatch({ type: "LOGOUT" }); navigate("/login", { replace: true }); }}
+        className="flex items-center gap-2 text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors mb-4"
+      >
+        <LogOut size={14} /> Sign out
+      </button>
+
       <p className="text-[10px] text-muted-foreground/60 font-medium tracking-wide flex items-center gap-2 uppercase">
-        <Clock size={12} /> Pending since 2 hours ago
+        <Clock size={12} /> Under review — typically 24 hours
       </p>
     </div>
   );

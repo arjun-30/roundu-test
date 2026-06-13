@@ -81,6 +81,24 @@ export function createApp(deps: AppDeps): Application {
   });
   // ────────────────────────────────────────────────────────────────────────
 
+  // ── TEMP DEBUG: database inspector ──────────────────────────────────────
+  app.get('/api/debug-db', async (req: Request, res: Response) => {
+    try {
+      const users = await deps.db.query('SELECT id, name, phone, role, lat, lng, display_location FROM users');
+      const providers = await deps.db.query('SELECT id, user_id, bio, experience_years, rating, response_rate, is_online, service_radius, working_hours, is_verified, lat, lng, display_location, service_category, approval_status, rejection_reason, is_active FROM providers');
+      const provider_services = await deps.db.query('SELECT * FROM provider_services');
+      res.json({
+        success: true,
+        users: users.rows,
+        providers: providers.rows,
+        provider_services: provider_services.rows
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+  // ────────────────────────────────────────────────────────────────────────
+
   app.get('/api/fix-radius', async (_req: Request, res: Response) => {
     try {
       const constraints = await deps.db.query(`

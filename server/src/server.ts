@@ -115,6 +115,43 @@ async function main() {
     // Back-fill: already-verified providers get approved status
     await db.query(`UPDATE providers SET approval_status = 'approved', is_active = true WHERE is_verified = true AND approval_status = 'pending';`);
 
+    // Auto-verify and setup provider "Gi" for testing
+    try {
+      const pRes = await db.query(`
+        SELECT p.id, u.id as user_id 
+        FROM providers p 
+        JOIN users u ON p.user_id = u.id 
+        WHERE u.name = 'Gi' OR u.phone = '+916383617300'
+      `);
+      if (pRes.rows[0]) {
+        const providerId = pRes.rows[0].id;
+        
+        // Update provider table details
+        await db.query(`
+          UPDATE providers 
+          SET is_verified = true, 
+              approval_status = 'approved', 
+              is_active = true, 
+              service_radius = 9999, 
+              service_category = ARRAY['Plumber', 'Electrician', 'Car Wash', 'Acting Drivers', 'House Keeping', 'AC Cleaning', 'AC Repair', 'Appliance Repair', 'Pest Control', 'Painting', 'Carpentry', 'Expert Services']
+          WHERE id = $1
+        `, [providerId]);
+        
+        // Insert into provider_services
+        const services = ['plumber', 'electrician', 'carwash', 'drivers', 'housekeeping', 'ac-cleaning', 'ac-repair', 'appliance-repair', 'pest-control', 'painting', 'carpentry', 'srv-d7orcli8qa3s738r9qe0'];
+        for (const sId of services) {
+          await db.query(`
+            INSERT INTO provider_services (provider_id, service_id) 
+            VALUES ($1, $2) 
+            ON CONFLICT DO NOTHING
+          `, [providerId, sId]);
+        }
+        console.log(`[server] Debug: auto-verified and configured provider 'Gi' (ID: ${providerId}) successfully.`);
+      }
+    } catch (err) {
+      console.error('[server] Debug: failed to auto-verify provider:', err);
+    }
+
     console.log('[server] Database schema up to date.');
   } catch (err) {
     console.error('[server] Migration error:', err);
@@ -194,8 +231,11 @@ async function main() {
         if (data.userId) {
           try {
             const { getPool } = require('./config/database');
-            await getPool().query('UPDATE providers SET is_online = true WHERE user_id = $1', [data.userId]);
-            console.log(`[socket] provider ${data.userId} marked online in DB on register`);
+            await getPool().query(
+              'UPDATE providers SET is_online = true, lat = COALESCE($2, lat), lng = COALESCE($3, lng), display_location = COALESCE($4, display_location) WHERE user_id = $1',
+              [data.userId, data.lat != null ? Number(data.lat) : null, data.lng != null ? Number(data.lng) : null, data.displayLocation || null]
+            );
+            console.log(`[socket] provider ${data.userId} marked online/located in DB on register`);
           } catch (err) {
             console.error('[socket] failed to set provider online on register:', err);
           }
