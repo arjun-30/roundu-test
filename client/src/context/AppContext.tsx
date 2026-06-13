@@ -83,6 +83,7 @@ interface State {
   bookingNotes: string;
   bookingVoiceNote: boolean;
   bookingVoiceNoteUrl: string | null;
+  bookingImages: string[];
   // Records
   bookings: Booking[];
   providerRequests: ProviderRequest[];
@@ -147,6 +148,7 @@ type Action =
   | { type: "SELECT_DATE"; date: string }
   | { type: "SELECT_TIME"; time: string }
   | { type: "SET_NOTES"; notes: string; voiceNote?: boolean; voiceNoteUrl?: string }
+  | { type: "SET_IMAGES"; images: string[] }
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
@@ -259,6 +261,7 @@ const initialState: State = {
   bookingNotes: "",
   bookingVoiceNote: false,
   bookingVoiceNoteUrl: null,
+  bookingImages: [],
   bookings: [],
   providerRequests: [],
   completedJobs: [],
@@ -535,6 +538,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, selectedTime: action.time };
     case "SET_NOTES":
       return { ...state, bookingNotes: action.notes, bookingVoiceNote: action.voiceNote || false, bookingVoiceNoteUrl: action.voiceNoteUrl || null };
+    case "SET_IMAGES":
+      return { ...state, bookingImages: action.images };
     case "PAY_BOOKING":
       return {
         ...state,
@@ -551,6 +556,7 @@ function reducer(state: State, action: Action): State {
         bookingNotes: "",
         bookingVoiceNote: false,
         bookingVoiceNoteUrl: null,
+        bookingImages: [],
       };
     case "ADD_BOOKING": {
       const booking = action.booking as any;

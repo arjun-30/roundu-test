@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     notes TEXT,
     voice_note BOOLEAN DEFAULT false,
     paid BOOLEAN DEFAULT false,
+    images TEXT[] DEFAULT '{}',
     lat DECIMAL(9, 6),
     lng DECIMAL(9, 6),
     provider_lat DECIMAL(9, 6),
