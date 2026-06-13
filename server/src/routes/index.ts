@@ -10,6 +10,7 @@ import uploadRouter from './upload.routes';
 import kycRouter from './kyc.routes';
 import webhookRouter from './webhook.routes';
 import chatRouter from './chat.routes';
+import ratingRouter from './rating.routes';
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use('/referrals', referralRouter);
 router.use('/upload', uploadRouter);
 router.use('/kyc', kycRouter);
 router.use('/webhooks', webhookRouter);
+router.use('/ratings', ratingRouter);
 
 export default router;

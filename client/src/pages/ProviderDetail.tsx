@@ -172,16 +172,22 @@ const ProviderDetail = () => {
     }, 800);
   }, [id]);
 
-  const mockReviews = [
-    { id: 1, user: "Amit S.", rating: 5, comment: "Excellent work! Fixed my leaking tap in minutes. Very professional.", date: "2 days ago", verified: true },
-    { id: 2, user: "Priya K.", rating: 4, comment: "On time and efficient. Highly recommended for electrical issues.", date: "1 week ago", verified: true },
-    { id: 3, user: "Vikram R.", rating: 5, comment: "Best service I've had in a while. Polite and thorough.", date: "2 weeks ago", verified: true },
-    { id: 4, user: "Suresh M.", rating: 5, comment: "Very knowledgeable and polite. Fixed the wiring issue flawlessly and explained everything.", date: "3 weeks ago", verified: true },
-    { id: 5, user: "Neha G.", rating: 5, comment: "Cleaned up after the job was done. Impressive dedication to quality and absolute transparency.", date: "1 month ago", verified: true },
-    { id: 6, user: "Rahul T.", rating: 4, comment: "Arrived a bit late but finished the job perfectly. Transparent pricing with no hidden charges.", date: "1 month ago", verified: true },
-    { id: 7, user: "Anjali D.", rating: 5, comment: "Super fast arrival and excellent communication throughout the service booking.", date: "2 months ago", verified: true },
-    { id: 8, user: "Manoj P.", rating: 5, comment: "Absolute expert. Solved a persistent plumbing issue no one else could fix in months.", date: "2 months ago", verified: true },
-  ];
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!provider?.id) return;
+      try {
+        const res = await api.get(`/ratings/provider/${provider.id}`);
+        if (res.data?.success) {
+          setReviews(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch reviews", err);
+      }
+    };
+    fetchReviews();
+  }, [provider?.id]);
 
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [video, setVideo] = useState<any | null>(null);
@@ -630,7 +636,7 @@ const ProviderDetail = () => {
                       <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">({mockReviews.length} reviews)</p>
+                  <p className="text-xs text-muted-foreground mt-1">({reviews.length} reviews)</p>
                 </div>
                 <div className="flex flex-col gap-1">
                   {[5, 4, 3, 2, 1].map((rating) => (
@@ -643,16 +649,46 @@ const ProviderDetail = () => {
                           <div key={i} className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
                         ))}
                       </div>
-                      <span className="text-xs text-muted-foreground w-6 text-right">0</span>
+                      <span className="text-xs text-muted-foreground w-6 text-right">{reviews.filter(r => Math.round(r.rating) === rating).length}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="text-center py-6">
-                <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-foreground">No reviews yet</p>
-                <p className="text-xs text-muted-foreground">Be the first customer to review</p>
-              </div>
+              {reviews.length === 0 ? (
+                <div className="text-center py-6">
+                  <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-foreground">No reviews yet</p>
+                  <p className="text-xs text-muted-foreground">Be the first customer to review</p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {reviews.map((rev: any) => (
+                    <div key={rev.id} className="border-t border-gray-100 pt-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {rev.customer_avatar ? (
+                              <img src={rev.customer_avatar} alt={rev.customer_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-blue-600">{(rev.customer_name || 'U').charAt(0)}</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{rev.customer_name || 'User'}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(rev.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={10} className={i < Math.round(rev.rating) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
+                          ))}
+                        </div>
+                      </div>
+                      {rev.comment && <p className="text-xs text-muted-foreground">{rev.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

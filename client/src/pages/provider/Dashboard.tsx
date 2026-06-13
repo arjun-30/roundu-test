@@ -568,19 +568,7 @@ const Dashboard = () => {
         <AnimatePresence>
           {(() => {
             let warning = null;
-            if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
-              warning = {
-                type: "critical",
-                title: "Account at Risk",
-                message: "Your performance is critically low. Please improve immediately to avoid permanent deactivation.",
-                bg: "bg-[#FEF2F2]",
-                border: "border-[#FECACA]",
-                text: "text-[#991B1B]",
-                subtext: "text-[#B91C1C]",
-                iconColor: "text-[#EF4444]",
-                iconBg: "bg-[#FEE2E2]"
-              };
-            } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
+            if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
               warning = {
                 type: "warning",
                 title: "Response Rate Low",

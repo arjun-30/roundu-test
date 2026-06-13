@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Star } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-
-
+import api from "@/lib/api";
 const Rating = () => {
   const navigate = useNavigate();
   const { id = "" } = useParams();
-  const { bookings, dispatch } = useApp();
+  const { bookings, dispatch, user } = useApp();
   const booking = bookings.find((b) => b.id === id);
   const [stars, setStars] = useState(0);
   const [review, setReview] = useState("");
@@ -18,14 +17,27 @@ const Rating = () => {
     return null;
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (stars === 0) {
       setError("Please select a rating");
       return;
     }
     setError("");
-    dispatch({ type: "UPDATE_BOOKING", id: booking.id, patch: { rating: stars, review } });
-    navigate("/home", { replace: true });
+    
+    try {
+      await api.post('/ratings', {
+        booking_id: booking.id,
+        customer_id: booking.customer_id || booking.customerId || user?.id,
+        provider_id: booking.provider_id || booking.providerId,
+        rating: stars,
+        comment: review
+      });
+      dispatch({ type: "UPDATE_BOOKING", id: booking.id, patch: { rating: stars, review } });
+      navigate("/home", { replace: true });
+    } catch (err: any) {
+      console.error("Failed to submit rating", err);
+      setError("Failed to submit rating. Please try again.");
+    }
   };
 
   return (

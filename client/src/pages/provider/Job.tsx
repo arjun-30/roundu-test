@@ -386,7 +386,7 @@ const Job = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="px-5 pt-6 pb-4 flex items-center justify-between bg-white sticky top-0 z-10 shadow-sm"
+        className="px-5 pt-6 pb-4 flex items-center justify-between bg-white sticky top-0 z-50 shadow-sm"
       >
         <div className="flex items-center gap-4">
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleBack}
