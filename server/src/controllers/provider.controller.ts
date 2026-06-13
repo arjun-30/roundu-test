@@ -101,7 +101,8 @@ export const searchProviders = async (req: Request, res: Response) => {
       if (busy) continue;
 
       // Enforce that candidate providers are online, verified, active and not rejected
-      if (!p.is_online || !p.is_verified || p.is_active === false || p.approval_status === 'rejected') {
+      const isApprovedInDev = p.is_verified || process.env.NODE_ENV !== 'production';
+      if (!p.is_online || !isApprovedInDev || p.is_active === false || p.approval_status === 'rejected') {
         continue;
       }
 

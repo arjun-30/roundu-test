@@ -125,6 +125,7 @@ const SearchingProviders = () => {
     bookingNotes,
     bookingVoiceNoteUrl,
     bookingVoiceNote,
+    bookingImages,
     selectedDate,
     selectedTime,
   } = useApp();
@@ -325,6 +326,7 @@ const SearchingProviders = () => {
         sessionStorage.setItem('search_start_time', String(freshNow));
         localStorage.setItem('search_start_time', String(freshNow));
         setSearchStartTime(freshNow);
+        setRemainingSeconds(300);
     }
 
     const buildPayload = () => ({
@@ -345,6 +347,7 @@ const SearchingProviders = () => {
       notes: bookingNotes || "Quick fix request from customer",
       voiceNoteUrl: bookingVoiceNoteUrl,
       voiceNote: bookingVoiceNote,
+      images: bookingImages || [],
     });
 
     const doEmit = () => {
@@ -409,6 +412,7 @@ const SearchingProviders = () => {
         voice_note: bookingVoiceNote || false,
         voice_note_url: bookingVoiceNoteUrl || null,
         paid: false,
+        images: bookingImages || [],
       };
 
       console.log("BOOKING PAYLOAD", bookingData);

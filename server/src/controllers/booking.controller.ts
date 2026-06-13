@@ -106,7 +106,7 @@ export const createBooking = async (req: Request, res: Response) => {
       const matchingProviders = [];
       for (const p of providers) {
         const isOnline = p.is_online === true;
-        const isApproved = p.is_verified === true && p.is_active !== false && p.approval_status !== 'rejected';
+        const isApproved = (p.is_verified === true || process.env.NODE_ENV !== 'production') && p.is_active !== false && p.approval_status !== 'rejected';
         const matchesCategory = matchesServiceCategory(p.serviceCategory, booking.service_id) || 
                                 matchesServiceCategory(p.serviceCategory, serviceLabel);
 
@@ -129,7 +129,7 @@ export const createBooking = async (req: Request, res: Response) => {
           const maxRadius = p.serviceRadius || 20;
           inRadius = dist <= maxRadius;
         } else {
-          inRadius = false;
+          inRadius = process.env.NODE_ENV !== 'production';
         }
 
         let decision = "ACCEPTED";

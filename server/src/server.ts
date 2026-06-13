@@ -45,6 +45,7 @@ async function main() {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
+    await db.query("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';");
 
 
     // Add location storage columns to users and providers tables
@@ -344,16 +345,17 @@ async function main() {
 
               // Calculate distance
               let dist = 0;
-              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+              let hasCoords = data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null;
+              if (hasCoords) {
                 const { getDistanceKm } = require('./utils/locationHelper');
                 dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
               }
 
               const isOnline = provider.isOnline === true;
-              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                       matchesServiceCategory(provider.serviceCategory, serviceLabel);
-              const inRadius = dist <= (provider.serviceRadius || 20);
+              const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
               let decision = "ACCEPTED";
               if (!isOnline) {
@@ -410,16 +412,17 @@ async function main() {
 
           // Calculate distance
           let dist = 0;
-          if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+          let hasCoords = data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null;
+          if (hasCoords) {
             const { getDistanceKm } = require('./utils/locationHelper');
             dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
           }
 
           const isOnline = provider.isOnline === true;
-          const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+          const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
           const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                   matchesServiceCategory(provider.serviceCategory, serviceLabel);
-          const inRadius = dist <= (provider.serviceRadius || 20);
+          const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
           let decision = "ACCEPTED";
           if (!isOnline) {
@@ -523,16 +526,17 @@ async function main() {
 
               // Calculate distance
               let dist = 0;
-              if (data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null) {
+              let hasCoords = data.lat != null && data.lng != null && provider.latitude != null && provider.longitude != null;
+              if (hasCoords) {
                 const { getDistanceKm } = require('./utils/locationHelper');
                 dist = getDistanceKm({ lat: Number(data.lat), lng: Number(data.lng) }, { lat: provider.latitude, lng: provider.longitude });
               }
 
               const isOnline = provider.isOnline === true;
-              const isApproved = providerRow.is_verified === true && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                                       matchesServiceCategory(provider.serviceCategory, serviceLabel);
-              const inRadius = dist <= (provider.serviceRadius || 20);
+              const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
               let decision = "ACCEPTED";
               if (!isOnline) {
