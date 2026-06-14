@@ -95,6 +95,13 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
             {isBroadcast ? "Live Job Alert" : "New Request"}
           </h2>
           <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label || request.serviceId}</h1>
+          <div className="mt-2">
+            <span className="text-sm font-bold text-primary uppercase tracking-wide">
+              {request.jobType === "scheduled"
+                ? "Scheduled Service"
+                : "Quick Fix"}
+            </span>
+          </div>
 
           <div className="flex items-center gap-4 mt-4 bg-muted/50 rounded-2xl p-3 border border-border/50">
             <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center text-lg font-bold">
@@ -135,10 +142,35 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
         </div>
 
         <div className="p-6">
-          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
           {isBroadcast ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground italic">"{request.notes || "No notes provided."}"</p>
+            <div className="space-y-4">
+
+              {/* Job Type */}
+
+              {/* Issue Photos */}
+              <div>
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                  Issue Photos
+                </p>
+
+                {request.images?.length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {request.images.map((img: string, index: number) => (
+                      <img
+                        key={index}
+                        src={img}
+                        alt={`Issue ${index + 1}`}
+                        className="w-24 h-24 rounded-xl object-cover border border-border flex-shrink-0"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground italic">
+                    No photos attached
+                  </div>
+                )}
+              </div>
+
               {request.voiceNoteUrl && (
                 <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col gap-2">
                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">
@@ -162,6 +194,16 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
               )}
             </>
           )}
+          <div>
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-1">
+              Description
+            </p>
+
+            <p className="text-sm text-foreground leading-relaxed">
+              {request.notes || "No description provided."}
+            </p>
+          </div>
+
         </div>
 
 

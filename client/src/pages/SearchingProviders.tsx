@@ -460,11 +460,10 @@ const SearchingProviders = () => {
                                 <div
                                     key={q.providerId}
                                     onClick={() => setSelectedQuote(q)}
-                                    className={`w-[290px] bg-white rounded-2xl p-4 border shadow-sm cursor-pointer transition-all shrink-0 ${
-                                        selectedQuote?.providerId === q.providerId
-                                            ? "border-[#152E4B] shadow-md"
-                                            : "border-slate-100 hover:border-slate-300"
-                                    }`}
+                                    className={`w-[290px] bg-white rounded-2xl p-4 border shadow-sm cursor-pointer transition-all shrink-0 ${selectedQuote?.providerId === q.providerId
+                                        ? "border-[#152E4B] shadow-md"
+                                        : "border-slate-100 hover:border-slate-300"
+                                        }`}
                                 >
                                     {/* Provider row */}
                                     <div className="flex items-center justify-between mb-3">
