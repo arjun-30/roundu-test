@@ -271,7 +271,7 @@ const initialState: State = {
   bookingVoiceNoteUrl: null,
   bookingImages: [],
   bookings: [],
-  providerRequests: [],
+  providerRequests: initialProviderRequests,
   completedJobs: [],
   notifications: [],
   nearbyProviders: {},

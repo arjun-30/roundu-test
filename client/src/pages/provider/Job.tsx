@@ -82,7 +82,25 @@ const Job = () => {
     }
   };
 
-  const job = providerRequests.find((r) => r.id === id);
+  let job = providerRequests.find((r) => r.id === id);
+  if (!job && (id === "test-job-123" || id === "test-job")) {
+    job = {
+      id: "test-job-123",
+      customerName: "Alice Smith",
+      serviceId: "plumber",
+      address: "123 Main St, Indiranagar, Bangalore",
+      date: "2026-06-15",
+      time: "10:30 AM",
+      price: 450,
+      status: "on_the_way",
+      notes: "Please fix the kitchen tap as it is leaking continuously.",
+      distanceKm: 2.5,
+      lat: 12.9783,
+      lng: 77.6408,
+      quote: 450,
+      customerPhone: "+919876543210"
+    };
+  }
 
 
   const [notification, setNotification] = useState("");
@@ -381,7 +399,7 @@ const Job = () => {
     }
   };
   return (
-    <div className="min-h-full flex flex-col bg-background pb-[140px]">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -402,7 +420,7 @@ const Job = () => {
         </div>
       </motion.div>
 
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="px-5 flex-1 space-y-5 mt-4">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="px-5 flex-1 overflow-y-auto pb-32 space-y-5 mt-4">
 
         {/* Notification */}
         <AnimatePresence>

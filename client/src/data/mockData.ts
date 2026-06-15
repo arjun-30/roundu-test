@@ -250,7 +250,24 @@ export const providers: Provider[] = services.flatMap((s) =>
 
 export const getProviderById = (id: string) => providers.find((p) => p.id === id);
 
-export const initialProviderRequests: ProviderRequest[] = [];
+export const initialProviderRequests: ProviderRequest[] = [
+  {
+    id: "test-job-123",
+    customerName: "Alice Smith",
+    serviceId: "plumber",
+    address: "123 Main St, Indiranagar, Bangalore",
+    date: "2026-06-15",
+    time: "10:30 AM",
+    price: 450,
+    status: "on_the_way",
+    notes: "Please fix the kitchen tap as it is leaking continuously.",
+    distanceKm: 2.5,
+    lat: 12.9783,
+    lng: 77.6408,
+    quote: 450,
+    customerPhone: "+919876543210"
+  }
+];
 
 export const initialCompletedJobs: ProviderRequest[] = [];
 
