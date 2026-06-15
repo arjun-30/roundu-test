@@ -15,29 +15,29 @@ const JOB_STAGES = [
     key: "on_the_way",
     label: "Started",
     icon: Navigation2,
-    color: "bg-blue-600",
-    ring: "ring-blue-300",
+    color: "bg-[#152E4B]",
+    ring: "ring-[#152E4B]/30",
   },
   {
     key: "arrived",
     label: "Arrived",
     icon: MapPin,
-    color: "bg-orange-500",
-    ring: "ring-orange-300",
+    color: "bg-[#F59E0B]",
+    ring: "ring-[#F59E0B]/30",
   },
   {
     key: "completed",
     label: "Completed",
     icon: Flag,
-    color: "bg-green-500",
-    ring: "ring-green-300",
+    color: "bg-[#1C651B]",
+    ring: "ring-[#1C651B]/30",
   },
   {
     key: "paid",
     label: "Paid",
     icon: CheckCircle2,
-    color: "bg-emerald-600",
-    ring: "ring-emerald-300",
+    color: "bg-[#1C651B]",
+    ring: "ring-[#1C651B]/30",
   }
 ];
 type StageKey = typeof JOB_STAGES[number]["key"];
@@ -241,7 +241,7 @@ const Job = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={markArrived}
-              className="flex-[1.5] py-4 rounded-[20px] bg-orange-500 text-white font-extrabold"
+              className="flex-[1.5] py-4 rounded-[20px] bg-[#F59E0B] text-white font-extrabold"
             >
               Mark Arrived
             </motion.button>
@@ -261,7 +261,7 @@ const Job = () => {
 
             <button
               onClick={completeJob}
-              className="flex-[1.5] py-4 rounded-[20px] bg-emerald-500 text-white"
+              className="flex-[1.5] py-4 rounded-[20px] bg-[#1C651B] text-white font-extrabold"
             >
               Complete Job
             </button>
@@ -357,7 +357,7 @@ const Job = () => {
                   "success"
                 );
               }}
-              className="w-full py-4 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold shadow-md transition-all"            >
+              className="w-full py-4 rounded-full bg-[#1C651B] hover:opacity-90 text-white font-bold shadow-md transition-all"            >
               Receive Cash            </button>
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
@@ -376,18 +376,18 @@ const Job = () => {
 
       case "paid":
         return (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+          <div className="bg-[#1C651B]/10 border border-[#1C651B]/20 rounded-2xl p-5 text-center">
 
             <CheckCircle2
               size={50}
-              className="mx-auto text-emerald-600"
+              className="mx-auto text-[#1C651B]"
             />
 
-            <p className="mt-3 font-bold text-emerald-700">
+            <p className="mt-3 font-bold text-[#1C651B]">
               Payment Successful
             </p>
 
-            <p className="text-sm text-emerald-600 mt-2">
+            <p className="text-sm text-[#1C651B] mt-2">
               Job completed and earnings processed.
             </p>
 
@@ -415,8 +415,8 @@ const Job = () => {
           <h1 className="text-[20px] font-extrabold text-foreground tracking-tight">Active Job</h1>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-green-600 font-semibold">Live</span>
+          <span className="w-2 h-2 rounded-full bg-[#1C651B] animate-pulse" />
+          <span className="text-xs text-[#1C651B] font-semibold">Live</span>
         </div>
       </motion.div>
 
@@ -427,7 +427,7 @@ const Job = () => {
           {notification && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
               <div className={`p-4 rounded-[20px] text-[13px] font-bold shadow-sm border ${notifType === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                ? "bg-[#1C651B]/10 text-[#1C651B] border-[#1C651B]/20"
                 : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
                 }`}>
                 {notification}
@@ -538,9 +538,9 @@ const Job = () => {
         </motion.button>
 
         {/* Earnings */}
-        <motion.div variants={itemVariants} className="bg-emerald-50 border-2 border-emerald-100 rounded-[24px] p-6 text-center shadow-sm">
-          <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 mb-2">Estimated Earnings</p>
-          <p className="text-[32px] font-black text-emerald-700 tracking-tight">₹{job.quote || (job as any).price}</p>
+        <motion.div variants={itemVariants} className="bg-[#1C651B]/10 border-2 border-[#1C651B]/20 rounded-[24px] p-6 text-center shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-widest text-[#1C651B] mb-2">Estimated Earnings</p>
+          <p className="text-[32px] font-black text-[#1C651B] tracking-tight">₹{job.quote || (job as any).price}</p>
         </motion.div>
       </motion.div>
 
