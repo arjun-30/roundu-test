@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, User, ChevronLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, User } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { updateUser } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,9 +68,10 @@ const OnboardingName = () => {
           {/* Back Arrow */}
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-full bg-primary text-white hover:bg-[#112b4c] transition-colors shadow-md"
+            className="w-11 h-11 rounded-[16px] bg-white border-2 border-transparent hover:border-primary/10 flex items-center justify-center text-primary hover:bg-primary/5 transition-all active:scale-90 shadow-sm"
+            aria-label="Back"
           >
-            <ChevronLeft size={18} className="text-white" />
+            <ArrowLeft size={22} strokeWidth={2.5} />
           </button>
 
           {/* Subtle Segmented Progress */}
@@ -147,7 +148,7 @@ const OnboardingName = () => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleContinue();
                   }}
-                  placeholder="Enter username"
+                  placeholder="e.g. John Doe"
                   autoFocus
                   className={`w-full pl-14 pr-5 py-4 rounded-3xl bg-white text-slate-800 font-semibold placeholder:text-slate-400 focus:outline-none transition-all text-[15px] border ${isFocused ? 'border-primary ring-4 ring-primary/20 shadow-[0_12px_30px_rgba(59,130,246,0.12)]' : 'border-slate-200 hover:border-slate-300'}`}
                 />
