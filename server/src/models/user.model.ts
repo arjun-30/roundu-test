@@ -30,10 +30,17 @@ export const UserModel = {
 
   async create(user: Partial<User>): Promise<User> {
     try {
-      const res = await getPool().query(
-        'INSERT INTO users (phone, name, email, address, role, lat, lng, display_location) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-        [user.phone, user.name, user.email, user.address, user.role || 'customer', user.lat ?? null, user.lng ?? null, user.display_location ?? null]
-      );
+      const columns = ['phone', 'name', 'email', 'address', 'lat', 'lng', 'display_location'];
+      const values: any[] = [user.phone, user.name ?? null, user.email ?? null, user.address ?? null, user.lat ?? null, user.lng ?? null, user.display_location ?? null];
+
+      if (user.role !== undefined) {
+        columns.splice(4, 0, 'role');
+        values.splice(4, 0, user.role);
+      }
+
+      const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
+      const query = `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+      const res = await getPool().query(query, values);
       return res.rows[0];
     } catch (err) {
       if (env.isDevelopment) {
@@ -59,7 +66,7 @@ export const UserModel = {
       const keys = Object.keys(patch);
       const values = Object.values(patch);
       const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
-      
+
       const res = await getPool().query(
         `UPDATE users SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
         [id, ...values]

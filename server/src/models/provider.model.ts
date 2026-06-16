@@ -52,7 +52,7 @@ export function mapProvider(dbRow: any): any {
 export function matchesServiceCategory(providerCategory: any, requestedService: string): boolean {
   if (!providerCategory) return false;
   if (!requestedService) return false;
-  
+
   const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   const reqNorm = normalize(requestedService);
 
@@ -216,7 +216,7 @@ export const ProviderModel = {
       // 3. Create notification for admin about new provider registration
       const userRes = await client.query('SELECT name, phone FROM users WHERE id = $1', [userId]);
       const user = userRes.rows[0];
-      
+
       const notificationRes = await client.query(
         `INSERT INTO notifications (title, message, type, provider_id, created_at, is_read, metadata) 
          VALUES ($1, $2, $3, $4, NOW(), false, $5)`,

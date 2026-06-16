@@ -37,7 +37,7 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   CORS_ORIGINS: z.string().default('http://localhost:8080,https://roundu-app.vercel.app'),
-  APP_BASE_URL: z.string().default('http://localhost:3000'),
+  APP_BASE_URL: z.string().default('http://localhost:5000'),
   MSG91_AUTH_KEY: z.string().optional(),
   MSG91_TEMPLATE_ID: z.string().optional(),
   MSG91_SENDER_ID: z.string().default('ROUNDU'),

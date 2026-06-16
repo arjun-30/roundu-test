@@ -168,16 +168,17 @@ const SmartRoleRoute = () => {
     }
   }, [savedRole, role, dispatch]);
 
-  if (savedRole) {
-    if (savedRole === "provider") {
-      // If provider has completed service selection, go to dashboard; otherwise, go to service selection
-      const hasSelectedServices = providerRegistrationDraft.serviceIds && providerRegistrationDraft.serviceIds.length > 0;
-      return hasSelectedServices
+  const effectiveRole = savedRole || user.accountType || (user.role === "provider" ? "provider" : undefined);
+
+  if (effectiveRole) {
+    if (effectiveRole === "provider") {
+      const hasCompletedPersonalDetails = user.name && user.name.trim().length >= 3;
+      return hasCompletedPersonalDetails
         ? <Navigate to="/provider" replace />
-        : <Navigate to="/provider/select-service" replace />;
-    } else {
-      return <Navigate to="/home" replace />;
+        : <Navigate to="/provider/personal-details" replace />;
     }
+
+    return <Navigate to="/home" replace />;
   }
 
   return <RoleSelect />;
@@ -199,6 +200,8 @@ const AppRoutes = () => (
         <Route path="/otp" element={<OtpVerify />} />
         <Route path="/onboarding-name" element={<RequireAuth><OnboardingName /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        <Route path="/select-role" element={<RequireAuth><RoleSelect /></RequireAuth>} />
+        <Route path="/role-switch" element={<RequireAuth><RoleSelect /></RequireAuth>} />
         <Route path="/role" element={<RequireAuth><SmartRoleRoute /></RequireAuth>} />
         <Route path="/location" element={<RequireAuth><Location /></RequireAuth>} />
 
