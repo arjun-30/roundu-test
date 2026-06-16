@@ -91,10 +91,7 @@ const Earnings = () => {
     0
   );
 
-  const withdrawableAmount = Math.max(
-    0,
-    walletBalance
-  );
+  const withdrawableAmount = walletBalance;
   return (
     <div className="min-h-full flex flex-col bg-background pb-8">
       <div className="px-5 pt-6 pb-4 flex items-center gap-3">

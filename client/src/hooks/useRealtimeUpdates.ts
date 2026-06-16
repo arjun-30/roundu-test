@@ -1,5 +1,5 @@
 import { useEffect, useRef, useLayoutEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isMock } from "@/lib/supabase";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 // Store latest callback in a ref so the subscription never needs to re-subscribe
@@ -14,6 +14,10 @@ export function useProviderRealtimeUpdates(onProviderChange: (provider: any) => 
   const callbackRef = useLatestCallback(onProviderChange);
 
   useEffect(() => {
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping provider updates subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to provider updates");
     const channel = supabase
       .channel("providers-changes")
@@ -36,6 +40,10 @@ export function useBookingRealtimeUpdates(onBookingChange: (booking: any) => voi
   const callbackRef = useLatestCallback(onBookingChange);
 
   useEffect(() => {
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping booking updates subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to booking updates");
     const channel = supabase
       .channel("bookings-changes")
@@ -58,6 +66,10 @@ export function useUserRealtimeUpdates(onUserChange: (user: any) => void) {
   const callbackRef = useLatestCallback(onUserChange);
 
   useEffect(() => {
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping user updates subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to user updates");
     const channel = supabase
       .channel("users-changes")
@@ -84,6 +96,10 @@ export function useNotificationRealtimeUpdates(
 
   useEffect(() => {
     if (!userId) return;
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping notification updates subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to notification updates for user:", userId);
     const channel = supabase
       .channel(`notifications-${userId}`)
@@ -112,6 +128,10 @@ export function useAdminNotificationUpdates(
   const callbackRef = useLatestCallback(onNotification);
 
   useEffect(() => {
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping admin notifications subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to admin notifications");
     const channel = supabase
       .channel("admin-notifications-realtime")
@@ -139,6 +159,10 @@ export function useMultipleRealtimeUpdates(
   const subscriptionsRef = useRef<Map<string, RealtimeChannel>>(new Map());
 
   useEffect(() => {
+    if (isMock) {
+      console.log("[Realtime] Mock mode active, skipping multiple tables updates subscription");
+      return;
+    }
     console.log("[Realtime] Subscribing to multiple tables:", tables.map(t => t.table));
 
     tables.forEach(({ table, callback, filter }) => {

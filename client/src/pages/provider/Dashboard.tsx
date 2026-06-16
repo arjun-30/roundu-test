@@ -10,7 +10,6 @@ import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
-import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
 import { socket } from "@/lib/socket";
 import { getShortAddress, getDistance } from "@/lib/utils";
@@ -77,8 +76,15 @@ const Dashboard = () => {
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
+  // State for PIP (Performance Improvement Plan) UI
   const [showPip, setShowPip] = useState(false);
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
+
+  // State for quoting live broadcast
+  const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
+  const [quotePrice, setQuotePrice] = useState("");
+  const [quoteEta, setQuoteEta] = useState("15");
+
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
 
   const pending = providerRequests.filter((r) => r.status === "pending");
@@ -163,7 +169,32 @@ const Dashboard = () => {
   }, [dispatch]);
   const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
+  const seenBroadcastIds = useRef(new Set<string>());
 
+  // Listen for live broadcasts directly in Dashboard (bypasses context closure issue)
+  useEffect(() => {
+    const handleBroadcast = (broadcast: any) => {
+      console.log("Broadcast received:", broadcast);
+      console.log("Images:", broadcast.images);
+      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
+      if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
+      // Additional handling can be added here
+    };
+    socket.on("incoming_broadcast", handleBroadcast);
+    return () => {
+      socket.off("incoming_broadcast", handleBroadcast);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
+    };
+    socket.on("job_taken", handleJobTaken);
+    return () => {
+      socket.off("job_taken", handleJobTaken);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -193,9 +224,16 @@ const Dashboard = () => {
     }
   }, [providerStats.rating]);
 
-
-
-
+  // Listen for job taken events
+  useEffect(() => {
+    const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
+    };
+    socket.on("job_taken", handleJobTaken);
+    return () => {
+      socket.off("job_taken", handleJobTaken);
+    };
+  }, [dispatch]);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -208,27 +246,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
-      {/* PIP Modal */}
-      {showPip && pipType && (
-        <PIPModal
-          type={pipType}
-          rating={providerStats.rating}
-          onClose={pipType === "low_rating" ? () => {
-            const today = new Date().toISOString().slice(0, 10);
-            localStorage.setItem("last_seen_low_rating", today);
-            setShowPip(false);
-          } : undefined}
-          onCommit={() => {
-            if (pipType === "new_signup") {
-              localStorage.setItem("has_seen_new_signup", "true");
-            } else {
-              const today = new Date().toISOString().slice(0, 10);
-              localStorage.setItem("last_seen_low_rating", today);
-            }
-            setShowPip(false);
-          }}
-        />
-      )}
 
 
 
@@ -371,18 +388,6 @@ const Dashboard = () => {
                 subtext: "text-[#C2410C]",
                 iconColor: "text-[#F97316]",
                 iconBg: "bg-[#FFEDD5]"
-              };
-            } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
-              warning = {
-                type: "caution",
-                title: "Rating Dropping",
-                message: `Your rating is ${Number(providerStats.rating || 0).toFixed(1)}. Try to provide better service to get 5-star reviews.`,
-                bg: "bg-[#FEFCE8]",
-                border: "border-[#FEF08A]",
-                text: "text-[#854D0E]",
-                subtext: "text-[#A16207]",
-                iconColor: "text-[#EAB308]",
-                iconBg: "bg-[#FEF9C3]"
               };
             }
 

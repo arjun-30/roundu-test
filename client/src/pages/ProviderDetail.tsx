@@ -152,25 +152,18 @@ const ProviderDetail = () => {
   };
 
   const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   useEffect(() => {
-    setLoadingPortfolio(true);
-    // Simulating API fetch for portfolio
-    setTimeout(() => {
-      setPortfolio([
-        { id: 1, title: "Plumbing Fix", image: "/provider_work_gallery_1_1778838516658.png", desc: "Complete pipe replacement and leak repair." },
-        { id: 2, title: "Electrical Setup", image: "/provider_work_gallery_2_1778838540729.png", desc: "Main panel wiring and safety circuit installation." },
-        { id: 3, title: "Bathroom Renovation", image: "/provider_work_gallery_3_1778838557643.png", desc: "Modern fixture installation and waterproofing." },
-        { id: 4, title: "Kitchen Drain Clear", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop", desc: "Deep clog removal and drainage optimization." },
-        { id: 5, title: "Water Heater Fix", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop", desc: "Thermostat replacement and heating element scaling." },
-        { id: 6, title: "Smart Home Lighting", image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&h=300&fit=crop", desc: "Automated ambient lighting setup and switchboard repair." },
-      ]);
+    if (provider) {
+      setPortfolio(provider.portfolio || []);
+      setCertificates(provider.certificates || []);
       setLoadingPortfolio(false);
-    }, 800);
-  }, [id]);
+    }
+  }, [provider]);
 
   const [reviews, setReviews] = useState<any[]>([]);
 
@@ -330,36 +323,16 @@ const ProviderDetail = () => {
 
       <div className="min-h-screen bg-gray-50 pb-32 font-['DM_Sans',sans-serif]">
         {/* Portfolio Video Cover Section */}
-        <div className="relative w-full h-64 sm:h-80 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden rounded-b-3xl">
-          {/* Background Video */}
+        <div className="relative w-full h-64 sm:h-80 bg-black overflow-hidden rounded-b-3xl">
+          {/* Video Player */}
           <video
             autoPlay
-            loop
-            muted
+            controls
             playsInline
-            className="w-full h-full object-cover opacity-80"
+            className="w-full h-full object-cover"
             src={video?.video_url || "https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"}
+            poster={portfolio.length > 0 ? portfolio[0]?.image : undefined}
           />
-
-          {/* Fallback: Show first portfolio image if video fails */}
-          {portfolio.length > 0 && (
-            <img
-              src={portfolio[0]?.image}
-              alt="Portfolio Cover"
-              className="absolute inset-0 w-full h-full object-cover opacity-0 hover:opacity-100 transition-opacity"
-            />
-          )}
-
-          {/* Dark Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-          {/* Play Button Overlay */}
-          <button
-            onClick={() => setShowVideoPlayer(!showVideoPlayer)}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:bg-white/30 active:scale-95 transition-all shadow-lg"
-          >
-            <Play size={28} className="text-white fill-white ml-1" />
-          </button>
         </div>
 
         {/* Content with Floating Avatar */}
@@ -523,99 +496,68 @@ const ProviderDetail = () => {
             </div>
           </div>
 
-          {/* Video Introduction Section */}
-          {loadingVideo ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3">Video Introduction</h3>
-              <div className="aspect-video bg-slate-100 animate-pulse rounded-[24px] flex flex-col items-center justify-center gap-2">
-                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <span className="text-xs text-muted-foreground font-semibold">Loading video intro...</span>
-              </div>
-            </div>
-          ) : video ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3 flex items-center gap-2">
-                Video Introduction
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">Active</span>
-              </h3>
-              <div className="aspect-video bg-black rounded-[24px] overflow-hidden flex items-center justify-center border border-slate-200 shadow-sm relative group">
-                <video
-                  src={video.video_url}
-                  controls
-                  className="w-full h-full object-contain"
-                  preload="metadata"
-                  playsInline
-                />
-              </div>
-            </div>
-          ) : null}
+
 
           {/* Experience & Skills */}
-          <div className="mb-8">
-            <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {portfolio.slice(0, 6).map((item: any, index: number) => (
-                <div
-                  key={item.id || index}
-                  className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
-                  onClick={() => {
-                    setShowGalleryModal(true);
-                  }}
+          {portfolio && portfolio.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {portfolio.slice(0, 6).map((item: any, index: number) => (
+                  <div
+                    key={item.id || index}
+                    className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
+                    onClick={() => {
+                      setShowGalleryModal(true);
+                    }}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white fill-white" />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                      <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {portfolio.length > 6 && (
+                <button
+                  onClick={() => setShowGalleryModal(true)}
+                  className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
                 >
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="w-8 h-8 text-white fill-white" />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                    <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
-                  </div>
-                </div>
-              ))}
+                  View All {portfolio.length} Projects
+                </button>
+              )}
             </div>
-            {portfolio.length > 6 && (
-              <button
-                onClick={() => setShowGalleryModal(true)}
-                className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
-              >
-                View All {portfolio.length} Projects
-              </button>
-            )}
-          </div>
+          )}
 
           {/* Certificates & Licenses */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <span className="text-sm">📋</span>
-                </div>
-                Certificates & Licenses
-              </h3>
-              <button className="text-primary text-xs font-bold">View All</button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">🪪</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Driving License</p>
+          {certificates && certificates.length > 0 && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <span className="text-sm">📋</span>
+                  </div>
+                  Certificates & Licenses
+                </h3>
+                <button className="text-primary text-xs font-bold">View All</button>
               </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">📋</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Insurance</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">🏍️</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Bike RC</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">✅</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">PESO</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {certificates.map((cert: any, index: number) => (
+                  <div key={index} className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                    <div className="text-3xl mb-2">{cert.icon || "📋"}</div>
+                    <p className="text-xs font-bold text-foreground line-clamp-2">{cert.name || "Certificate"}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Customer Reviews */}
           <div className="mb-4">

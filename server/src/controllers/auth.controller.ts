@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as msg91 from '../services/msg91.service';
 import { env } from '../config/env';
 import { UserModel } from '../models/user.model';
+import { ProviderModel } from '../models/provider.model';
 import { AuthService } from '../services/auth.service';
 import { signAccessToken, UserRole } from '../utils/jwt';
 
@@ -41,11 +42,17 @@ export const verifyOTP = async (req: Request, res: Response) => {
       return res.status(401).json({ error: result.message });
     }
 
-    // DB: Find or Create User
+    // DB: Find or create user
+    let isNewUser = false;
     let user = await UserModel.findByPhone(phone);
     if (!user) {
-      user = await UserModel.create({ phone, role: 'customer' });
+      isNewUser = true;
+      user = await UserModel.create({ phone });
     }
+
+    const provider = await ProviderModel.findByUserId(user.id);
+    const providerExists = !!provider;
+    const customerExists = user.role === 'customer' && !isNewUser;
 
     // Single-device session enforcement
     // 1. Tell existing active devices to logout via Socket.IO
@@ -57,14 +64,22 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
     // 2. Increment session_version in DB to invalidate old JWTs API access
     const newSessionVersion = await UserModel.incrementSessionVersion(user.id);
-    
+
     // Create JWT with the new session version
     const token = signAccessToken(
       { sub: user.id, role: (user.role || 'customer') as UserRole, phone, v: newSessionVersion },
       '7d',
     );
 
-    res.json({ success: true, message: 'Verified', token, user });
+    res.json({
+      success: true,
+      message: 'Verified',
+      token,
+      user,
+      providerExists,
+      customerExists,
+      isNewUser,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -89,7 +104,7 @@ export const verifyWidgetToken = async (req: Request, res: Response) => {
       io.to(`user:${user.id}`).emit('session_expired', { reason: 'Logged in from another device' });
     }
     const newSessionVersion = await UserModel.incrementSessionVersion(user.id);
-    
+
     const token = signAccessToken(
       { sub: user.id, role: ((user as any).role || 'customer') as UserRole, phone: mobile, v: newSessionVersion },
       '7d',
@@ -100,4 +115,3 @@ export const verifyWidgetToken = async (req: Request, res: Response) => {
     res.status(401).json({ error: error.message });
   }
 };
-

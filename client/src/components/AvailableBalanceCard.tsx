@@ -15,10 +15,7 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
 }) => {
   const platformFee = 0;
 
-  const withdrawableBalance = Math.max(
-    0,
-    walletBalance
-  );
+  const withdrawableBalance = walletBalance;
 
   return (
     <div className="w-full bg-slate-900 rounded-[28px] p-6 shadow-xl">
@@ -26,7 +23,12 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
         WITHDRAWABLE BALANCE
       </p>
 
-      <p className="text-5xl font-extrabold text-white mt-3">
+      <p
+        className={`text-5xl font-extrabold mt-3 ${withdrawableBalance < 0
+            ? "text-red-400"
+            : "text-white"
+          }`}
+      >
         ₹{withdrawableBalance.toLocaleString('en-IN')}
       </p>
 

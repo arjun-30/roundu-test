@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, User, ChevronLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, User } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { updateUser } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 const OnboardingName = () => {
   const navigate = useNavigate();
-  const { user, dispatch } = useApp();
-  const [name, setName] = useState(user.name || "");
+  const { user, dispatch, isNewUser } = useApp();
+  const initialName = user.name && user.name.toLowerCase().trim() !== "mock user" ? user.name : "";
+  const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
   const handleContinue = async () => {
@@ -24,7 +26,14 @@ const OnboardingName = () => {
     try {
       await updateUser(user.id, { name });
       dispatch({ type: "UPDATE_USER", user: { name } });
-      navigate("/role", { replace: true });
+      setSuccess(`Welcome, ${name.split(" ")[0]}!`);
+      setTimeout(() => {
+        if (isNewUser) {
+          navigate("/onboarding", { replace: true });
+        } else {
+          navigate("/home", { replace: true });
+        }
+      }, 1200);
     } catch (error) {
       setError("Failed to save name");
     } finally {
@@ -46,16 +55,10 @@ const OnboardingName = () => {
   } as any;
 
   return (
-    <div
-      className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden font-sans"
-      style={{
-        backgroundImage: 'radial-gradient(circle, rgba(148, 163, 184, 0.05) 1px, transparent 1px)',
-        backgroundSize: '20px 20px'
-      }}
-    >
-      {/* Premium background ambient glows */}
-      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-gradient-to-br from-primary/10 to-accent/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col px-6 py-8 bg-[#F8FAFC] relative overflow-hidden">
+      {/* Dynamic Background Elements (matching Login page) */}
+      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] pointer-events-none" />
 
       {/* Main Container - Centered Content */}
       <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 py-8 justify-between relative z-10">
@@ -65,9 +68,10 @@ const OnboardingName = () => {
           {/* Back Arrow */}
           <button
             onClick={() => navigate(-1)}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shadow-sm mr-2"
+            className="w-11 h-11 rounded-[16px] bg-white border-2 border-transparent hover:border-primary/10 flex items-center justify-center text-primary hover:bg-primary/5 transition-all active:scale-90 shadow-sm"
+            aria-label="Back"
           >
-            <ChevronLeft size={18} className="text-white" />
+            <ArrowLeft size={22} strokeWidth={2.5} />
           </button>
 
           {/* Subtle Segmented Progress */}
@@ -95,7 +99,7 @@ const OnboardingName = () => {
               call you?
             </h1>
             <p className="text-slate-500 font-medium text-[15px] mt-3 leading-relaxed max-w-sm mx-auto">
-              Enter your name to personalize your RoundU experience.
+              Enter your username to personalize your RoundU experience.
             </p>
           </motion.div>
 
@@ -111,14 +115,24 @@ const OnboardingName = () => {
                 {error}
               </motion.div>
             )}
-
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-[0_4px_12px_rgba(16,185,129,0.05)] flex items-center justify-center gap-2"
+              >
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {success}
+              </motion.div>
+            )}
           </AnimatePresence>
 
-          {/* Input Section */}<motion.div variants={itemVariants} className="space-y-6">
+          {/* Input Section */}
+          <motion.div variants={itemVariants} className="space-y-6">
 
             <div className="relative">
               <div className="flex flex-col">
-                <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Full Name</label>
+                <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Username</label>
               </div>
               <div className="relative">
                 <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-slate-400'}`}>
@@ -151,8 +165,8 @@ const OnboardingName = () => {
             onClick={handleContinue}
             disabled={name.trim().length < 2 || loading}
             className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-300 ${name.trim().length >= 2
-                ? "bg-[#152E4B] text-white shadow-[0_8px_25px_rgba(21,46,75,0.2)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.3)] cursor-pointer"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
+              ? "bg-[#152E4B] text-white shadow-[0_8px_25px_rgba(21,46,75,0.2)] hover:shadow-[0_12px_30px_rgba(21,46,75,0.3)] cursor-pointer"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/30"
               }`}
           >
             <span>{loading ? "Saving..." : "Continue"}</span>

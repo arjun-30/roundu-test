@@ -16,6 +16,8 @@ const SupportChatbot = () => {
     "/onboarding-name",
     "/onboarding",
     "/role",
+    "/select-role",
+    "/role-switch",
     "/location",
   ];
 

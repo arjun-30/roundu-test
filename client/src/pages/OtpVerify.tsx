@@ -60,12 +60,15 @@ const OtpVerify = () => {
     saveRoleForPhone(userPhone, role);
     dispatch({ type: "SET_ROLE", role });
     safeSetItem("roundu_role", role);
-    navigate(role === "provider" ? "/provider" : "/home", { replace: true });
+    navigate(role === "provider" ? "/provider/personal-details" : "/home", { replace: true });
   };
 
   const handleVerify = async () => {
     const otpCode = otp.join("");
-    if (otpCode.length < 6) { setError("Enter the 6-digit code"); return; }
+    if (otpCode.length < 6) {
+      setError("Enter the 6-digit code");
+      return;
+    }
 
     setError("");
     setLoading(true);
@@ -77,19 +80,22 @@ const OtpVerify = () => {
         const { token, user: apiUser } = response.data;
 
         if (token) {
-          // ✅ Only remove generic keys — NOT roundu_role_<phone> (phone-specific key stays!)
           localStorage.removeItem("roundu_token");
           localStorage.removeItem("roundu_user");
           localStorage.removeItem("roundu_role");
+
           const persistedUser = {
             ...apiUser,
             profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
             avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
-            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : "customer")
+            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : apiUser.role === "customer" ? "customer" : undefined),
           };
+
           safeSetItem("roundu_token", token);
           saveUserToLocalStorage(persistedUser);
-          safeSetItem("roundu_role", apiUser.role || "customer");
+          if (!response.data.isNewUser && apiUser.role) {
+            safeSetItem("roundu_role", apiUser.role);
+          }
         }
 
         dispatch({ type: "SET_AUTH", value: true });
@@ -101,29 +107,39 @@ const OtpVerify = () => {
             profilePicture: apiUser.profilePicture || apiUser.avatar_url || "",
             avatar_url: apiUser.avatar_url || apiUser.profilePicture || "",
             phone: phone || apiUser.phone || "",
-            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : "customer")
+            accountType: apiUser.accountType || (apiUser.role === "provider" ? "provider" : apiUser.role === "customer" ? "customer" : undefined),
           },
         });
 
         const userPhone = phone || apiUser.phone || "";
 
-        if (!apiUser.name) {
-          // Brand new user — needs name first
-          navigate("/onboarding-name", { replace: true });
+        if (response.data.isNewUser) {
+          navigate("/select-role", { replace: true });
           return;
         }
 
-        // Determine role precedence: prefer server role -> saved role -> ask user
-        const savedRole = getSavedRoleForPhone(userPhone);
-        const serverRole = apiUser?.role || apiUser?.accountType || null;
-        const roleToUse = (serverRole as any) || (savedRole as any) || null;
-
-        if (roleToUse === 'provider' || roleToUse === 'customer') {
-          navigateByRole(userPhone, roleToUse as 'provider' | 'customer');
-        } else {
-          // First time — show role selection
-          navigate("/role", { replace: true });
+        if (response.data.providerExists && !response.data.customerExists) {
+          dispatch({ type: "SET_ROLE", role: "provider" });
+          saveRoleForPhone(userPhone, "provider");
+          safeSetItem("roundu_role", "provider");
+          navigate("/provider", { replace: true });
+          return;
         }
+
+        if (response.data.customerExists && !response.data.providerExists) {
+          dispatch({ type: "SET_ROLE", role: "customer" });
+          saveRoleForPhone(userPhone, "customer");
+          safeSetItem("roundu_role", "customer");
+          navigate("/home", { replace: true });
+          return;
+        }
+
+        if (response.data.providerExists && response.data.customerExists) {
+          navigate("/role-switch", { replace: true });
+          return;
+        }
+
+        navigate("/select-role", { replace: true });
       }
     } catch (err: any) {
       console.error("Verify Error:", err);

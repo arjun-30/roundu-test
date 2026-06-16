@@ -25,7 +25,7 @@ Node.js + Express + TypeScript API for the RoundU platform.
 5. Run migrations: `npm run migrate`
 6. Start dev server: `npm run dev`
 
-Server runs on http://localhost:3000
+Server runs on http://localhost:5000
 
 ## Team ownership
 
@@ -47,7 +47,7 @@ No direct pushes. PRs only. CI must pass before merge.
 
 ## API base
 
-All endpoints: `http://localhost:3000/api/v1/...`
+All endpoints: `http://localhost:5000/api/v1/...`
 
 Response format: `{ success: boolean, data: any, message: string, error: string | null }`
 ```

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { User, ArrowRight, Briefcase, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { checkProviderExists } from "@/lib/api";
 import { motion } from "framer-motion";
 import { saveRoleForPhone } from "@/lib/roleStorage";
 
@@ -26,32 +25,14 @@ const RoleSelect = () => {
     dispatch({ type: "UPDATE_USER", user: { role, accountType: role } });
 
     if (role === "customer") {
-      navigate("/onboarding", { replace: true });
+      navigate("/onboarding-name", { replace: true });
       return;
     }
 
-    // Directly navigate to service selection for providers
-    if (user.role === "provider") {
-      navigate("/provider/select-service", { replace: true });
+    if (role === "provider") {
+      navigate("/provider/personal-details", { replace: true });
       return;
     }
-
-    setLoading(true);
-    try {
-      const res = await checkProviderExists(user.id);
-      if (res.exists) {
-        dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
-        // After confirming existing provider, go straight to service selection
-        navigate("/provider/select-service", { replace: true });
-        return;
-      }
-    } catch (err) {
-      console.error("Failed to check provider:", err);
-    } finally {
-      setLoading(false);
-    }
-
-    navigate("/provider/select-service", { replace: true });
   };
 
   return (
@@ -89,11 +70,11 @@ const RoleSelect = () => {
 
         {/* TITLE */}
         <div className="mb-8">
-            <h1 className="text-[34px] font-extrabold leading-[1.1]" style={{ color: "#000000" }}>
-              How would you like<br /> to get started?
-            </h1>
+          <h1 className="text-[34px] font-extrabold leading-[1.1]" style={{ color: "#000000" }}>
+            Choose how you want to continue
+          </h1>
           <p className="text-[15px] mt-3 leading-relaxed" style={{ color: "#64748B" }}>
-            Choose your account path to customize your experience.
+            Continue as a Customer or Service Provider.
           </p>
         </div>
 
