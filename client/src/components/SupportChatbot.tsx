@@ -31,6 +31,9 @@ const SupportChatbot = () => {
     return null;
   }
 
+  const isJobPage = pathname.startsWith("/provider/job/");
+  const bottomClass = isJobPage ? "bottom-32" : "bottom-24";
+
   return (
     <button
       onClick={() =>
@@ -38,7 +41,7 @@ const SupportChatbot = () => {
           state: { from: pathname },
         })
       }
-      className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-primary text-white shadow-[0_8px_30px_rgba(21,46,75,0.3)] flex items-center justify-center z-50 hover:scale-105 active:scale-95 transition-all"
+      className={`fixed ${bottomClass} right-5 w-14 h-14 rounded-full bg-primary text-white shadow-[0_8px_30px_rgba(21,46,75,0.3)] flex items-center justify-center z-50 hover:scale-105 active:scale-95 transition-all`}
     >
       <div className="relative">
         <MessageSquare size={24} />

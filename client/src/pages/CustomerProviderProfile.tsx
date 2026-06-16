@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import api from "@/lib/api";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 const avatar = (name: string) =>
@@ -36,6 +37,7 @@ const CustomerProviderProfile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
   /* ── fetch real provider data ─────────────────────────────────────────── */
   useEffect(() => {
@@ -141,7 +143,10 @@ const CustomerProviderProfile = () => {
         {/* avatar overlapping hero */}
         <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-[#152E4B]">
+            <div 
+              onClick={() => setIsImagePreviewOpen(true)}
+              className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-[#152E4B] cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200"
+            >
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" />
               ) : (
@@ -392,9 +397,17 @@ const CustomerProviderProfile = () => {
           onClick={() => navigate(-1)}
           className="w-full h-13 py-3.5 bg-[#152E4B] text-white font-bold rounded-2xl active:scale-95 transition shadow-lg text-[15px]"
         >
+          <!-- Back to Quotes -->
           ← Back to Quotes
         </button>
       </div>
+
+      <ImagePreviewModal
+        isOpen={isImagePreviewOpen}
+        imageUrl={profile?.avatar_url || avatar(name)}
+        alt={name}
+        onClose={() => setIsImagePreviewOpen(false)}
+      />
     </div>
   );
 };

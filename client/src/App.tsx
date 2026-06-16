@@ -33,7 +33,8 @@ const Location = lazy(() => import("@/pages/Location"));
 const Home = lazy(() => import("@/pages/Home"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const ServicesPage = lazy(() => import("@/pages/ServicesPage"));
-const ProvidersPage = lazy(() => import("@/pages/ProvidersPage"));
+const ProviderQuotes = lazy(() => import("@/pages/ProviderQuotes"));
+const NoProvidersFound = lazy(() => import("@/pages/NoProvidersFound"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const BookingDate = lazy(() => import("@/pages/BookingDate"));
@@ -43,6 +44,7 @@ const BookingPayment = lazy(() => import("@/pages/BookingPayment"));
 const BookingSuccess = lazy(() => import("@/pages/BookingSuccess"));
 const BookService = lazy(() => import("@/pages/BookService"));
 const SearchingProviders = lazy(() => import("@/pages/SearchingProviders"));
+const SelectProvider = lazy(() => import("@/pages/SelectProvider"));
 const ActingDriverBooking = lazy(() => import("@/pages/ActingDriverBooking"));
 const Tracking = lazy(() => import("@/pages/Tracking"));
 const Rating = lazy(() => import("@/pages/Rating"));
@@ -211,10 +213,11 @@ const AppRoutes = () => (
         <Route path="/services" element={<RequireAuth><ServicesPage /></RequireAuth>} />
         <Route path="/service-select/:serviceId" element={<RequireAuth><ServiceSelection /></RequireAuth>} />
         <Route path="/get-help/:serviceId" element={<RequireAuth><GetHelp /></RequireAuth>} />
-        <Route path="/providers/:serviceId" element={<RequireAuth><ProvidersPage /></RequireAuth>} />
+        <Route path="/provider-quotes/:serviceId" element={<RequireAuth><ProviderQuotes /></RequireAuth>} />
         <Route path="/provider/:id" element={<RequireAuth><ProviderDetail /></RequireAuth>} />
         <Route path="/book-service/:serviceId" element={<RequireAuth><BookService /></RequireAuth>} />
         <Route path="/searching-providers/:serviceId" element={<RequireAuth><SearchingProviders /></RequireAuth>} />
+        <Route path="/select-provider/:serviceId" element={<RequireAuth><SelectProvider /></RequireAuth>} />
         <Route path="/book-driver/:serviceId" element={<RequireAuth><ActingDriverBooking /></RequireAuth>} />
         <Route path="/booking/date" element={<RequireAuth><BookingDate /></RequireAuth>} />
         <Route path="/booking/time" element={<RequireAuth><BookingTime /></RequireAuth>} />

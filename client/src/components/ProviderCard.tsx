@@ -38,7 +38,7 @@ const ProviderCard = ({ provider, onClick, onBook }: ProviderCardProps) => {
             ) : (
               <div className="flex items-center gap-0.5">
                 <Star size={12} className="text-accent fill-accent" />
-                <span className="text-xs font-bold text-foreground">{provider.rating}</span>
+                <span className="text-xs font-bold text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
               </div>
             )}
             <span className="text-[10px] text-muted-foreground">({provider.reviews} reviews)</span>

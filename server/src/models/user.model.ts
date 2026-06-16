@@ -44,7 +44,7 @@ export const UserModel = {
       return res.rows[0];
     } catch (err) {
       if (env.isDevelopment) {
-        console.warn('[UserModel] DB Error in create, returning mock user');
+        console.warn('[UserModel] DB Error in create, returning mock user:', err);
         return {
           id: 'mock-user-id',
           phone: user.phone || '0000000000',

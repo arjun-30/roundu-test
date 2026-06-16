@@ -132,7 +132,7 @@ const ProviderProfile = () => {
           <div className="grid grid-cols-3 divide-x divide-border mt-5 border-t border-border pt-4">
             <div>
               <p className="text-lg font-extrabold text-foreground flex items-center justify-center gap-1">
-                {providerStats.rating} <Star size={14} className="text-accent fill-accent" />
+                {Number(providerStats.rating || 0).toFixed(1)} <Star size={14} className="text-accent fill-accent" />
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mt-1">Rating</p>
             </div>

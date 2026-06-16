@@ -10,7 +10,6 @@ import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
 import IncomingRequestPopup from "@/components/IncomingRequestPopup";
-import PIPModal from "@/components/PIPModal";
 import LocationModal from "@/components/LocationModal";
 import { socket } from "@/lib/socket";
 import { getShortAddress, getDistance } from "@/lib/utils";
@@ -81,8 +80,6 @@ const Dashboard = () => {
   const [quotePrice, setQuotePrice] = useState("");
   const [quoteEta, setQuoteEta] = useState("15");
 
-  const [showPip, setShowPip] = useState(false);
-  const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
 
   const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
@@ -215,34 +212,6 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (providerStats.rating === 0) {
-      const hasSeenNewSignup = localStorage.getItem("has_seen_new_signup");
-      if (!hasSeenNewSignup) {
-        localStorage.setItem("has_seen_new_signup", "true");
-        setPipType("new_signup");
-        setShowPip(true);
-      }
-    } else {
-      if (providerStats.rating < 3.5) {
-        localStorage.setItem("is_in_pip", "true");
-      } else if (providerStats.rating >= 3.7) {
-        localStorage.setItem("is_in_pip", "false");
-      }
-
-      const isInPip = localStorage.getItem("is_in_pip") === "true";
-      if (isInPip) {
-        const lastSeenLowRating = localStorage.getItem("last_seen_low_rating");
-        if (lastSeenLowRating !== today) {
-          localStorage.setItem("last_seen_low_rating", today);
-          setPipType("low_rating");
-          setShowPip(true);
-        }
-      }
-    }
-  }, [providerStats.rating]);
-
-  useEffect(() => {
     const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
       dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
 
@@ -370,27 +339,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-full flex flex-col bg-background pb-24 relative provider-theme">
-      {/* PIP Modal */}
-      {showPip && pipType && (
-        <PIPModal
-          type={pipType}
-          rating={providerStats.rating}
-          onClose={pipType === "low_rating" ? () => {
-            const today = new Date().toISOString().slice(0, 10);
-            localStorage.setItem("last_seen_low_rating", today);
-            setShowPip(false);
-          } : undefined}
-          onCommit={() => {
-            if (pipType === "new_signup") {
-              localStorage.setItem("has_seen_new_signup", "true");
-            } else {
-              const today = new Date().toISOString().slice(0, 10);
-              localStorage.setItem("last_seen_low_rating", today);
-            }
-            setShowPip(false);
-          }}
-        />
-      )}
 
       {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
       {activeBroadcast && !quotingBroadcast && !(quotedBroadcasts && quotedBroadcasts.includes(activeBroadcast.broadcastId)) && (
@@ -568,19 +516,7 @@ const Dashboard = () => {
         <AnimatePresence>
           {(() => {
             let warning = null;
-            if ((providerStats.rating > 0 && providerStats.rating < 3.7) || (providerStats.responseRate > 0 && providerStats.responseRate < 50)) {
-              warning = {
-                type: "critical",
-                title: "Account at Risk",
-                message: "Your performance is critically low. Please improve immediately to avoid permanent deactivation.",
-                bg: "bg-[#FEF2F2]",
-                border: "border-[#FECACA]",
-                text: "text-[#991B1B]",
-                subtext: "text-[#B91C1C]",
-                iconColor: "text-[#EF4444]",
-                iconBg: "bg-[#FEE2E2]"
-              };
-            } else if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
+            if (providerStats.responseRate > 0 && providerStats.responseRate < 90) {
               warning = {
                 type: "warning",
                 title: "Response Rate Low",
@@ -591,18 +527,6 @@ const Dashboard = () => {
                 subtext: "text-[#C2410C]",
                 iconColor: "text-[#F97316]",
                 iconBg: "bg-[#FFEDD5]"
-              };
-            } else if (providerStats.rating > 0 && providerStats.rating < 4.5) {
-              warning = {
-                type: "caution",
-                title: "Rating Dropping",
-                message: `Your rating is ${providerStats.rating}. Try to provide better service to get 5-star reviews.`,
-                bg: "bg-[#FEFCE8]",
-                border: "border-[#FEF08A]",
-                text: "text-[#854D0E]",
-                subtext: "text-[#A16207]",
-                iconColor: "text-[#EAB308]",
-                iconBg: "bg-[#FEF9C3]"
               };
             }
 
@@ -803,7 +727,7 @@ const Dashboard = () => {
                 <Star size={14} fill="currentColor" strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{providerStats.rating}</p>
+              <p className="text-[24px] font-black text-foreground tracking-tight">{Number(providerStats.rating || 0).toFixed(1)}</p>
               <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
             </div>
             <div className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
@@ -1295,7 +1219,7 @@ const Dashboard = () => {
 
       {/* Quote Modal */}
       {quotingBroadcast && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 animate-fade-in backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center px-4 animate-fade-in backdrop-blur-[2px]">
           <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
             <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>

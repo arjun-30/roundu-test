@@ -68,7 +68,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
   const percentage = (timeLeft / 120) * 100;
 
   return (
-    <div className="fixed inset-0 z-[200] flex justify-center items-start pt-12 p-4 bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[999] flex justify-center items-center p-4 bg-black/50 backdrop-blur-[2px] animate-in fade-in duration-300">
       <div className="w-full max-w-sm bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col relative">
         {/* Timer Bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-muted">
@@ -95,6 +95,13 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
             {isBroadcast ? "Live Job Alert" : "New Request"}
           </h2>
           <h1 className="text-2xl font-extrabold text-foreground leading-tight">{service?.label || request.serviceId}</h1>
+          <div className="mt-2">
+            <span className="text-sm font-bold text-primary uppercase tracking-wide">
+              {request.jobType === "scheduled"
+                ? "Scheduled Service"
+                : "Quick Fix"}
+            </span>
+          </div>
 
           <div className="flex items-center gap-4 mt-4 bg-muted/50 rounded-2xl p-3 border border-border/50">
             <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center text-lg font-bold">
@@ -104,7 +111,7 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
               <p className="text-sm font-bold text-foreground">{request.customerName}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="flex items-center gap-1 text-xs font-medium text-warning">
-                  <Star size={12} fill="currentColor" /> {request.customerRating || "4.8"}
+                  <Star size={12} fill="currentColor" /> {Number(request.customerRating || 4.8).toFixed(1)}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -135,21 +142,10 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
         </div>
 
         <div className="p-6">
-          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{isBroadcast ? "Budget/Notes" : "Estimated Earnings"}</p>
           {isBroadcast ? (
             <div className="space-y-4">
 
               {/* Job Type */}
-              <div className="flex items-center justify-between bg-primary/5 border border-primary/10 rounded-xl p-3">
-                <span className="text-xs font-bold uppercase text-muted-foreground">
-                  Job Type
-                </span>
-                <span className="text-sm font-bold text-primary">
-                  {request.jobType === "scheduled"
-                    ? "Scheduled Service"
-                    : "Quick Fix"}
-                </span>
-              </div>
 
               {/* Issue Photos */}
               <div>
@@ -175,34 +171,14 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
                 )}
               </div>
 
-              {/* Voice Note */}
               {request.voiceNoteUrl && (
-                <div className="bg-primary/5 border border-primary/10 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-primary uppercase tracking-wider mb-2">
-                    🎤 Voice Note Attached
+                <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Voice Note Attached
                   </div>
-
-                  <audio
-                    src={request.voiceNoteUrl}
-                    controls
-                    className="w-full h-8"
-                  />
+                  <audio src={request.voiceNoteUrl} controls className="w-full h-8" />
                 </div>
               )}
-
-              {/* Description */}
-              <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
-                  Description
-                </p>
-
-                <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                  <p className="text-sm text-foreground">
-                    {request.notes || "No description provided."}
-                  </p>
-                </div>
-              </div>
-
             </div>
           ) : (
             <>
@@ -218,6 +194,16 @@ const IncomingRequestPopup = ({ request, onAccept, onReject, isBroadcast, isBusy
               )}
             </>
           )}
+          <div>
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-1">
+              Description
+            </p>
+
+            <p className="text-sm text-foreground leading-relaxed">
+              {request.notes || "No description provided."}
+            </p>
+          </div>
+
         </div>
 
 

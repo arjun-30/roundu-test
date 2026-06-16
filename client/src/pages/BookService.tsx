@@ -12,7 +12,12 @@ import {
   XCircle,
   X,
   Loader2,
+  Camera,
+  Image,
 } from "lucide-react";
+
+
+import { compressImage, uploadImage } from "@/lib/imageUpload";
 
 import {
   useNavigate,
@@ -49,7 +54,77 @@ const BookService = () => {
     bookingNotes,
     bookingVoiceNote,
     bookingVoiceNoteUrl,
+    bookingImages,
   } = useApp();
+
+  const [images, setImages] = useState<string[]>(bookingImages || []);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    dispatch({ type: "SET_IMAGES", images });
+  }, [images, dispatch]);
+
+  const handleTakePhoto = () => {
+    setUploadError("");
+    if (images.length >= 5) {
+      setUploadError("You can upload up to 5 photos only.");
+      return;
+    }
+    cameraInputRef.current?.click();
+  };
+
+  const handleChooseGallery = () => {
+    setUploadError("");
+    if (images.length >= 5) {
+      setUploadError("You can upload up to 5 photos only.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (images.length + files.length > 5) {
+      setUploadError("You can upload up to 5 photos only.");
+      return;
+    }
+
+    setUploadError("");
+    setIsProcessing(true);
+
+    try {
+      const newUrls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+          setUploadError("Unsupported format. Only JPG, JPEG, and PNG are allowed.");
+          setIsProcessing(false);
+          return;
+        }
+
+        const compressed = await compressImage(file);
+        const url = await uploadImage(compressed, file.name);
+        newUrls.push(url);
+      }
+      setImages(prev => [...prev, ...newUrls]);
+    } catch (err: any) {
+      console.error(err);
+      setUploadError(err.message || "Failed to upload file.");
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   const [locating, setLocating] =
     useState(false);
@@ -455,6 +530,101 @@ const BookService = () => {
           </motion.div>
         )}
 
+        {/* ADD PHOTOS CARD */}
+        <div className="bg-white rounded-[28px] border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="mb-4">
+            <h2 className="text-[22px] font-bold text-[#0F172A]">
+              Add Photos (Optional)
+            </h2>
+            <p className="text-[14px] text-slate-500 mt-1">
+              Upload photos of the issue to help professionals understand the problem better.
+            </p>
+          </div>
+
+          <div className="flex gap-3 mb-4">
+            <button
+              onClick={handleTakePhoto}
+              type="button"
+              className="flex-1 py-3 px-4 rounded-2xl bg-[#F8FAFC] border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-2 text-[#17375E] font-bold text-sm"
+            >
+              <Camera size={18} className="text-[#D89B1D]" />
+              Take Photo
+            </button>
+            <button
+              onClick={handleChooseGallery}
+              type="button"
+              className="flex-1 py-3 px-4 rounded-2xl bg-[#F8FAFC] border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-2 text-[#17375E] font-bold text-sm"
+            >
+              <Image size={18} className="text-[#17375E]" />
+              Choose Gallery
+            </button>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/jpeg,image/png,image/jpg"
+            multiple
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/jpeg,image/png,image/jpg"
+            capture="environment"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+
+          {uploadError && (
+            <p className="text-red-500 text-xs font-semibold mb-3">
+              {uploadError}
+            </p>
+          )}
+
+          {isProcessing && (
+            <div className="flex items-center gap-2 mb-3 text-[#17375E] text-xs font-semibold animate-pulse">
+              <Loader2 size={14} className="animate-spin text-[#D89B1D]" />
+              Processing and uploading photos...
+            </div>
+          )}
+
+          {images.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
+              {images.map((url, idx) => (
+                <div
+                  key={url}
+                  className="relative w-20 h-20 rounded-2xl border border-slate-100 overflow-hidden shrink-0 snap-start shadow-sm"
+                >
+                  <img
+                    src={url}
+                    alt={`Preview ${idx + 1}`}
+                    onClick={() => setFullscreenImage(url)}
+                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(idx)}
+                    type="button"
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white"
+                  >
+                    <X size={12} strokeWidth={2.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              onClick={handleChooseGallery}
+              className="border-2 border-dashed border-slate-200 rounded-2xl py-6 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50/50 transition-colors"
+            >
+              <Camera size={32} className="text-slate-300 mb-2" />
+              <p className="text-sm font-bold text-slate-700">No photos added yet</p>
+              <p className="text-xs text-slate-400 mt-0.5">Tap to upload</p>
+            </div>
+          )}
+        </div>
+
         {/* DESCRIPTION */}
         <div className="bg-white rounded-[28px] border border-slate-100 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
@@ -712,6 +882,35 @@ const BookService = () => {
 
 
       </div>
+
+      {/* FULLSCREEN IMAGE MODAL */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFullscreenImage(null)}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          >
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-6 right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+            >
+              <X size={24} />
+            </button>
+            <motion.img
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              src={fullscreenImage}
+              alt="Fullscreen Preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* LOCATION MODAL */}
       <LocationModal

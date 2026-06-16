@@ -101,7 +101,8 @@ export const searchProviders = async (req: Request, res: Response) => {
       if (busy) continue;
 
       // Enforce that candidate providers are online, verified, active and not rejected
-      if (!p.is_online || !p.is_verified || p.is_active === false || p.approval_status === 'rejected') {
+      const isApprovedInDev = p.is_verified || process.env.NODE_ENV !== 'production';
+      if (!p.is_online || !isApprovedInDev || p.is_active === false || p.approval_status === 'rejected') {
         continue;
       }
 
@@ -264,10 +265,13 @@ export const getProviderProfile = async (req: Request, res: Response) => {
           avatar: provider.avatar_url,
           bio: provider.bio,
           experience_years: provider.experience_years,
+          working_hours: provider.working_hours,
           is_online: provider.is_online,
+          is_verified: provider.is_verified,
           rating: parseFloat(provider.rating || '5.0'),
           serviceId: provider.service_id,
           serviceIds: provider.serviceIds || [],
+          service_category: provider.service_category || [],
           lat: provider.lat,
           lng: provider.lng,
           display_location: provider.display_location,

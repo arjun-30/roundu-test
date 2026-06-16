@@ -126,7 +126,8 @@ const OnboardingName = () => {
             )}
           </AnimatePresence>
 
-          {/* Input Section */}<motion.div variants={itemVariants} className="space-y-6">
+          {/* Input Section */}
+          <motion.div variants={itemVariants} className="space-y-6">
 
             <div className="relative">
               <div className="flex flex-col">
@@ -146,7 +147,7 @@ const OnboardingName = () => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleContinue();
                   }}
-                 placeholder="e.g. John Doe"
+                  placeholder="Enter username"
                   autoFocus
                   className={`w-full pl-14 pr-5 py-4 rounded-3xl bg-white text-slate-800 font-semibold placeholder:text-slate-400 focus:outline-none transition-all text-[15px] border ${isFocused ? 'border-primary ring-4 ring-primary/20 shadow-[0_12px_30px_rgba(59,130,246,0.12)]' : 'border-slate-200 hover:border-slate-300'}`}
                 />

@@ -5,7 +5,7 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-const isMock = supabaseUrl.includes('placeholder') || supabaseKey === 'placeholder-key';
+export const isMock = supabaseUrl.includes('placeholder') || supabaseKey === 'placeholder-key';
 
 // Startup diagnostic — visible in browser console in any environment
 if (isMock) {
@@ -303,3 +303,49 @@ export async function deleteProviderVideo(providerId: string): Promise<void> {
     throw dbError;
   }
 }
+
+/**
+ * Helper to upload an avatar image to Supabase Storage.
+ */
+export async function uploadProviderAvatar(
+  providerId: string,
+  imageFile: File | Blob
+): Promise<string> {
+  if (isMock) {
+    // If in mock mode, convert to base64 Data URL and return it
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (err) => reject(err);
+    });
+    reader.readAsDataURL(imageFile);
+    const base64Url = await base64Promise;
+    localStorage.setItem(`mock_avatar_${providerId}`, base64Url);
+    return base64Url;
+  }
+
+  const ext = 'png'; // default to png
+  const timestamp = Date.now();
+  const storagePath = `avatars/provider_${providerId}_${timestamp}.${ext}`;
+
+  // Upload to Supabase Storage in the 'provider-video-portfolios' bucket (which is pre-configured and public)
+  const { error: uploadError } = await supabase.storage
+    .from('provider-video-portfolios')
+    .upload(storagePath, imageFile, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error('Error uploading avatar to storage:', uploadError);
+    throw uploadError;
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('provider-video-portfolios')
+    .getPublicUrl(storagePath);
+
+  return urlData.publicUrl;
+}
+

@@ -185,7 +185,7 @@ const Notifications = () => {
                             <span className="text-amber-600 font-bold uppercase text-[9px]">New</span>
                           ) : (
                             <span className="flex items-center gap-0.5 text-amber-500 font-semibold">
-                              <Star size={10} className="fill-amber-500 text-amber-500" /> {quote.rating}
+                              <Star size={10} className="fill-amber-500 text-amber-500" /> {Number(quote.rating || 0).toFixed(1)}
                             </span>
                           )}
                           <span>•</span>

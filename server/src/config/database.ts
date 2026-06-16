@@ -48,11 +48,13 @@ class DelegatingPool {
             // Register UUID functions
             db.public.registerFunction({
               name: 'uuid_generate_v4',
-              implementation: () => crypto.randomUUID()
+              implementation: () => crypto.randomUUID(),
+              impure: true
             });
             db.public.registerFunction({
               name: 'gen_random_uuid',
-              implementation: () => crypto.randomUUID()
+              implementation: () => crypto.randomUUID(),
+              impure: true
             });
 
             // Read and clean schema

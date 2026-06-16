@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isMock } from "@/lib/supabase";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected" | null;
 
@@ -30,6 +30,13 @@ export function useProviderApprovalStatus(userId: string | null | undefined): Pr
     if (!userId) {
       setLoading(false);
       setStatus(null);
+      return;
+    }
+
+    if (isMock) {
+      setStatus("approved");
+      setRejectionReason(null);
+      setLoading(false);
       return;
     }
 

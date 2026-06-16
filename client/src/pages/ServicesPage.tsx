@@ -2,11 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { services } from "@/data/mockData";
 import ScreenHeader from "@/components/ScreenHeader";
 import ServiceCard from "@/components/ServiceCard";
-import { useApp } from "@/context/AppContext";
 
 const ServicesPage = () => {
   const navigate = useNavigate();
-  const { dispatch } = useApp();
+
   return (
     <div className="min-h-full flex flex-col bg-background">
       <ScreenHeader title="All Services" />

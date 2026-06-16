@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, Clock, BadgeCheck, Briefcase,
   MessageCircle, Phone, Share2, MoreVertical, ShieldCheck,
-  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X, Play, CreditCard
+  ThumbsUp, Zap, Calendar, Heart, CheckCircle2, ChevronRight, X, Play
 } from "lucide-react";
 import FixedBackButton from "@/components/FixedBackButton";
 import { getProviderById, getServiceById } from "@/data/mockData";
@@ -11,6 +11,7 @@ import { useApp } from "@/context/AppContext";
 import api, { createBooking } from "@/lib/api";
 import { socket } from "@/lib/socket";
 import { getProviderVideo } from "@/lib/supabase";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 const ProviderDetail = () => {
   const { id = "" } = useParams();
@@ -105,13 +106,15 @@ const ProviderDetail = () => {
       rating: fromApi ? (stats?.rating ?? 0) : (baseProfile?.rating || quote?.rating || 0),
       jobs: fromApi ? (stats?.total_jobs ?? 0) : (baseProfile?.jobs || 0),
       reviews: fromApi ? (stats?.total_jobs ?? 0) : (baseProfile?.reviews || 0),
-      experienceYrs: baseProfile?.experienceYrs || baseProfile?.experience_years || 2,
-      verified: baseProfile?.verified !== undefined ? baseProfile.verified : (baseProfile?.is_verified ?? true),
+      experienceYrs: baseProfile?.experience_years || baseProfile?.experienceYrs || 2,
+      workingHours: baseProfile?.working_hours || "All day",
+      verified: baseProfile?.is_verified !== undefined ? baseProfile.is_verified : (baseProfile?.verified !== undefined ? baseProfile.verified : true),
       bio: baseProfile?.bio || "Independent professional dedicated to quality service.",
       tags: baseProfile?.tags || ["Fast", "Reliable"],
       available: baseProfile?.available !== undefined ? baseProfile.available : (baseProfile?.is_online ?? true),
       serviceId: baseProfile?.serviceId || baseProfile?.service_id || "",
       serviceIds: baseProfile?.serviceIds || baseProfile?.service_ids || [],
+      serviceCategory: baseProfile?.service_category || [],
       lat: baseProfile?.lat,
       lng: baseProfile?.lng,
       display_location: baseProfile?.display_location || "Service Area",
@@ -142,6 +145,44 @@ const ProviderDetail = () => {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [providerServices, setProviderServices] = useState<string[]>([]);
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
+
+  const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(true);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+
+  useEffect(() => {
+    if (provider) {
+      setPortfolio(provider.portfolio || []);
+      setCertificates(provider.certificates || []);
+      setLoadingPortfolio(false);
+    }
+  }, [provider]);
+
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!provider?.id) return;
+      try {
+        const res = await api.get(`/ratings/provider/${provider.id}`);
+        if (res.data?.success) {
+          setReviews(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch reviews", err);
+      }
+    };
+    fetchReviews();
+  }, [provider?.id]);
+
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [video, setVideo] = useState<any | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(true);
 
@@ -161,43 +202,6 @@ const ProviderDetail = () => {
     fetchVideo();
   }, [provider?.id]);
 
-  const showNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(""), 3000);
-  };
-
-  const [portfolio, setPortfolio] = useState<any[]>([]);
-  const [loadingPortfolio, setLoadingPortfolio] = useState(true);
-  const [showGalleryModal, setShowGalleryModal] = useState(false);
-  const [showReviewsModal, setShowReviewsModal] = useState(false);
-
-  useEffect(() => {
-    setLoadingPortfolio(true);
-    // Simulating API fetch for portfolio
-    setTimeout(() => {
-      setPortfolio([
-        { id: 1, title: "Plumbing Fix", image: "/provider_work_gallery_1_1778838516658.png", desc: "Complete pipe replacement and leak repair." },
-        { id: 2, title: "Electrical Setup", image: "/provider_work_gallery_2_1778838540729.png", desc: "Main panel wiring and safety circuit installation." },
-        { id: 3, title: "Bathroom Renovation", image: "/provider_work_gallery_3_1778838557643.png", desc: "Modern fixture installation and waterproofing." },
-        { id: 4, title: "Kitchen Drain Clear", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop", desc: "Deep clog removal and drainage optimization." },
-        { id: 5, title: "Water Heater Fix", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop", desc: "Thermostat replacement and heating element scaling." },
-        { id: 6, title: "Smart Home Lighting", image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=400&h=300&fit=crop", desc: "Automated ambient lighting setup and switchboard repair." },
-      ]);
-      setLoadingPortfolio(false);
-    }, 800);
-  }, [id]);
-
-  const mockReviews = [
-    { id: 1, user: "Amit S.", rating: 5, comment: "Excellent work! Fixed my leaking tap in minutes. Very professional.", date: "2 days ago", verified: true },
-    { id: 2, user: "Priya K.", rating: 4, comment: "On time and efficient. Highly recommended for electrical issues.", date: "1 week ago", verified: true },
-    { id: 3, user: "Vikram R.", rating: 5, comment: "Best service I've had in a while. Polite and thorough.", date: "2 weeks ago", verified: true },
-    { id: 4, user: "Suresh M.", rating: 5, comment: "Very knowledgeable and polite. Fixed the wiring issue flawlessly and explained everything.", date: "3 weeks ago", verified: true },
-    { id: 5, user: "Neha G.", rating: 5, comment: "Cleaned up after the job was done. Impressive dedication to quality and absolute transparency.", date: "1 month ago", verified: true },
-    { id: 6, user: "Rahul T.", rating: 4, comment: "Arrived a bit late but finished the job perfectly. Transparent pricing with no hidden charges.", date: "1 month ago", verified: true },
-    { id: 7, user: "Anjali D.", rating: 5, comment: "Super fast arrival and excellent communication throughout the service booking.", date: "2 months ago", verified: true },
-    { id: 8, user: "Manoj P.", rating: 5, comment: "Absolute expert. Solved a persistent plumbing issue no one else could fix in months.", date: "2 months ago", verified: true },
-  ];
-
   const handleShare = async () => {
     const shareUrl = `https://roundu.in/provider/${provider?.id}`;
     const shareText = `Check out ${provider?.name} on RoundU — ${service?.label || "Professional Service"} starting at ₹${provider?.pricePerHr}/hr. Book now!`;
@@ -208,6 +212,7 @@ const ProviderDetail = () => {
     }
   };
 
+
   const handleCall = () => {
     showNotification("Connecting via secure masked number...");
     window.open("tel:+911234567890", "_self");
@@ -216,19 +221,8 @@ const ProviderDetail = () => {
 
   const handleBook = async () => {
     // Validation checks
-    if (!user?.id) {
-      showNotification("❌ Please log in to book a service.");
-      return;
-    }
-
     if (!provider) {
       showNotification("❌ Provider information not available.");
-      return;
-    }
-
-    if (!currentLocation?.lat || !currentLocation?.lng) {
-      showNotification("❌ Location access required. Please enable location.");
-      navigate("/home");
       return;
     }
 
@@ -240,14 +234,14 @@ const ProviderDetail = () => {
 
     try {
       const bookingData = {
-        customer_id: user.id,
+        customer_id: user?.id || "demo-user",
         provider_id: provider.id,
-        service_id: provider.serviceId || (quote?.broadcastId?.split('-')?.[2] ?? 'service'),
+        service_id: provider.serviceId || provider.serviceIds?.[0] || provider.serviceCategory?.[0] || (quote?.broadcastId?.split('-')?.[2] ?? 'plumber'),
         status: "assigned",
         scheduled_at: new Date(Date.now() + (provider.etaMin || 15) * 60000).toISOString(),
-        address: user.address || "Client Address",
-        lat: currentLocation?.lat,
-        lng: currentLocation?.lng,
+        address: user?.address || "Client Address",
+        lat: currentLocation?.lat || 12.9716,
+        lng: currentLocation?.lng || 77.5946,
         price: provider.pricePerHr,
         notes: quote ? `Accepting quote for ${provider.name}` : "Booking from provider profile",
       };
@@ -273,22 +267,25 @@ const ProviderDetail = () => {
             broadcastId: quote.broadcastId,
             acceptedProviderId: provider.id,
             bookingId: res.data.id,
-            customerName: user.name,
-            customerPhone: user.phone,
-            address: user.address || "Customer Location",
+            customerName: user?.name || "Customer",
+            customerPhone: user?.phone || "1234567890",
+            address: user?.address || "Customer Location",
             serviceId: provider.serviceId,
             price: provider.pricePerHr,
-            lat: currentLocation?.lat,
-            lng: currentLocation?.lng,
+            lat: currentLocation?.lat || 12.9716,
+            lng: currentLocation?.lng || 77.5946,
             scheduled_at: res.data.scheduled_at,
           });
-          showNotification("✅ Quote accepted! Opening chat...");
+          showNotification("✅ Quote accepted! Redirecting to tracking...");
         } else {
-          showNotification("✅ Booking confirmed!");
+          showNotification("✅ Booking confirmed! Redirecting to tracking...");
         }
 
         setBookingSuccess(true);
-        setTimeout(() => navigate(`/chat/${res.data.id}`), 1000);
+        setTimeout(() => {
+          navigate('/home', { replace: true });
+          navigate(`/tracking/${res.data.id}`);
+        }, 1000);
       } else {
         showNotification("❌ Booking failed. Please try again.");
         setIsBooking(false);
@@ -326,36 +323,16 @@ const ProviderDetail = () => {
 
       <div className="min-h-screen bg-gray-50 pb-32 font-['DM_Sans',sans-serif]">
         {/* Portfolio Video Cover Section */}
-        <div className="relative w-full h-64 sm:h-80 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden rounded-b-3xl">
-          {/* Background Video */}
+        <div className="relative w-full h-64 sm:h-80 bg-black overflow-hidden rounded-b-3xl">
+          {/* Video Player */}
           <video
             autoPlay
-            loop
-            muted
+            controls
             playsInline
-            className="w-full h-full object-cover opacity-80"
-            src="https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"
+            className="w-full h-full object-cover"
+            src={video?.video_url || "https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"}
+            poster={portfolio.length > 0 ? portfolio[0]?.image : undefined}
           />
-
-          {/* Fallback: Show first portfolio image if video fails */}
-          {portfolio.length > 0 && (
-            <img
-              src={portfolio[0]?.image}
-              alt="Portfolio Cover"
-              className="absolute inset-0 w-full h-full object-cover opacity-0 hover:opacity-100 transition-opacity"
-            />
-          )}
-
-          {/* Dark Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-          {/* Play Button Overlay */}
-          <button
-            onClick={() => setShowVideoPlayer(!showVideoPlayer)}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:bg-white/30 active:scale-95 transition-all shadow-lg"
-          >
-            <Play size={28} className="text-white fill-white ml-1" />
-          </button>
         </div>
 
         {/* Content with Floating Avatar */}
@@ -363,8 +340,11 @@ const ProviderDetail = () => {
           {/* Floating Avatar at Top Center */}
           <div className="flex justify-center -mt-16 mb-6 relative z-20">
             <div className="relative">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden">
-                {provider.avatar && typeof provider.avatar === 'string' && provider.avatar.startsWith('http') ? (
+              <div
+                onClick={() => provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) && setIsImagePreviewOpen(true)}
+                className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden ${provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) ? 'cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200' : ''}`}
+              >
+                {provider.avatar && typeof provider.avatar === 'string' && (provider.avatar.startsWith('http') || provider.avatar.startsWith('data:image/')) ? (
                   <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-6xl sm:text-7xl font-bold text-white">{provider.name?.charAt(0)}</span>
@@ -383,13 +363,12 @@ const ProviderDetail = () => {
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{provider.name}</h1>
                 {provider.verified && <BadgeCheck className="text-blue-500" size={24} />}
               </div>
-              <p className="text-sm sm:text-base text-muted-foreground font-medium">{providerServices.length > 0 ? providerServices.join(", ") : service?.label || "Professional Service"}</p>
             </div>
 
             <div className="text-center mb-4">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-sm font-bold text-foreground">{provider.rating || 0}</span>
+                <span className="text-sm font-bold text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
                 <span className="text-xs text-muted-foreground">({provider.reviews || 0} reviews)</span>
               </div>
             </div>
@@ -408,7 +387,7 @@ const ProviderDetail = () => {
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
               <MapPin size={20} className="text-red-500 mx-auto mb-2" />
               <p className="text-xs font-bold text-foreground mb-1">{provider.display_location || "Service Area"}</p>
-              <p className="text-[10px] text-muted-foreground">{provider.lat && provider.lng ? `${provider.lat.toFixed(4)}, ${provider.lng.toFixed(4)}` : provider.service_radius ? `Up to ${provider.service_radius} km radius` : "Coordinates available"}</p>
+              <p className="text-[10px] text-muted-foreground">Location</p>
             </div>
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
               <Clock size={20} className="text-blue-500 mx-auto mb-2" />
@@ -426,7 +405,7 @@ const ProviderDetail = () => {
           <div className="grid grid-cols-3 gap-3 mb-8 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <span className="text-2xl sm:text-3xl font-black text-foreground">{provider.rating || 0}</span>
+                <span className="text-2xl sm:text-3xl font-black text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
                 <Star size={16} className="text-yellow-500 fill-yellow-500" />
               </div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase">Rating</p>
@@ -443,6 +422,7 @@ const ProviderDetail = () => {
 
           {/* Services & Work Details - Two Column */}
           <div className="grid grid-cols-2 gap-4 mb-8">
+            {/* Services Card */}
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -450,17 +430,24 @@ const ProviderDetail = () => {
                 </div>
                 <h3 className="font-bold text-foreground text-sm">Services</h3>
               </div>
-              <div className="space-y-2">
-                {(provider.tags || ['Bike Taxi', 'Quick Pickups', 'Safe Rides']).slice(0, 4).map((svc: string) => (
-                  <div key={svc} className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm text-foreground font-medium line-clamp-1">{svc}</span>
+              <div className="flex flex-wrap gap-2">
+                {(provider.serviceCategory && provider.serviceCategory.length > 0
+                  ? provider.serviceCategory
+                  : provider.serviceIds && provider.serviceIds.length > 0
+                    ? provider.serviceIds.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+                    : providerServices.length > 0
+                      ? providerServices
+                      : [service?.label || "Professional"]
+                ).map((svc: string) => (
+                  <div key={svc} className="flex items-center gap-1.5 bg-blue-50 rounded-full px-3 py-1">
+                    <CheckCircle2 size={12} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-blue-700">{svc}</span>
                   </div>
                 ))}
               </div>
-              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View All Services</button>
             </div>
 
+            {/* Work Details Card */}
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
@@ -469,132 +456,108 @@ const ProviderDetail = () => {
                 <h3 className="font-bold text-foreground text-sm">Work Details</h3>
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Working Hours</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Clock size={12} className="text-blue-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">All day</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Hours</p>
+                    <p className="text-xs font-bold text-foreground">{provider.workingHours || "All day"}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Service Radius</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={12} className="text-orange-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">Up to 5 km</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Radius</p>
+                    <p className="text-xs font-bold text-foreground">Up to {provider.service_radius || 20} km</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Languages</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <Zap size={12} className="text-purple-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">3 langs</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Experience</p>
+                    <p className="text-xs font-bold text-foreground">{provider.experienceYrs || 1} {provider.experienceYrs === 1 ? "yr" : "yrs"}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Payment</span>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck size={12} className="text-green-500" />
                   </div>
-                  <span className="text-xs font-bold text-foreground">Cash, UPI</span>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Verified</p>
+                    <p className="text-xs font-bold text-green-600">{provider.verified ? "Verified ✓" : "Pending"}</p>
+                  </div>
                 </div>
               </div>
-              <button className="w-full mt-3 text-primary text-xs font-bold text-center hover:underline">View Full Details</button>
             </div>
           </div>
 
-          {/* Video Introduction Section */}
-          {loadingVideo ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3">Video Introduction</h3>
-              <div className="aspect-video bg-slate-100 animate-pulse rounded-[24px] flex flex-col items-center justify-center gap-2">
-                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <span className="text-xs text-muted-foreground font-semibold">Loading video intro...</span>
-              </div>
-            </div>
-          ) : video ? (
-            <div className="mb-8 px-1">
-              <h3 className="text-[17px] font-extrabold text-foreground mb-3 flex items-center gap-2">
-                Video Introduction
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">Active</span>
-              </h3>
-              <div className="aspect-video bg-black rounded-[24px] overflow-hidden flex items-center justify-center border border-slate-200 shadow-sm relative group">
-                <video 
-                  src={video.video_url} 
-                  controls 
-                  className="w-full h-full object-contain" 
-                  preload="metadata"
-                  playsInline
-                />
-              </div>
-            </div>
-          ) : null}
+
 
           {/* Experience & Skills */}
-          <div className="mb-8">
-            <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {portfolio.slice(0, 6).map((item: any, index: number) => (
-                <div
-                  key={item.id || index}
-                  className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
-                  onClick={() => {
-                    setShowGalleryModal(true);
-                  }}
+          {portfolio && portfolio.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-[17px] font-extrabold text-foreground mb-4 px-1">Before & After</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {portfolio.slice(0, 6).map((item: any, index: number) => (
+                  <div
+                    key={item.id || index}
+                    className="relative bg-gray-200 rounded-lg overflow-hidden cursor-pointer group hover:shadow-lg transition-shadow h-40 sm:h-32"
+                    onClick={() => {
+                      setShowGalleryModal(true);
+                    }}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white fill-white" />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                      <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {portfolio.length > 6 && (
+                <button
+                  onClick={() => setShowGalleryModal(true)}
+                  className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
                 >
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="w-8 h-8 text-white fill-white" />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                    <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
-                  </div>
-                </div>
-              ))}
+                  View All {portfolio.length} Projects
+                </button>
+              )}
             </div>
-            {portfolio.length > 6 && (
-              <button
-                onClick={() => setShowGalleryModal(true)}
-                className="mt-3 w-full py-2 text-center text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors"
-              >
-                View All {portfolio.length} Projects
-              </button>
-            )}
-          </div>
+          )}
 
           {/* Certificates & Licenses */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <span className="text-sm">📋</span>
-                </div>
-                Certificates & Licenses
-              </h3>
-              <button className="text-primary text-xs font-bold">View All</button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">🪪</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Driving License</p>
+          {certificates && certificates.length > 0 && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <span className="text-sm">📋</span>
+                  </div>
+                  Certificates & Licenses
+                </h3>
+                <button className="text-primary text-xs font-bold">View All</button>
               </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">📋</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Insurance</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">🏍️</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">Bike RC</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
-                <div className="text-3xl mb-2">✅</div>
-                <p className="text-xs font-bold text-foreground line-clamp-2">PESO</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {certificates.map((cert: any, index: number) => (
+                  <div key={index} className="bg-white rounded-xl p-3 border border-gray-200 text-center hover:shadow-md cursor-pointer">
+                    <div className="text-3xl mb-2">{cert.icon || "📋"}</div>
+                    <p className="text-xs font-bold text-foreground line-clamp-2">{cert.name || "Certificate"}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Customer Reviews */}
           <div className="mb-4">
@@ -607,13 +570,15 @@ const ProviderDetail = () => {
             <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200">
               <div className="flex justify-between">
                 <div>
-                  <p className="text-4xl font-black text-foreground">{provider.rating || 0}.0</p>
+                  <p className="text-4xl font-black text-foreground">
+                    {Number(provider.rating || 0).toFixed(1)}
+                  </p>
                   <div className="flex gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">({mockReviews.length} reviews)</p>
+                  <p className="text-xs text-muted-foreground mt-1">({reviews.length} reviews)</p>
                 </div>
                 <div className="flex flex-col gap-1">
                   {[5, 4, 3, 2, 1].map((rating) => (
@@ -626,16 +591,46 @@ const ProviderDetail = () => {
                           <div key={i} className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
                         ))}
                       </div>
-                      <span className="text-xs text-muted-foreground w-6 text-right">0</span>
+                      <span className="text-xs text-muted-foreground w-6 text-right">{reviews.filter(r => Math.round(r.rating) === rating).length}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="text-center py-6">
-                <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-foreground">No reviews yet</p>
-                <p className="text-xs text-muted-foreground">Be the first customer to review</p>
-              </div>
+              {reviews.length === 0 ? (
+                <div className="text-center py-6">
+                  <MessageCircle size={32} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-foreground">No reviews yet</p>
+                  <p className="text-xs text-muted-foreground">Be the first customer to review</p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {reviews.map((rev: any) => (
+                    <div key={rev.id} className="border-t border-gray-100 pt-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {rev.customer_avatar ? (
+                              <img src={rev.customer_avatar} alt={rev.customer_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-blue-600">{(rev.customer_name || 'U').charAt(0)}</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{rev.customer_name || 'User'}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(rev.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={10} className={i < Math.round(rev.rating) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
+                          ))}
+                        </div>
+                      </div>
+                      {rev.comment && <p className="text-xs text-muted-foreground">{rev.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -669,13 +664,18 @@ const ProviderDetail = () => {
         )}
 
         {/* Floating Book Button at Bottom */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-30 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 z-30 flex gap-3">
           <button
             onClick={handleBook}
             disabled={isBooking || bookingSuccess}
-            className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${
-              bookingSuccess ? "bg-green-500" : isBooking ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${bookingSuccess
+                ? "bg-green-500"
+                : isBooking
+                  ? "bg-blue-400"
+                  : quote
+                    ? "bg-[#152E4B]"
+                    : "bg-blue-600 hover:bg-blue-700"
+              }`}
           >
             <span>
               {bookingSuccess ? (
@@ -691,6 +691,12 @@ const ProviderDetail = () => {
           </button>
         </div>
 
+        <ImagePreviewModal
+          isOpen={isImagePreviewOpen}
+          imageUrl={provider.avatar || ""}
+          alt={provider.name}
+          onClose={() => setIsImagePreviewOpen(false)}
+        />
       </div>
     </>
   );

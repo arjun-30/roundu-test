@@ -18,6 +18,7 @@ const BookingPayment = () => {
     bookingNotes,
     bookingVoiceNote,
     bookingVoiceNoteUrl,
+    bookingImages,
     bookings,
     user,
     dispatch,
@@ -200,6 +201,7 @@ const BookingPayment = () => {
             voice_note_url: bookingVoiceNoteUrl || null,
             payment_id: "cash_payment",
             paid: false,
+            images: bookingImages || [],
           };
 
           const bookingRes = await createBooking(bookingData);
@@ -237,6 +239,7 @@ const BookingPayment = () => {
             voice_note_url: bookingVoiceNoteUrl || null,
             payment_id: "wallet_payment",
             paid: true,
+            images: bookingImages || [],
           };
 
           const bookingRes = await createBooking(bookingData);
@@ -308,6 +311,7 @@ const BookingPayment = () => {
                   voice_note_url: bookingVoiceNoteUrl || null,
                   payment_id: response.razorpay_payment_id,
                   paid: true,
+                  images: bookingImages || [],
                 };
 
                 const bookingRes = await createBooking(bookingData);
