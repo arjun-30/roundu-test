@@ -90,6 +90,7 @@ interface State {
   providerRequests: ProviderRequest[];
   completedJobs: ProviderRequest[];
   notifications: { id: string; text: string; ts: number; type?: string; metadata?: any; targetRole?: "customer" | "provider" }[];
+  requestQueue: ProviderRequest[];
   nearbyProviders: Record<string, { id: string; lat: number; lng: number; lastSeen: number; name: string; avatar_url?: string }>;
   currentLocation: { lat: number; lng: number } | null;
   // Provider Onboarding Draft
@@ -130,6 +131,7 @@ interface State {
   onlineUsers: Record<string, boolean>;
   membership: MembershipSelection;
   providerId: string | null;
+  activeBookingId: string | null;
 }
 
 type Action =
@@ -144,6 +146,7 @@ type Action =
   | { type: "SET_AUTH"; value: boolean }
   | { type: "SET_ROLE"; role: Role }
   | { type: "SET_PROVIDER_ID"; id: string | null }
+  | { type: "SET_ACTIVE_BOOKING"; id: string | null }
   | { type: "UPDATE_USER"; user: Partial<UserProfile> }
   | { type: "SELECT_SERVICE"; id: string }
   | { type: "SELECT_PROVIDER"; id: string }
@@ -275,6 +278,7 @@ const initialState: State = {
   bookingImages: [],
   bookings: [],
   providerRequests: initialProviderRequests,
+  requestQueue: [],
   completedJobs: [],
   notifications: [],
   nearbyProviders: {},
@@ -301,6 +305,7 @@ const initialState: State = {
   onlineUsers: {},
   membership: getStoredMembership(),
   providerId: null,
+  activeBookingId: null,
 };
 
 function reducer(state: State, action: Action): State {
@@ -366,9 +371,12 @@ function reducer(state: State, action: Action): State {
             targetRole: "provider" as const
           },
           ...state.notifications,
-        ].slice(0, 20)
+        ].slice(0, 20),
+        requestQueue: [...state.requestQueue, request]
       };
     }
+    case "SET_ACTIVE_BOOKING":
+      return { ...state, activeBookingId: action.id };
     case "UPDATE_BOOKING_STATUS":
       return {
         ...state,
@@ -501,6 +509,7 @@ function reducer(state: State, action: Action): State {
         completedJobs: completed,
       };
     }
+
     case "SET_PHONE":
       return { ...state, phone: action.phone, user: { ...state.user, phone: action.phone } };
     case "SET_USER_ID":
@@ -1207,23 +1216,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       console.log("Socket disconnected", reason);
     });
 
-    socket.on("incoming_request", (request: ProviderRequest) => {
-      console.log("[SOCKET] [NEW BOOKING RECEIVED] Direct request payload:", request);
-      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      if (stateRef.current.role === "provider") {
-        setActiveDirectRequest(request);
-        console.log("[SOCKET] [POPUP OPENED] Direct booking ID:", request.id);
-      }
-    });
 
-    socket.on("new_booking_request", (request: any) => {
-      console.log("[SOCKET] [NEW BOOKING RECEIVED] Direct request (new_booking_request) payload:", request);
-      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      if (stateRef.current.role === "provider") {
-        setActiveDirectRequest(request);
-        console.log("[SOCKET] [POPUP OPENED] Direct booking ID:", request.id);
-      }
-    });
 
     socket.on("provider_location_update", (data: any) => {
       // data may be { id, lat, lng, name } or { bookingId, lat, lng } depending on server path
@@ -1293,18 +1286,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       seenBroadcastIds.current.add(broadcast.broadcastId);
       dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
       if (stateRef.current.role === "provider") {
-        setActiveBroadcastRequest(broadcast);
+        dispatch({ type: "ADD_TO_REQUEST_QUEUE", request: broadcast });
         console.log("[SOCKET] [POPUP OPENED] Broadcast ID:", broadcast.broadcastId);
       }
     });
 
     socket.on("job_taken", (data: { broadcastId: string; acceptedProviderId: string }) => {
       dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
+      dispatch({ type: "REMOVE_FROM_REQUEST_QUEUE", id: data.broadcastId });
 
-      if (activeBroadcastRequestRef.current && activeBroadcastRequestRef.current.broadcastId === data.broadcastId) {
-        setActiveBroadcastRequest(null);
-        alert("This request is no longer available. Customer already selected another provider.");
-      }
       if (quotingBroadcastRef.current && quotingBroadcastRef.current.broadcastId === data.broadcastId) {
         setQuotingBroadcast(null);
         alert("This request is no longer available. Customer already selected another provider.");
@@ -1319,9 +1309,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     socket.on("quote_accepted", (data: any) => {
       console.log("[socket] quote_accepted received globally:", data);
       console.log("[SOCKET] [NEW BOOKING RECEIVED] Accepted quote details:", data);
-      dispatch({
-        type: "ADD_PROVIDER_REQUEST",
-        request: {
+      const request = {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
           customerPhone: data.customerPhone || "9999999991",
@@ -1336,8 +1324,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           notes: data.notes || "",
           voiceNote: data.voiceNote || false,
           voiceNoteUrl: data.voiceNoteUrl || undefined,
-        }
-      });
+        };
+      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+      dispatch({ type: "ADD_TO_REQUEST_QUEUE", request });
       navigate(`/chat/${data.bookingId}`);
     });
 
@@ -1448,8 +1437,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       socket.off("connect");
       socket.off("disconnect");
-      socket.off("incoming_request");
-      socket.off("new_booking_request");
       socket.off("provider_location_update");
       socket.off("incoming_broadcast");
       socket.off("job_taken");
@@ -1611,8 +1598,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     dispatch({ type: "ADD_QUOTED_BROADCAST", id: quotingBroadcast.broadcastId });
+    dispatch({ type: "REMOVE_FROM_REQUEST_QUEUE", id: quotingBroadcast.broadcastId });
     setQuotingBroadcast(null);
-    setActiveBroadcastRequest(null);
     setQuotePrice("");
   };
 
@@ -1620,68 +1607,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation, setQuotingBroadcast }}>
       {children}
 
-      {/* Global Direct Request Popup */}
-      {activeDirectRequest && (
-        <IncomingRequestPopup
-          request={activeDirectRequest}
-          isBroadcast={false}
-          isBusy={state.providerRequests.some(r => ["in_progress", "on_the_way", "arrived", "payment_pending"].includes(r.status))}
-          onAccept={() => {
-            console.log("[SOCKET] [PROVIDER ACCEPTED] Booking ID:", activeDirectRequest.id);
-            socket.emit("update_job_status", { jobId: activeDirectRequest.id, status: "accepted" });
-            dispatch({ type: "ACCEPT_REQUEST", id: activeDirectRequest.id });
-            setActiveDirectRequest(null);
-            navigate(`/provider/job/${activeDirectRequest.id}`);
-          }}
-          onReject={() => {
-            console.log("[SOCKET] [PROVIDER REJECTED] Booking ID:", activeDirectRequest.id);
-            dispatch({ type: "REJECT_REQUEST", id: activeDirectRequest.id });
-            setActiveDirectRequest(null);
-          }}
-        />
-      )}
-
-      {/* Global Broadcast Request Popup */}
-      {activeBroadcastRequest && !quotingBroadcast && !(state.quotedBroadcasts && state.quotedBroadcasts.includes(activeBroadcastRequest.broadcastId)) && (
-        <IncomingRequestPopup
-          request={activeBroadcastRequest}
-          isBroadcast={true}
-          isBusy={state.providerRequests.some(r => ["in_progress", "on_the_way", "arrived", "payment_pending"].includes(r.status))}
-          onAccept={() => {
-            const req = activeBroadcastRequest;
-            if (state.isFrozen) {
-              alert("Account frozen. Clear dues first.");
-              return;
-            }
-            const hasPaymentPendingJob = state.providerRequests.some((r: any) => r.status === "payment_pending");
-            if (req?.jobType === "quick_fix" && hasPaymentPendingJob) {
-              alert("Complete payment collection before accepting another Quick Fix.");
-              return;
-            }
-
-            const canAcceptScheduledJob = (job: any) => {
-              const activeJob = state.providerRequests.find((r: any) =>
-                ["accepted", "assigned", "on_the_way", "arrived", "in_progress", "payment_pending"].includes(r.status)
-              );
-              if (!activeJob) return true;
-              const now = new Date();
-              const scheduledTime = new Date(`${job.date} ${job.time}`);
-              const diffHours = (scheduledTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-              return diffHours >= 6;
-            };
-
-            if (req?.jobType === "scheduled" && !canAcceptScheduledJob(req)) {
-              alert("Scheduled jobs must be at least 6 hours away.");
-              return;
-            }
-
-            setQuotingBroadcast(activeBroadcastRequest);
-          }}
-          onReject={() => {
-            console.log("[SOCKET] [PROVIDER REJECTED] Broadcast ID:", activeBroadcastRequest.broadcastId);
-            dispatch({
-              type: "REMOVE_LIVE_BROADCAST",
-              id: activeBroadcastRequest.broadcastId
             });
             setActiveBroadcastRequest(null);
           }}

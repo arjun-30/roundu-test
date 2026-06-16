@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import "./styles/background.css";
+import { SocketProvider } from "@/context/SocketProvider";
 
 if (typeof window !== 'undefined') {
   (window as any).__logs = (window as any).__logs || [];
@@ -12,4 +13,8 @@ if (typeof window !== 'undefined') {
   };
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <SocketProvider>
+    <App />
+  </SocketProvider>
+);
