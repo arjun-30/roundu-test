@@ -12,7 +12,6 @@ const OnboardingName = () => {
   const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
   const handleContinue = async () => {
@@ -26,14 +25,12 @@ const OnboardingName = () => {
     try {
       await updateUser(user.id, { name });
       dispatch({ type: "UPDATE_USER", user: { name } });
-      setSuccess(`Welcome, ${name.split(" ")[0]}!`);
-      setTimeout(() => {
-        if (isNewUser) {
-          navigate("/onboarding", { replace: true });
-        } else {
-          navigate("/home", { replace: true });
-        }
-      }, 1200);
+      // Navigate immediately after updating user state
+      if (isNewUser) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        navigate("/home", { replace: true });
+      }
     } catch (error) {
       setError("Failed to save name");
     } finally {
@@ -64,7 +61,7 @@ const OnboardingName = () => {
       <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 py-8 justify-between relative z-10">
 
         {/* Header Navigation/Indicator */}
-        <div className="flex items-center justify-between mb-12 flex-shrink-0">
+        <div className="flex items-center justify-between mb-6 flex-shrink-0">
           {/* Back Arrow */}
           <button
             onClick={() => navigate(-1)}
@@ -90,10 +87,11 @@ const OnboardingName = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="flex-1 flex flex-col justify-center"
+          className="flex-1 flex flex-col justify-start pt-4"
         >
           {/* Typography Header */}
           <motion.div variants={itemVariants} className="text-center mb-8">
+
             <h1 className="text-3xl font-extrabold text-black tracking-tight leading-tight sm:text-4xl">
               What should we <br />
               call you?
@@ -115,16 +113,7 @@ const OnboardingName = () => {
                 {error}
               </motion.div>
             )}
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-sm font-semibold mb-6 border border-emerald-100 shadow-[0_4px_12px_rgba(16,185,129,0.05)] flex items-center justify-center gap-2"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                {success}
-              </motion.div>
-            )}
+
           </AnimatePresence>
 
           {/* Input Section */}
@@ -132,7 +121,7 @@ const OnboardingName = () => {
 
             <div className="relative">
               <div className="flex flex-col">
-                <label htmlFor="fullName" className="text-base font-semibold text-slate-600 mb-2">Username</label>
+                <label htmlFor="fullName" className="sr-only">Full Name</label>
               </div>
               <div className="relative">
                 <div className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-slate-400'}`}>
