@@ -188,6 +188,8 @@ const Dashboard = () => {
   // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
   useEffect(() => {
     const handleBroadcast = (broadcast: any) => {
+      console.log("Broadcast received:", broadcast);
+      console.log("Images:", broadcast.images);
       console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
       if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
 

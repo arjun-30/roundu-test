@@ -278,8 +278,9 @@ const initialState: State = {
   currentLocation: null,
   providerRegistrationDraft: parsedDraft,
   isNewUser: true,
-  walletBalance: 0,
-  isOnline: true,
+  walletBalance: Number(
+    localStorage.getItem("roundu_wallet_balance") || 0
+  ), isOnline: true,
   providerStats: {
     rating: 0,
     responseRate: 100,
@@ -750,12 +751,20 @@ function reducer(state: State, action: Action): State {
     }
     case "SET_NEW_USER":
       return { ...state, isNewUser: action.value };
-    case "UPDATE_WALLET":
+    case "UPDATE_WALLET": {
+      const newBalance =
+        state.walletBalance + action.amount;
+
+      localStorage.setItem(
+        "roundu_wallet_balance",
+        String(newBalance)
+      );
+
       return {
         ...state,
-        walletBalance: state.walletBalance + action.amount
+        walletBalance: newBalance
       };
-
+    }
     case "ADD_COMMISSION_DUE": {
       const newCommission =
         state.commissionDue + action.amount;

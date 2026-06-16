@@ -41,7 +41,7 @@ async function main() {
       console.log('[server] Bookings table creation note:', tableErr.message);
       // Table might already exist, continue anyway
     }
-    
+
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note BOOLEAN DEFAULT false;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
@@ -125,7 +125,7 @@ async function main() {
       `);
       if (pRes.rows[0]) {
         const providerId = pRes.rows[0].id;
-        
+
         // Update provider table details
         await db.query(`
           UPDATE providers 
@@ -136,7 +136,7 @@ async function main() {
               service_category = ARRAY['Plumber', 'Electrician', 'Car Wash', 'Acting Drivers', 'House Keeping', 'AC Cleaning', 'AC Repair', 'Appliance Repair', 'Pest Control', 'Painting', 'Carpentry', 'Expert Services']
           WHERE id = $1
         `, [providerId]);
-        
+
         // Insert into provider_services
         const services = ['plumber', 'electrician', 'carwash', 'drivers', 'housekeeping', 'ac-cleaning', 'ac-repair', 'appliance-repair', 'pest-control', 'painting', 'carpentry', 'srv-d7orcli8qa3s738r9qe0'];
         for (const sId of services) {
@@ -354,7 +354,7 @@ async function main() {
               const isOnline = provider.isOnline === true;
               const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
-                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+                matchesServiceCategory(provider.serviceCategory, serviceLabel);
               const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
               let decision = "ACCEPTED";
@@ -421,7 +421,7 @@ async function main() {
           const isOnline = provider.isOnline === true;
           const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
           const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
-                                  matchesServiceCategory(provider.serviceCategory, serviceLabel);
+            matchesServiceCategory(provider.serviceCategory, serviceLabel);
           const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
           let decision = "ACCEPTED";
@@ -473,6 +473,7 @@ async function main() {
           date: data.date,
           time: data.time,
           notes: data.notes,
+          images: data.images || [],
           voiceNote: data.voiceNote || false,
           voiceNoteUrl: data.voiceNoteUrl || null,
           status: "active",
@@ -498,11 +499,11 @@ async function main() {
       // Emit to service room + all providers room filtered by matching radius
       const roomName = `service:${data.serviceId}`;
       console.log(`[socket] broadcasting job to room: ${roomName} + providers filtered by radius`);
-      
+
       const broadcastAndFilter = async () => {
         try {
           const targetSockets = await io.in(roomName).in('providers').fetchSockets();
-          
+
           // Deduplicate sockets in case a socket is in both rooms
           const uniqueSockets = Array.from(new Map(targetSockets.map((s: any) => [s.id, s])).values());
 
@@ -535,7 +536,7 @@ async function main() {
               const isOnline = provider.isOnline === true;
               const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
-                                      matchesServiceCategory(provider.serviceCategory, serviceLabel);
+                matchesServiceCategory(provider.serviceCategory, serviceLabel);
               const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
 
               let decision = "ACCEPTED";
@@ -572,7 +573,7 @@ async function main() {
           console.error('[socket] error in broadcast_job filtering:', err);
         }
       };
-      
+
       broadcastAndFilter();
     });
 
@@ -632,7 +633,7 @@ async function main() {
         // Check if provider has any active jobs
         const { getProviderActiveBookings } = require('./utils/bookingHelper');
         const activeBookings = await getProviderActiveBookings(providerId);
-        
+
         if (activeBookings && activeBookings.length > 0) {
           socket.emit('quote_error', {
             message: 'You cannot send quotes while you have an active job. Please complete your current job first.'
