@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS providers (
     lng NUMERIC(10, 7),
     display_location VARCHAR(255),
     service_category VARCHAR(255)[] DEFAULT '{}',
+    approval_status VARCHAR(20) DEFAULT 'pending',
+    rejection_reason TEXT,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -27,7 +27,7 @@ const formatRupees = (amount: number): string => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, currentLocation } = useApp() as any;
+  const { providerRequests, completedJobs, dispatch, user, isOnline, providerStats, liveBroadcasts, notifications, quotedBroadcasts, currentLocation, setQuotingBroadcast } = useApp() as any;
 
   // Sync role to provider on mount
   useEffect(() => {
@@ -77,22 +77,9 @@ const Dashboard = () => {
   const [locating, setLocating] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
-  const [quotePrice, setQuotePrice] = useState("");
-  const [quoteEta, setQuoteEta] = useState("15");
-
   const [showPip, setShowPip] = useState(false);
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
-
-  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
-  // ✅ Direct local broadcast state — bypasses AppContext context re-render issues
-  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  // Key seen IDs per-user so multiple providers on the same device don't share a seen-set
-  const seenKey = `seen_broadcast_ids_${user?.id || 'anon'}`;
-  const seenBroadcastIds = useRef(new Set<string>(
-    JSON.parse(sessionStorage.getItem(seenKey) || "[]")
-  ));
 
   const pending = providerRequests.filter((r) => r.status === "pending");
   const accepted = providerRequests.filter((r) => r.status === "accepted" || r.status === "assigned" || r.status === "in_progress" || r.status === "on_the_way" || r.status === "arrived");
@@ -153,19 +140,7 @@ const Dashboard = () => {
     socket.emit("toggle_online", { userId: user.id, isOnline: nextStatus });
   };
 
-  // Alert provider when a new direct request arrives
-  useEffect(() => {
-    const handleNewRequest = (request: any) => {
-      // Show the popup at the top
-      setActiveDirectRequest(request);
-      // Add to global state so it appears in the list without refresh!
-      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-    };
-    socket.on("incoming_request", handleNewRequest);
-    return () => {
-      socket.off("incoming_request", handleNewRequest);
-    };
-  }, [dispatch]);
+
 
   // Auto-fetch GPS on mount → reverse geocode → update user.address
   const handleLocationFetched = useCallback(async (lat: number, lng: number) => {
@@ -188,31 +163,7 @@ const Dashboard = () => {
   }, [dispatch]);
   const { loading: gpsLoading } = useCurrentLocation(handleLocationFetched);
 
-  // ✅ Listen for live broadcasts DIRECTLY in Dashboard (bypasses context closure issue)
-  useEffect(() => {
-    const handleBroadcast = (broadcast: any) => {
-      console.log("[Dashboard] 📡 incoming_broadcast received locally:", broadcast.broadcastId);
-      if (seenBroadcastIds.current.has(broadcast.broadcastId)) return; // deduplicate
 
-      // 🕐 Reject stale broadcasts — if older than 120 seconds, ignore silently
-      const POPUP_TTL_MS = 120 * 1000;
-      const broadcastAge = Date.now() - (broadcast.createdAt || 0);
-      if (broadcastAge > POPUP_TTL_MS) {
-        console.log("[Dashboard] ⏰ Broadcast expired, skipping:", broadcast.broadcastId);
-        seenBroadcastIds.current.add(broadcast.broadcastId); // mark as seen so it won't show later
-        const updated = Array.from(seenBroadcastIds.current);
-        sessionStorage.setItem(seenKey, JSON.stringify(updated));
-        return;
-      }
-
-      seenBroadcastIds.current.add(broadcast.broadcastId);
-      const updated = Array.from(seenBroadcastIds.current);
-      sessionStorage.setItem(seenKey, JSON.stringify(updated));
-      setActiveBroadcast(broadcast);
-    };
-    socket.on("incoming_broadcast", handleBroadcast);
-    return () => { socket.off("incoming_broadcast", handleBroadcast); };
-  }, []);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -242,120 +193,7 @@ const Dashboard = () => {
     }
   }, [providerStats.rating]);
 
-  useEffect(() => {
-    const handleJobTaken = (data: { broadcastId: string; acceptedProviderId: string }) => {
-      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
 
-      if (activeBroadcast && activeBroadcast.broadcastId === data.broadcastId) {
-        setActiveBroadcast(null);
-        alert("This request is no longer available. Customer already selected another provider.");
-      }
-      if (quotingBroadcast && quotingBroadcast.broadcastId === data.broadcastId) {
-        setQuotingBroadcast(null);
-        alert("This request is no longer available. Customer already selected another provider.");
-      }
-    };
-    socket.on("job_taken", handleJobTaken);
-    return () => {
-      socket.off("job_taken", handleJobTaken);
-    };
-  }, [dispatch, activeBroadcast, quotingBroadcast]);
-
-  useEffect(() => {
-    const handleQuoteError = (data: { message: string }) => {
-      dispatch({ type: "ADD_NOTIFICATION", text: `⚠️ Quote Error: ${data.message}` });
-      alert(`Quote Error: ${data.message}`);
-    };
-    socket.on("quote_error", handleQuoteError);
-    return () => {
-      socket.off("quote_error", handleQuoteError);
-    };
-  }, [dispatch]);
-
-  useEffect(() => {
-    const handleQuoteAccepted = (data: {
-      broadcastId: string;
-      bookingId: string;
-      serviceId: string;
-      customerName: string;
-      customerPhone?: string;
-      address: string;
-      lat?: number;
-      lng?: number;
-      price: number;
-      date: string;
-      time: string;
-      status: string;
-      notes?: string;
-      voiceNote?: boolean;
-      voiceNoteUrl?: string | null;
-    }) => {
-      console.log("[socket] quote_accepted received:", data);
-
-      // Add to providerRequests so Job.tsx can find it
-      dispatch({
-        type: "ADD_PROVIDER_REQUEST",
-        request: {
-          id: data.bookingId,
-          customerName: data.customerName || "Customer",
-          customerPhone: data.customerPhone || "9999999991",
-          serviceId: data.serviceId,
-          address: data.address || "Customer Location",
-          lat: data.lat,
-          lng: data.lng,
-          status: "assigned",
-          date: data.date || new Date().toISOString().slice(0, 10),
-          time: data.time || "Now",
-          price: data.price || 0,
-          notes: data.notes || "",
-          voiceNote: data.voiceNote || false,
-          voiceNoteUrl: data.voiceNoteUrl || undefined,
-        }
-      });
-
-      // Navigate to Chat — enables immediate customer ↔ provider communication
-      navigate(`/chat/${data.bookingId}`);
-    };
-
-    socket.on("quote_accepted", handleQuoteAccepted);
-    return () => { socket.off("quote_accepted", handleQuoteAccepted); };
-  }, [dispatch, navigate]);
-
-  const handleSubmitQuote = () => {
-    if (!quotingBroadcast || !quotePrice) return;
-
-    let distanceKm = 0;
-    if (quotingBroadcast && quotingBroadcast.lat != null && quotingBroadcast.lng != null && currentLocation) {
-      const qlat = Number(quotingBroadcast.lat);
-      const qlng = Number(quotingBroadcast.lng);
-      if (!isNaN(qlat) && !isNaN(qlng)) {
-        try {
-          distanceKm = Math.round(getDistance(currentLocation, { lat: qlat, lng: qlng }) * 10) / 10;
-        } catch (e) {
-          distanceKm = 0;
-        }
-      }
-    }
-
-    socket.emit("submit_quote", {
-      broadcastId: quotingBroadcast.broadcastId,
-      customerId: quotingBroadcast.customerId,
-      providerId: user.id,
-      providerName: user.name,
-      providerAvatar: user.name.charAt(0),
-      providerPhone: user.phone || "9999999992",
-      price: Number(quotePrice),
-      rating: providerStats.rating || 0,
-      distanceKm,
-      etaMin: Number(quoteEta),
-      reviews: 0
-    });
-
-    dispatch({ type: "ADD_QUOTED_BROADCAST", id: quotingBroadcast.broadcastId });
-    setQuotingBroadcast(null);
-    setActiveBroadcast(null);
-    setQuotePrice("");
-  };
 
 
   const containerVariants = {
@@ -392,53 +230,7 @@ const Dashboard = () => {
         />
       )}
 
-      {/* ✅ Incoming Broadcast Popup — uses local socket state (bypasses context issue) */}
-      {activeBroadcast && !quotingBroadcast && !(quotedBroadcasts && quotedBroadcasts.includes(activeBroadcast.broadcastId)) && (
-        <IncomingRequestPopup
-          request={activeBroadcast}
-          isBroadcast={true}
-          onAccept={() => {
 
-            const req = activeBroadcast;
-
-            if (isFrozen) {
-              alert("Account frozen. Clear dues first.");
-              return;
-            }
-
-            if (
-              req?.jobType === "quick_fix" &&
-              hasPaymentPendingJob
-            ) {
-              alert(
-                "Complete payment collection before accepting another Quick Fix."
-              );
-              return;
-            }
-
-            if (
-              req?.jobType === "scheduled" &&
-              !canAcceptScheduledJob(req)
-            ) {
-              alert(
-                "Scheduled jobs must be at least 6 hours away."
-              );
-              return;
-            }
-
-            setQuotingBroadcast(activeBroadcast);
-          }}
-
-          onReject={() => {
-            dispatch({
-              type: "REMOVE_LIVE_BROADCAST",
-              id: activeBroadcast.broadcastId
-            });
-
-            setActiveBroadcast(null);
-          }}
-        />
-      )}
 
       {/* Header */}
       <div
@@ -1254,80 +1046,6 @@ const Dashboard = () => {
         </div>
       )}
 
-
-      {/* Direct Request Popup (Top-aligned) */}
-      {(simulatedRequest || activeDirectRequest) && (
-        <IncomingRequestPopup
-          request={simulatedRequest || activeDirectRequest}
-          isBroadcast={false}
-          isBusy={isBusy}
-          onAccept={() => {
-            const req = simulatedRequest || activeDirectRequest;
-            socket.emit("update_job_status", { jobId: req.id, status: "accepted" });
-            dispatch({ type: "ACCEPT_REQUEST", id: req.id });
-            if (simulatedRequest) setSimulatedRequest(null);
-            if (activeDirectRequest) setActiveDirectRequest(null);
-            navigate(`/provider/job/${req.id}`);
-          }}
-          onReject={() => {
-            const req = simulatedRequest || activeDirectRequest;
-            dispatch({ type: "REJECT_REQUEST", id: req.id });
-            if (simulatedRequest) setSimulatedRequest(null);
-            if (activeDirectRequest) setActiveDirectRequest(null);
-          }}
-        />
-      )}
-
-      {/* Live Job Broadcast Popup removed — activeBroadcast handles all broadcasts directly
-           via socket, avoiding duplicate popups from liveBroadcasts context state */}
-
-      {/* Quote Modal */}
-      {quotingBroadcast && (
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center px-4 animate-fade-in backdrop-blur-[2px]">
-          <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
-            <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
-            <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-muted-foreground mb-1 block">Your Price (₹)</label>
-                <input
-                  type="number"
-                  value={quotePrice}
-                  onChange={(e) => setQuotePrice(e.target.value)}
-                  placeholder="e.g. 450"
-                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground mb-1 block">Estimated Arrival (Mins)</label>
-                <input
-                  type="number"
-                  value={quoteEta}
-                  onChange={(e) => setQuoteEta(e.target.value)}
-                  placeholder="e.g. 15"
-                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setQuotingBroadcast(null)}
-                className="flex-1 py-3 rounded-xl border border-border text-sm font-bold text-muted-foreground"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitQuote}
-                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md"
-              >
-                Send Quote
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Location Modal */}
       <LocationModal
         isOpen={isLocationModalOpen}

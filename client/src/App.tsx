@@ -185,6 +185,27 @@ const SmartRoleRoute = () => {
   return <RoleSelect />;
 };
 
+const DebugLogs = () => {
+  const [logs, setLogs] = useState<string[]>([]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLogs([...((window as any).__logs || [])]);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <div className="p-5 font-mono text-xs bg-slate-900 text-green-400 h-screen overflow-y-auto">
+      <h1 className="text-lg font-bold mb-4 text-white">Debug Logs Console</h1>
+      <button onClick={() => { (window as any).__logs = []; setLogs([]); }} className="mb-4 px-3 py-1.5 bg-red-600 text-white rounded font-bold">Clear Logs</button>
+      <div className="space-y-1">
+        {logs.map((log, idx) => (
+          <div key={idx} className="border-b border-slate-800 pb-1">{log}</div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const AppRoutes = () => (
   <Suspense
     fallback={
@@ -291,6 +312,7 @@ const AppRoutes = () => (
         </Route>
       </Route>
 
+      <Route path="/debug-logs" element={<DebugLogs />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </Suspense>

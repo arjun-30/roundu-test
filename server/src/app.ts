@@ -61,7 +61,8 @@ export function createApp(deps: AppDeps): Application {
   // ── TEMP DEBUG: trigger a broadcast directly via HTTP ──────────────────
   app.get('/api/test-broadcast', (req: Request, res: Response) => {
     const serviceId = (req.query.serviceId as string) || 'plumber';
-    if (!deps.io) return res.status(500).json({ error: 'io not initialized' });
+    const io = req.app.locals.io || deps.io;
+    if (!io) return res.status(500).json({ error: 'io not initialized' });
     const payload = {
       broadcastId: `test-${Date.now()}`,
       customerId: 'test-customer',
@@ -74,8 +75,8 @@ export function createApp(deps: AppDeps): Application {
       status: 'active',
       createdAt: Date.now(),
     };
-    const connectedSockets = deps.io.sockets.sockets.size;
-    deps.io.emit('incoming_broadcast', payload);
+    const connectedSockets = io.sockets.sockets.size;
+    io.emit('incoming_broadcast', payload);
     console.log(`[test-broadcast] emitted to ${connectedSockets} sockets for service: ${serviceId}`);
     res.json({ success: true, payload, connectedSockets });
   });

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef } from "react";
+import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Booking, Provider, ProviderRequest,
@@ -15,6 +15,7 @@ import { MembershipSelection } from "@/types/membership";
 import { toast } from "sonner";
 import { saveUserToLocalStorage, safeSetItem } from "@/lib/storage";
 import { Geolocation } from '@capacitor/geolocation';
+import IncomingRequestPopup from "@/components/IncomingRequestPopup";
 
 
 type Role = "customer" | "provider" | null;
@@ -128,6 +129,7 @@ interface State {
   chatHistories: Record<string, { id?: string, sender: "me" | "other"; text: string; time: string; audioBase64?: string | null; isSeen?: boolean }[]>;
   onlineUsers: Record<string, boolean>;
   membership: MembershipSelection;
+  providerId: string | null;
 }
 
 type Action =
@@ -141,6 +143,7 @@ type Action =
   | { type: "SET_USER_ID"; id: string }
   | { type: "SET_AUTH"; value: boolean }
   | { type: "SET_ROLE"; role: Role }
+  | { type: "SET_PROVIDER_ID"; id: string | null }
   | { type: "UPDATE_USER"; user: Partial<UserProfile> }
   | { type: "SELECT_SERVICE"; id: string }
   | { type: "SELECT_PROVIDER"; id: string }
@@ -297,6 +300,7 @@ const initialState: State = {
   chatHistories: {},
   onlineUsers: {},
   membership: getStoredMembership(),
+  providerId: null,
 };
 
 function reducer(state: State, action: Action): State {
@@ -515,6 +519,8 @@ function reducer(state: State, action: Action): State {
           role: action.role ? (action.role as "customer" | "provider") : undefined
         }
       };
+    case "SET_PROVIDER_ID":
+      return { ...state, providerId: action.id };
     case "UPDATE_USER": {
       const newUser = { ...state.user, ...action.user };
       if (action.user.profilePicture && !action.user.avatar_url) {
@@ -926,6 +932,7 @@ interface Ctx extends State {
   selectedProvider: Provider | null;
   addBooking: (booking: Booking) => void;
   refreshLocation: () => Promise<void>;
+  setQuotingBroadcast?: (broadcast: any | null) => void;
 }
 
 const AppContext = createContext<Ctx | null>(null);
@@ -950,6 +957,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  const [activeDirectRequest, setActiveDirectRequest] = useState<any | null>(null);
+  const [activeBroadcastRequest, setActiveBroadcastRequest] = useState<any | null>(null);
+  const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
+  const [quotePrice, setQuotePrice] = useState("");
+  const [quoteEta, setQuoteEta] = useState("15");
+
+  const activeDirectRequestRef = useRef<any>(null);
+  const activeBroadcastRequestRef = useRef<any>(null);
+  const quotingBroadcastRef = useRef<any>(null);
+
+  useEffect(() => { activeDirectRequestRef.current = activeDirectRequest; }, [activeDirectRequest]);
+  useEffect(() => { activeBroadcastRequestRef.current = activeBroadcastRequest; }, [activeBroadcastRequest]);
+  useEffect(() => { quotingBroadcastRef.current = quotingBroadcast; }, [quotingBroadcast]);
+
+  const seenKey = `seen_broadcast_ids_${state.user?.id || 'anon'}`;
+  const seenBroadcastIds = useRef(new Set<string>(
+    JSON.parse(sessionStorage.getItem(seenKey) || "[]")
+  ));
+
+  useEffect(() => {
+    sessionStorage.setItem(seenKey, JSON.stringify(Array.from(seenBroadcastIds.current)));
+  }, [state.user?.id]);
 
   // Apply role override after initial load (once)
   useEffect(() => {
@@ -1019,6 +1049,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 }
               });
               const providerId = dashboard.data.provider.id;
+              dispatch({ type: "SET_PROVIDER_ID", id: providerId });
               const pbRes = await fetchProviderBookings(providerId);
               if (pbRes.success) {
                 const mappedRequests = pbRes.data.map((b: any) => {
@@ -1063,6 +1094,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (state.isAuthenticated && state.user.id && state.role) {
+      if (!socket.connected) {
+        console.log("[socket] Connecting socket on authentication change...");
+        socket.connect();
+      }
       const doRegister = () => {
         let serviceIds: string[] = [];
         if (state.role === "provider") {
@@ -1105,11 +1140,89 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     (state.user as any).serviceId
   ]);
 
+  // Fallback Polling for Missed Notifications
+  useEffect(() => {
+    if (!state.isAuthenticated || state.role !== "provider" || !state.providerId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const pbRes = await fetchProviderBookings(state.providerId!);
+        if (pbRes.success && pbRes.data) {
+          const pendingBookings = pbRes.data.filter((b: any) => b.status === "assigned");
+          
+          pendingBookings.forEach((b: any) => {
+            const reqId = b.id;
+            const existing = stateRef.current.providerRequests.find((r: any) => String(r.id) === String(reqId) || String(r.id) === `req-${reqId}`);
+            
+            if (!existing) {
+              const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
+              const request = {
+                id: b.id,
+                customerId: b.customer_id,
+                customerName: b.customer_name || "Customer",
+                customerPhone: b.customer_phone || "",
+                serviceId: b.service_id,
+                date,
+                time,
+                address: b.address,
+                price: b.price,
+                status: "pending",
+                notes: b.notes,
+                voiceNote: b.voice_note || false,
+                voiceNoteUrl: b.voice_note_url || null,
+                scheduled_at: b.scheduled_at
+              };
+              
+              console.log("[SOCKET] [NEW BOOKING RECEIVED] Missed notification recovered via polling:", request);
+              dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+              setActiveDirectRequest(request);
+              console.log("[SOCKET] [POPUP OPENED] For direct booking ID:", request.id);
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("[Polling] Failed to fetch missed notifications:", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated, state.role, state.providerId]);
+
+  const hasConnectedOnce = useRef(false);
+
   useEffect(() => {
     socket.connect();
 
+    socket.on("connect", () => {
+      console.log("[SOCKET CONNECTED]");
+      if (hasConnectedOnce.current) {
+        console.log("Socket reconnected");
+      } else {
+        console.log("Socket connected");
+        hasConnectedOnce.current = true;
+      }
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Socket disconnected", reason);
+    });
+
     socket.on("incoming_request", (request: ProviderRequest) => {
+      console.log("[SOCKET] [NEW BOOKING RECEIVED] Direct request payload:", request);
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+      if (stateRef.current.role === "provider") {
+        setActiveDirectRequest(request);
+        console.log("[SOCKET] [POPUP OPENED] Direct booking ID:", request.id);
+      }
+    });
+
+    socket.on("new_booking_request", (request: any) => {
+      console.log("[SOCKET] [NEW BOOKING RECEIVED] Direct request (new_booking_request) payload:", request);
+      dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+      if (stateRef.current.role === "provider") {
+        setActiveDirectRequest(request);
+        console.log("[SOCKET] [POPUP OPENED] Direct booking ID:", request.id);
+      }
     });
 
     socket.on("provider_location_update", (data: any) => {
@@ -1163,8 +1276,69 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on("incoming_broadcast", (broadcast: JobBroadcast) => {
-      console.log("[socket] ✅ incoming_broadcast received:", broadcast);
+      console.log("[SOCKET] [NEW BOOKING RECEIVED] Broadcast payload:", broadcast);
+      if (seenBroadcastIds.current.has(broadcast.broadcastId)) {
+        console.log("[socket] Deduplicated broadcast:", broadcast.broadcastId);
+        return;
+      }
+
+      const POPUP_TTL_MS = 120 * 1000;
+      const broadcastAge = Date.now() - (broadcast.createdAt || 0);
+      if (broadcastAge > POPUP_TTL_MS) {
+        console.log("[socket] Broadcast expired, skipping popup:", broadcast.broadcastId);
+        seenBroadcastIds.current.add(broadcast.broadcastId);
+        return;
+      }
+
+      seenBroadcastIds.current.add(broadcast.broadcastId);
       dispatch({ type: "HANDLE_INCOMING_BROADCAST", broadcast });
+      if (stateRef.current.role === "provider") {
+        setActiveBroadcastRequest(broadcast);
+        console.log("[SOCKET] [POPUP OPENED] Broadcast ID:", broadcast.broadcastId);
+      }
+    });
+
+    socket.on("job_taken", (data: { broadcastId: string; acceptedProviderId: string }) => {
+      dispatch({ type: "REMOVE_LIVE_BROADCAST", id: data.broadcastId });
+
+      if (activeBroadcastRequestRef.current && activeBroadcastRequestRef.current.broadcastId === data.broadcastId) {
+        setActiveBroadcastRequest(null);
+        alert("This request is no longer available. Customer already selected another provider.");
+      }
+      if (quotingBroadcastRef.current && quotingBroadcastRef.current.broadcastId === data.broadcastId) {
+        setQuotingBroadcast(null);
+        alert("This request is no longer available. Customer already selected another provider.");
+      }
+    });
+
+    socket.on("quote_error", (data: { message: string }) => {
+      dispatch({ type: "ADD_NOTIFICATION", text: `⚠️ Quote Error: ${data.message}` });
+      alert(`Quote Error: ${data.message}`);
+    });
+
+    socket.on("quote_accepted", (data: any) => {
+      console.log("[socket] quote_accepted received globally:", data);
+      console.log("[SOCKET] [NEW BOOKING RECEIVED] Accepted quote details:", data);
+      dispatch({
+        type: "ADD_PROVIDER_REQUEST",
+        request: {
+          id: data.bookingId,
+          customerName: data.customerName || "Customer",
+          customerPhone: data.customerPhone || "9999999991",
+          serviceId: data.serviceId,
+          address: data.address || "Customer Location",
+          lat: data.lat,
+          lng: data.lng,
+          status: "assigned",
+          date: data.date || new Date().toISOString().slice(0, 10),
+          time: data.time || "Now",
+          price: data.price || 0,
+          notes: data.notes || "",
+          voiceNote: data.voiceNote || false,
+          voiceNoteUrl: data.voiceNoteUrl || undefined,
+        }
+      });
+      navigate(`/chat/${data.bookingId}`);
     });
 
     // Server-side tracking emits this event to booking rooms: { bookingId, lat, lng }
@@ -1272,9 +1446,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     window.addEventListener("session_expired", handleWindowSessionExpired);
 
     return () => {
+      socket.off("connect");
+      socket.off("disconnect");
       socket.off("incoming_request");
+      socket.off("new_booking_request");
       socket.off("provider_location_update");
       socket.off("incoming_broadcast");
+      socket.off("job_taken");
+      socket.off("quote_error");
+      socket.off("quote_accepted");
       socket.off("new_quote_received");
       socket.off("quote_sent_confirmation");
       socket.off("job_accepted");
@@ -1398,9 +1578,163 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     saveUserToLocalStorage(state.user);
   }, [state.user]);
 
+  const handleGlobalSubmitQuote = () => {
+    if (!quotingBroadcast || !quotePrice) return;
+
+    let distanceKm = 0;
+    if (quotingBroadcast && quotingBroadcast.lat != null && quotingBroadcast.lng != null && state.currentLocation) {
+      const qlat = Number(quotingBroadcast.lat);
+      const qlng = Number(quotingBroadcast.lng);
+      if (!isNaN(qlat) && !isNaN(qlng)) {
+        try {
+          distanceKm = Math.round(getDistance(state.currentLocation, { lat: qlat, lng: qlng }) * 10) / 10;
+        } catch (e) {
+          distanceKm = 0;
+        }
+      }
+    }
+
+    console.log("[SOCKET] [PROVIDER ACCEPTED] Broadcast quote submitted. ID:", quotingBroadcast.broadcastId);
+
+    socket.emit("submit_quote", {
+      broadcastId: quotingBroadcast.broadcastId,
+      customerId: quotingBroadcast.customerId,
+      providerId: state.user.id,
+      providerName: state.user.name,
+      providerAvatar: state.user.name.charAt(0),
+      providerPhone: state.user.phone || "9999999992",
+      price: Number(quotePrice),
+      rating: state.providerStats.rating || 0,
+      distanceKm,
+      etaMin: Number(quoteEta),
+      reviews: 0
+    });
+
+    dispatch({ type: "ADD_QUOTED_BROADCAST", id: quotingBroadcast.broadcastId });
+    setQuotingBroadcast(null);
+    setActiveBroadcastRequest(null);
+    setQuotePrice("");
+  };
+
   return (
-    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation }}>
+    <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation, setQuotingBroadcast }}>
       {children}
+
+      {/* Global Direct Request Popup */}
+      {activeDirectRequest && (
+        <IncomingRequestPopup
+          request={activeDirectRequest}
+          isBroadcast={false}
+          isBusy={state.providerRequests.some(r => ["in_progress", "on_the_way", "arrived", "payment_pending"].includes(r.status))}
+          onAccept={() => {
+            console.log("[SOCKET] [PROVIDER ACCEPTED] Booking ID:", activeDirectRequest.id);
+            socket.emit("update_job_status", { jobId: activeDirectRequest.id, status: "accepted" });
+            dispatch({ type: "ACCEPT_REQUEST", id: activeDirectRequest.id });
+            setActiveDirectRequest(null);
+            navigate(`/provider/job/${activeDirectRequest.id}`);
+          }}
+          onReject={() => {
+            console.log("[SOCKET] [PROVIDER REJECTED] Booking ID:", activeDirectRequest.id);
+            dispatch({ type: "REJECT_REQUEST", id: activeDirectRequest.id });
+            setActiveDirectRequest(null);
+          }}
+        />
+      )}
+
+      {/* Global Broadcast Request Popup */}
+      {activeBroadcastRequest && !quotingBroadcast && !(state.quotedBroadcasts && state.quotedBroadcasts.includes(activeBroadcastRequest.broadcastId)) && (
+        <IncomingRequestPopup
+          request={activeBroadcastRequest}
+          isBroadcast={true}
+          isBusy={state.providerRequests.some(r => ["in_progress", "on_the_way", "arrived", "payment_pending"].includes(r.status))}
+          onAccept={() => {
+            const req = activeBroadcastRequest;
+            if (state.isFrozen) {
+              alert("Account frozen. Clear dues first.");
+              return;
+            }
+            const hasPaymentPendingJob = state.providerRequests.some((r: any) => r.status === "payment_pending");
+            if (req?.jobType === "quick_fix" && hasPaymentPendingJob) {
+              alert("Complete payment collection before accepting another Quick Fix.");
+              return;
+            }
+
+            const canAcceptScheduledJob = (job: any) => {
+              const activeJob = state.providerRequests.find((r: any) =>
+                ["accepted", "assigned", "on_the_way", "arrived", "in_progress", "payment_pending"].includes(r.status)
+              );
+              if (!activeJob) return true;
+              const now = new Date();
+              const scheduledTime = new Date(`${job.date} ${job.time}`);
+              const diffHours = (scheduledTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+              return diffHours >= 6;
+            };
+
+            if (req?.jobType === "scheduled" && !canAcceptScheduledJob(req)) {
+              alert("Scheduled jobs must be at least 6 hours away.");
+              return;
+            }
+
+            setQuotingBroadcast(activeBroadcastRequest);
+          }}
+          onReject={() => {
+            console.log("[SOCKET] [PROVIDER REJECTED] Broadcast ID:", activeBroadcastRequest.broadcastId);
+            dispatch({
+              type: "REMOVE_LIVE_BROADCAST",
+              id: activeBroadcastRequest.broadcastId
+            });
+            setActiveBroadcastRequest(null);
+          }}
+        />
+      )}
+
+      {/* Global Quote Modal */}
+      {quotingBroadcast && (
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center px-4 animate-fade-in backdrop-blur-[2px]">
+          <div className="bg-white w-full max-w-[320px] rounded-2xl p-5 shadow-2xl animate-scale-in">
+            <h3 className="text-lg font-bold text-foreground mb-1">Submit Your Quote</h3>
+            <p className="text-xs text-muted-foreground mb-4">Customer: {quotingBroadcast.customerName}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1 block">Your Price (₹)</label>
+                <input
+                  type="number"
+                  value={quotePrice}
+                  onChange={(e) => setQuotePrice(e.target.value)}
+                  placeholder="e.g. 450"
+                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1 block">Estimated Arrival (Mins)</label>
+                <input
+                  type="number"
+                  value={quoteEta}
+                  onChange={(e) => setQuoteEta(e.target.value)}
+                  placeholder="e.g. 15"
+                  className="w-full h-11 bg-muted border border-border rounded-xl px-3 font-medium text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setQuotingBroadcast(null)}
+                className="flex-1 py-3 rounded-xl border border-border text-sm font-bold text-muted-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGlobalSubmitQuote}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md"
+              >
+                Send Quote
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppContext.Provider>
   );
 };

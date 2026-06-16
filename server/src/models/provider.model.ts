@@ -207,7 +207,7 @@ export const ProviderModel = {
       // 2. Insert provider profile (pending admin approval)
       const providerRes = await client.query(
         `INSERT INTO providers (user_id, bio, experience_years, working_hours, service_radius, is_verified, is_online, rating, lat, lng, display_location, service_category) 
-         SELECT $1, $2, $3, $4, $5, false, true, 5.0, lat, lng, display_location, $6 FROM users WHERE id = $1
+         SELECT $1, $2, $3::integer, $4, $5::integer, false, true, 5.0, lat, lng, display_location, $6::character varying[] FROM users WHERE id = $1
          RETURNING *`,
         [userId, data.bio, data.experienceYears, data.workingHours, data.serviceRadius, serviceCategories]
       );

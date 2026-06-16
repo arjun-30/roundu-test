@@ -10,7 +10,6 @@ router.post('/register', registerProvider);
 router.post('/update-radius', updateServiceRadius);
 router.post('/update-hours', updateWorkingHours);
 router.get('/exists', checkProviderExists);
-router.get('/:id', getProviderProfile);
 
 // Real-time count of providers actually connected via socket for a service room
 router.get('/online-count', async (req: Request, res: Response) => {
@@ -49,5 +48,7 @@ router.get('/debug-status', async (req: Request, res: Response) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+router.get('/:id', getProviderProfile);
 
 export default router;

@@ -245,7 +245,7 @@ export const getProviderProfile = async (req: Request, res: Response) => {
 
       // Fallback: Search all providers to debug
       const allRes = await getPool().query(
-        'SELECT id, name FROM providers LIMIT 5'
+        'SELECT id, user_id FROM providers LIMIT 5'
       );
       console.log('[getProviderProfile] Available provider IDs:', allRes.rows);
 
