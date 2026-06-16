@@ -418,9 +418,9 @@ const ProviderDetail = () => {
               <p className="text-[10px] text-muted-foreground">{provider.etaMin || 15} mins</p>
             </div>
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 text-center">
-              <CheckCircle2 size={20} className="text-green-500 mx-auto mb-2" />
-              <p className="text-xs font-bold text-foreground mb-1">Verified</p>
-              <p className="text-[10px] text-muted-foreground">Documents verified</p>
+              <CheckCircle2 size={20} className={provider.verified ? "text-green-500 mx-auto mb-2" : "text-orange-500 mx-auto mb-2"} />
+              <p className="text-xs font-bold text-foreground mb-1">{provider.verified ? "Verified" : "Pending"}</p>
+              <p className="text-[10px] text-muted-foreground">{provider.verified ? "Documents verified" : "Under review"}</p>
             </div>
           </div>
 
@@ -507,12 +507,12 @@ const ProviderDetail = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck size={12} className="text-green-500" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${provider.verified ? "bg-green-50" : "bg-orange-50"}`}>
+                    <ShieldCheck size={12} className={provider.verified ? "text-green-500" : "text-orange-500"} />
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground">Verified</p>
-                    <p className="text-xs font-bold text-green-600">{provider.verified ? "Verified ✓" : "Pending"}</p>
+                    <p className={`text-xs font-bold ${provider.verified ? "text-green-600" : "text-orange-600"}`}>{provider.verified ? "Verified ✓" : "Pending"}</p>
                   </div>
                 </div>
               </div>
@@ -627,7 +627,7 @@ const ProviderDetail = () => {
                 </div>
               ) : (
                 <div className="mt-6 space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                  {reviews.map((rev: any) => (
+                  {reviews.filter((r: any) => r.comment && r.comment.trim() !== "").map((rev: any) => (
                     <div key={rev.id} className="border-t border-gray-100 pt-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
@@ -642,11 +642,6 @@ const ProviderDetail = () => {
                             <p className="text-sm font-bold text-foreground">{rev.customer_name || 'User'}</p>
                             <p className="text-[10px] text-muted-foreground">{new Date(rev.created_at).toLocaleDateString()}</p>
                           </div>
-                        </div>
-                        <div className="flex gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={10} className={i < Math.round(rev.rating) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
-                          ))}
                         </div>
                       </div>
                       {rev.comment && <p className="text-xs text-muted-foreground">{rev.comment}</p>}
