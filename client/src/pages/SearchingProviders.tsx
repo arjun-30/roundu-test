@@ -164,7 +164,7 @@ const SearchingProviders = () => {
         sessionStorage.removeItem("searching_providers_state");
         sessionStorage.removeItem("searching_providers_quotes");
         dispatch({ type: "CLEAR_RECEIVED_QUOTES" });
-        navigate("/home", { replace: true });
+        navigate(-1);
     };
 
     // Cache state

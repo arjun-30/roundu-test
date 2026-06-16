@@ -5,7 +5,7 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-const isMock = supabaseUrl.includes('placeholder') || supabaseKey === 'placeholder-key';
+export const isMock = supabaseUrl.includes('placeholder') || supabaseKey === 'placeholder-key';
 
 // Startup diagnostic — visible in browser console in any environment
 if (isMock) {
