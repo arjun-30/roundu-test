@@ -331,7 +331,6 @@ const Jobs = () => {
       return !isBefore(jobDate, startOfDay(now));
     });
 
-    // Apply date range filter only if dates are selected
     const filteredUpcoming = upcomingRange?.from || upcomingRange?.to
       ? upcomingList.filter((r) => {
         const jobDate = parseJobDate(r.date);
@@ -352,19 +351,7 @@ const Jobs = () => {
       return isActiveStatus;
     });
 
-    // We no longer filter active jobs strictly by "today".
-    // If a job is actively being worked on (arrived/in progress/etc),
-    // it MUST be shown to the provider so they can complete it.
-    const filteredActive = activeList.filter((r) => {
-      if (activeRange?.from || activeRange?.to) {
-        const jobDate = parseJobDate(r.date);
-        const { start: filterStart, end: filterEnd } = getActiveFilterRange();
-        const start = activeRange.from ? startOfDay(activeRange.from) : startOfDay(filterStart);
-        const end = activeRange.to ? endOfDay(activeRange.to) : (activeRange.from ? endOfDay(activeRange.from) : endOfDay(filterEnd));
-        return isWithinInterval(jobDate, { start, end });
-      }
-      return true;
-    });
+    const filteredActive = activeList;
 
     // Completed jobs: all jobs marked as paid/completed, regardless of date
     const completedList = [
@@ -462,7 +449,7 @@ const Jobs = () => {
           {/* Legend */}
           <div ref={resultsRef} className="px-5 mt-3 flex items-center gap-2 scroll-mt-24">
             <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-            <span className="text-[11px] text-muted-foreground">Scheduled Job</span>
+            <span className="text-[11px] text-muted-foreground">Upcoming Job</span>
           </div>
 
           {/* Job List */}
@@ -489,7 +476,7 @@ const Jobs = () => {
                           <p className="text-sm font-bold text-foreground">{service?.label}</p>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-700">
-                          Scheduled
+                          {job.jobType === "scheduled" ? "Scheduled" : "Quick Fix"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-3">{job.customerName}</p>

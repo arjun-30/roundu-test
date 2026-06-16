@@ -37,7 +37,8 @@ const BookingDate = () => {
 
   const handleNext = () => {
     if (!selected) return;
-    dispatch({ type: "SELECT_DATE", date: selected.toISOString().slice(0, 10) });
+    const localDateStr = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, '0')}-${String(selected.getDate()).padStart(2, '0')}`;
+    dispatch({ type: "SELECT_DATE", date: localDateStr });
     navigate("/booking/time", { state: location.state });
   };
 

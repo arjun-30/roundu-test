@@ -6,6 +6,7 @@ import {
   ChevronRight, Inbox, Briefcase, FileText, Image as ImageIcon, Video, Play, Mic, Eye,
   ClipboardCheck, Images, Wrench, LogOut
 } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "@/context/AppContext";
 import { getServiceById, ProviderRequest } from "@/data/mockData";
 import EmptyState from "@/components/EmptyState";
@@ -79,11 +80,6 @@ const Dashboard = () => {
   // State for PIP (Performance Improvement Plan) UI
   const [showPip, setShowPip] = useState(false);
   const [pipType, setPipType] = useState<"new_signup" | "low_rating" | null>(null);
-
-  // State for quoting live broadcast
-  const [quotingBroadcast, setQuotingBroadcast] = useState<any | null>(null);
-  const [quotePrice, setQuotePrice] = useState("");
-  const [quoteEta, setQuoteEta] = useState("15");
 
   const isCritical = providerStats.rating < 4.0 || (providerStats.responseRate > 0 && providerStats.responseRate < 50);
 
@@ -216,7 +212,6 @@ const Dashboard = () => {
         localStorage.setItem("is_in_pip", "false");
       }
 
-<<<<<<< HEAD
       const isInPip = localStorage.getItem("is_in_pip") === "true";
       if (isInPip) {
         const lastSeenLowRating = localStorage.getItem("last_seen_low_rating");
@@ -224,48 +219,6 @@ const Dashboard = () => {
           localStorage.setItem("last_seen_low_rating", today);
           setPipType("low_rating");
           setShowPip(true);
-=======
-      // Add to providerRequests so Job.tsx can find it
-      dispatch({
-        type: "ADD_PROVIDER_REQUEST",
-        request: {
-          id: data.bookingId,
-          customerName: data.customerName || "Customer",
-          customerPhone: data.customerPhone || "9999999991",
-          serviceId: data.serviceId,
-          address: data.address || "Customer Location",
-          lat: data.lat,
-          lng: data.lng,
-          status: "assigned",
-          date: data.date || new Date().toISOString().slice(0, 10),
-          time: data.time || "Now",
-          price: data.price || 0,
-          notes: data.notes || "",
-          voiceNote: data.voiceNote || false,
-          voiceNoteUrl: data.voiceNoteUrl || undefined,
-        }
-      });
-
-      // The job will now automatically display in the Dashboard UI without forcibly redirecting to chat
-    };
-
-    socket.on("quote_accepted", handleQuoteAccepted);
-    return () => { socket.off("quote_accepted", handleQuoteAccepted); };
-  }, [dispatch, navigate]);
-
-  const handleSubmitQuote = () => {
-    if (!quotingBroadcast || !quotePrice) return;
-
-    let distanceKm = 0;
-    if (quotingBroadcast && quotingBroadcast.lat != null && quotingBroadcast.lng != null && currentLocation) {
-      const qlat = Number(quotingBroadcast.lat);
-      const qlng = Number(quotingBroadcast.lng);
-      if (!isNaN(qlat) && !isNaN(qlng)) {
-        try {
-          distanceKm = Math.round(getDistance(currentLocation, { lat: qlat, lng: qlng }) * 10) / 10;
-        } catch (e) {
-          distanceKm = 0;
->>>>>>> 45b2e800b1650a3643c15cc5a2cfca4b2849b83d
         }
       }
     }

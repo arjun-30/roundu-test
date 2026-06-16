@@ -46,6 +46,7 @@ async function main() {
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS voice_note_url TEXT;');
     await db.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 2;');
     await db.query("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';");
+    await db.query("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS job_type VARCHAR(50) DEFAULT 'quick_fix';");
 
 
     // Add location storage columns to users and providers tables
@@ -322,7 +323,8 @@ async function main() {
         price: data.price,
         status: "pending",
         notes: data.notes,
-        voiceNote: data.voice_note || false
+        voiceNote: data.voice_note || false,
+        jobType: data.jobType || "quick_fix"
       };
 
       // 1. Direct Target
@@ -457,7 +459,7 @@ async function main() {
     });
 
     socket.on('broadcast_job', (data: any) => {
-      console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}`);
+      console.log(`[socket] broadcast_job: id=${data.broadcastId}, service=${data.serviceId}, date=${data.date}, time=${data.time}, jobType=${data.jobType}`);
 
       const isNew = !activeBroadcasts.has(data.broadcastId);
 
@@ -476,6 +478,7 @@ async function main() {
           images: data.images || [],
           voiceNote: data.voiceNote || false,
           voiceNoteUrl: data.voiceNoteUrl || null,
+          jobType: data.jobType || "quick_fix",
           status: "active",
           createdAt: Date.now()   // only set on first emit so TTL is accurate
         }
@@ -622,6 +625,7 @@ async function main() {
           notes: broadcast?.notes || '',
           voiceNote: broadcast?.voiceNote || false,
           voiceNoteUrl: broadcast?.voiceNoteUrl || null,
+          jobType: data.jobType || broadcast?.jobType || 'quick_fix',
         });
 
         console.log(`[socket] quote_accepted sent to user:${data.acceptedProviderId} for booking ${data.bookingId}`);
@@ -647,10 +651,28 @@ async function main() {
         const activeBookings = await getProviderActiveBookings(providerId);
 
         if (activeBookings && activeBookings.length > 0) {
-          socket.emit('quote_error', {
-            message: 'You cannot send quotes while you have an active job. Please complete your current job first.'
+          const now = new Date();
+          const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+          
+          const hasTodayJob = activeBookings.some((booking: any) => {
+            if (!booking.scheduled_at) return true;
+            return new Date(booking.scheduled_at).getTime() < tomorrow;
           });
-          return;
+
+          if (hasTodayJob) {
+            let reqTimeMs = now.getTime();
+            if (broadcast) {
+              const { parseDateTime } = require('./utils/bookingHelper');
+              reqTimeMs = parseDateTime(broadcast.date, broadcast.time).getTime();
+            }
+
+            if (reqTimeMs < tomorrow) {
+              socket.emit('quote_error', {
+                message: 'You cannot send quotes for today while you have an active job today. Please complete your current job first.'
+              });
+              return;
+            }
+          }
         }
 
         const proposedStart = parseDateTime(

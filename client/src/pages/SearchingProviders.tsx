@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Star } from "lucide-react";
 
 import { useApp, ProviderQuote } from "@/context/AppContext";
+import { getAbsoluteIsoTimestamp } from "@/lib/utils";
 import { socket } from "@/lib/socket";
 import { createBooking } from "@/lib/api";
 import { useCurrentLocation } from "@/hooks/useLocation";
@@ -17,6 +18,8 @@ import { getServiceById } from "@/data/mockData";
 interface CachedSearchState {
     serviceId: string;
     broadcastId: string;
+    selectedDate?: string | null;
+    selectedTime?: string | null;
 }
 
 const getCachedSearchState = (
@@ -37,6 +40,7 @@ const getCachedSearchState = (
 const SearchingProviders = () => {
     const { serviceId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const cachedState = getCachedSearchState(serviceId);
 
@@ -50,9 +54,12 @@ const SearchingProviders = () => {
         bookingVoiceNoteUrl,
         bookingVoiceNote,
         bookingImages,
-        selectedDate,
-        selectedTime,
+        selectedDate: contextDate,
+        selectedTime: contextTime,
     } = useApp();
+
+    const selectedDate = location.state?.selectedDate || contextDate;
+    const selectedTime = location.state?.selectedTime || contextTime;
 
     const [error, setError] = useState("");
     const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
@@ -198,27 +205,37 @@ const SearchingProviders = () => {
             sessionStorage.removeItem("search_start_time");
             localStorage.removeItem("search_start_time");
             const freshNow = Date.now();
+            sessionStorage.setItem("searching_providers_state", JSON.stringify({
+                serviceId,
+                broadcastId,
+                selectedDate,
+                selectedTime
+            }));
             sessionStorage.setItem("search_start_time", String(freshNow));
             localStorage.setItem("search_start_time", String(freshNow));
         }
 
-        const buildPayload = () => ({
-            broadcastId,
-            customerId: user.id,
-            customerName: user.name,
-            serviceId: serviceId || "electrician",
-            address: user.address || "Current Location",
-            lat: coordsRef.current?.lat ?? null,
-            lng: coordsRef.current?.lng ?? null,
-            date: selectedDate || new Date().toISOString().slice(0, 10),
-            time:
-                selectedTime ||
-                new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            notes: bookingNotes || "Quick fix request from customer",
-            voiceNoteUrl: bookingVoiceNoteUrl,
-            voiceNote: bookingVoiceNote,
-            images: bookingImages || [],
-        });
+        const buildPayload = () => {
+            const finalDate = selectedDate || cachedState?.selectedDate || new Date().toISOString().slice(0, 10);
+            const finalTime = selectedTime || cachedState?.selectedTime || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            
+            return {
+                broadcastId,
+                customerId: user.id,
+                customerName: user.name,
+                serviceId: serviceId || "electrician",
+                address: user.address || "Current Location",
+                lat: coordsRef.current?.lat ?? null,
+                lng: coordsRef.current?.lng ?? null,
+                date: finalDate,
+                time: finalTime,
+                notes: bookingNotes || "Quick fix request from customer",
+                voiceNoteUrl: bookingVoiceNoteUrl,
+                voiceNote: bookingVoiceNote,
+                images: bookingImages || [],
+                jobType: (selectedDate || cachedState?.selectedDate) ? "scheduled" : "quick_fix",
+            };
+        };
 
         const doEmit = () => {
             if (socket.connected) {
@@ -241,7 +258,7 @@ const SearchingProviders = () => {
             clearInterval(interval);
             socket.off("connect", doEmit);
         };
-    }, [serviceId, user, dispatch, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote]);
+    }, [serviceId, user, dispatch, bookingNotes, bookingVoiceNoteUrl, bookingVoiceNote, selectedDate, selectedTime]);
 
     // ACCEPT QUOTE
     const handleAcceptQuote = async (quote: ProviderQuote) => {
@@ -249,13 +266,25 @@ const SearchingProviders = () => {
         try {
             setError("");
             setAcceptingQuoteId(quote.providerId);
+            const actualSelectedDate = selectedDate || cachedState?.selectedDate;
+            const actualSelectedTime = selectedTime || cachedState?.selectedTime;
+
+            const finalScheduledAt = actualSelectedDate
+                ? getAbsoluteIsoTimestamp(
+                    actualSelectedDate,
+                    actualSelectedTime || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  )
+                : new Date().toISOString();
+
+            const finalJobType = actualSelectedDate ? "scheduled" : "quick_fix";
+
             const bookingData = {
                 broadcast_id: quote.broadcastId,
                 customer_id: String(user?.id || ""),
                 provider_id: String(quote.providerId || ""),
                 service_id: String(serviceId || ""),
                 status: "assigned",
-                scheduled_at: new Date().toISOString(),
+                scheduled_at: finalScheduledAt,
                 address:
                     user?.address ||
                     (currentLocation
@@ -269,11 +298,31 @@ const SearchingProviders = () => {
                 voice_note_url: bookingVoiceNoteUrl || null,
                 paid: false,
                 images: bookingImages || [],
+                jobType: finalJobType,
             };
 
             const res = await createBooking(bookingData);
 
             if (res?.success && res?.data?.id) {
+                socket.emit("accept_quote", {
+                    broadcastId: quote.broadcastId,
+                    acceptedProviderId: quote.providerId,
+                    bookingId: res.data.id,
+                    customerName: user?.name || "Customer",
+                    customerPhone: user?.phone || "1234567890",
+                    address:
+                        user?.address ||
+                        (currentLocation
+                            ? `${currentLocation?.lat},${currentLocation?.lng}`
+                            : "Customer Location"),
+                    serviceId: serviceId,
+                    price: quote.price,
+                    lat: currentLocation?.lat || null,
+                    lng: currentLocation?.lng || null,
+                    scheduled_at: finalScheduledAt,
+                    jobType: finalJobType,
+                });
+
                 dispatch({ type: "ADD_BOOKING", booking: res.data });
                 navigate(`/tracking/${res.data.id}`);
                 return;

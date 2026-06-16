@@ -3,12 +3,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { SocketProvider } from "@/context/SocketProvider";
 import MobileLayout from "@/components/MobileLayout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
 import SupportChatbot from "@/components/SupportChatbot";
+import GlobalIncomingRequestPopup from "@/components/GlobalIncomingRequestPopup";
 import { useProviderApprovalStatus } from "@/hooks/useProviderApprovalStatus";
+import { Toaster } from "sonner";
 
 // Admin Imports
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -328,8 +331,12 @@ const App = () => (
         <NetworkStatus />
         <BrowserRouter>
           <AppProvider>
-            <AppRoutes />
-            <SupportChatbot />
+            <SocketProvider>
+              <AppRoutes />
+              <SupportChatbot />
+              <GlobalIncomingRequestPopup />
+              <Toaster position="top-center" />
+            </SocketProvider>
           </AppProvider>
         </BrowserRouter>
       </TooltipProvider>

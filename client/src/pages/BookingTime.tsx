@@ -30,9 +30,15 @@ const BookingTime = () => {
     dispatch({ type: "SELECT_TIME", time });
     
     if (location.state?.serviceId) {
-      sessionStorage.removeItem("searching_providers_state");
+      const bcId = `bc-${Date.now()}`;
+      sessionStorage.setItem("searching_providers_state", JSON.stringify({
+        serviceId: location.state.serviceId,
+        broadcastId: bcId,
+        selectedDate,
+        selectedTime: time
+      }));
       sessionStorage.removeItem("searching_providers_scroll");
-      navigate(`/searching-providers/${location.state.serviceId}`);
+      navigate(`/searching-providers/${location.state.serviceId}`, { state: { selectedDate, selectedTime: time } });
     } else {
       navigate("/booking/notes");
     }

@@ -11,7 +11,8 @@ interface SocketContextProps {
 const SocketContext = createContext<SocketContextProps | null>(null);
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
-  const { state, dispatch } = useApp();
+  const state = useApp();
+  const { dispatch } = state;
   const isConnectedRef = useRef(false);
 
   // Register socket on authentication change

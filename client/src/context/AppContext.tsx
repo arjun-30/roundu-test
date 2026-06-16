@@ -376,9 +376,32 @@ function reducer(state: State, action: Action): State {
           },
           ...state.notifications,
         ].slice(0, 20),
-        requestQueue: [...state.requestQueue, request]
+        requestQueue: isAssigned ? state.requestQueue : [...state.requestQueue, request]
       };
     }
+    case "ADD_TO_REQUEST_QUEUE":
+      if (state.requestQueue.some((r: any) => 
+        (action.request.id && r.id === action.request.id) || 
+        (action.request.broadcastId && r.broadcastId === action.request.broadcastId)
+      )) {
+        return state;
+      }
+      return {
+        ...state,
+        requestQueue: [...state.requestQueue, action.request]
+      };
+    case "DEQUEUE_REQUEST":
+      return {
+        ...state,
+        requestQueue: state.requestQueue.slice(1)
+      };
+    case "REMOVE_FROM_REQUEST_QUEUE":
+      return {
+        ...state,
+        requestQueue: state.requestQueue.filter((r: any) => 
+          r.id !== action.id && r.broadcastId !== action.id
+        )
+      };
     case "SET_ACTIVE_BOOKING":
       return { ...state, activeBookingId: action.id };
     case "UPDATE_BOOKING_STATUS":
@@ -405,8 +428,8 @@ function reducer(state: State, action: Action): State {
           notes: booking.notes,
           lat: booking.lat,
           lng: booking.lng,
-          voiceNote: booking.voice_note || false,
-          voiceNoteUrl: booking.voice_note_url || null
+          voiceNoteUrl: booking.voice_note_url || null,
+          jobType: booking.jobType || "quick_fix"
         };
         return {
           ...state,
@@ -596,6 +619,7 @@ function reducer(state: State, action: Action): State {
         lng: booking.lng !== undefined && booking.lng !== null ? Number(booking.lng) : undefined,
         providerLat: booking.provider_lat !== undefined && booking.provider_lat !== null ? Number(booking.provider_lat) : (booking.providerLat !== undefined ? Number(booking.providerLat) : undefined),
         providerLng: booking.provider_lng !== undefined && booking.provider_lng !== null ? Number(booking.provider_lng) : (booking.providerLng !== undefined ? Number(booking.providerLng) : undefined),
+        jobType: booking.job_type || booking.jobType || "quick_fix",
         date: booking.date || date,
         time: booking.time || time
       };
@@ -626,6 +650,7 @@ function reducer(state: State, action: Action): State {
           lng: b.lng !== undefined && b.lng !== null ? Number(b.lng) : undefined,
           providerLat: b.provider_lat !== undefined && b.provider_lat !== null ? Number(b.provider_lat) : (b.providerLat !== undefined ? Number(b.providerLat) : undefined),
           providerLng: b.provider_lng !== undefined && b.provider_lng !== null ? Number(b.provider_lng) : (b.providerLng !== undefined ? Number(b.providerLng) : undefined),
+          jobType: b.job_type || b.jobType || "quick_fix",
           date,
           time
         };
@@ -725,10 +750,10 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         providerRequests: state.providerRequests.map((r) =>
-          r.id === action.id ? { ...r, ...action.patch } : r
+          String(r.id) === String(action.id) ? { ...r, ...action.patch } : r
         ),
         bookings: state.bookings.map((b) =>
-          b.id === String(action.id).replace('req-', '') ? { ...b, ...(action.patch as any) } : b
+          String(b.id) === String(action.id).replace('req-', '') ? { ...b, ...(action.patch as any) } : b
         )
       };
     case "COMPLETE_REQUEST": {
@@ -1099,7 +1124,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     notes: b.notes,
                     voiceNote: b.voice_note || false,
                     voiceNoteUrl: b.voice_note_url || null,
-                    scheduled_at: b.scheduled_at
+                    scheduled_at: b.scheduled_at,
+                    jobType: b.job_type || "quick_fix"
                   };
                 });
                 dispatch({ type: "SET_PROVIDER_REQUESTS", requests: mappedRequests });
@@ -1201,6 +1227,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 notes: b.notes,
                 voiceNote: b.voice_note || false,
                 voiceNoteUrl: b.voice_note_url || null,
+                jobType: b.job_type || b.jobType || "quick_fix",
                 scheduled_at: b.scheduled_at
               };
               
@@ -1331,6 +1358,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     socket.on("quote_accepted", (data: any) => {
       console.log("[socket] quote_accepted received globally:", data);
       console.log("[SOCKET] [NEW BOOKING RECEIVED] Accepted quote details:", data);
+      const { date: parsedDate, time: parsedTime } = formatLocalBookingDateTime(data.scheduled_at);
       const request = {
           id: data.bookingId,
           customerName: data.customerName || "Customer",
@@ -1340,16 +1368,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           lat: data.lat,
           lng: data.lng,
           status: "assigned",
-          date: data.date || new Date().toISOString().slice(0, 10),
-          time: data.time || "Now",
+          date: parsedDate,
+          time: parsedTime,
           price: data.price || 0,
           notes: data.notes || "",
           voiceNote: data.voiceNote || false,
           voiceNoteUrl: data.voiceNoteUrl || undefined,
+          jobType: data.jobType || "quick_fix",
         };
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
-      dispatch({ type: "ADD_TO_REQUEST_QUEUE", request });
-      navigate(`/chat/${data.bookingId}`);
     });
 
     // Server-side tracking emits this event to booking rooms: { bookingId, lat, lng }
@@ -1639,12 +1666,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ ...state, dispatch, selectedProvider, addBooking, refreshLocation, setQuotingBroadcast }}>
       {children}
-
-            });
-            setActiveBroadcastRequest(null);
-          }}
-        />
-      )}
 
       {/* Global Quote Modal */}
       {quotingBroadcast && (
