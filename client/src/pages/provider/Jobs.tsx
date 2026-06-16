@@ -341,7 +341,7 @@ const Jobs = () => {
       })
       : upcomingList;
 
-    // Active jobs: only current/in-progress jobs, filtered by chip selection
+    // Active jobs: only current/in-progress jobs
     const activeList = providerRequests.filter((r) => {
       const isActiveStatus = [
         "on_the_way",
@@ -352,31 +352,25 @@ const Jobs = () => {
       return isActiveStatus;
     });
 
-    // Apply active filter range, then selected date range if present
-    const { start: filterStart, end: filterEnd } = getActiveFilterRange();
+    // We no longer filter active jobs strictly by "today".
+    // If a job is actively being worked on (arrived/in progress/etc),
+    // it MUST be shown to the provider so they can complete it.
     const filteredActive = activeList.filter((r) => {
-      const jobDate = parseJobDate(r.date);
-      const activePeriod = isWithinInterval(jobDate, { start: startOfDay(filterStart), end: endOfDay(filterEnd) });
-      if (!activePeriod) return false;
-
       if (activeRange?.from || activeRange?.to) {
+        const jobDate = parseJobDate(r.date);
+        const { start: filterStart, end: filterEnd } = getActiveFilterRange();
         const start = activeRange.from ? startOfDay(activeRange.from) : startOfDay(filterStart);
         const end = activeRange.to ? endOfDay(activeRange.to) : (activeRange.from ? endOfDay(activeRange.from) : endOfDay(filterEnd));
         return isWithinInterval(jobDate, { start, end });
       }
-
       return true;
     });
 
-    // Completed jobs: only past jobs
+    // Completed jobs: all jobs marked as paid/completed, regardless of date
     const completedList = [
-      ...providerRequests.filter((r) => ["paid"].includes(r.status)),
+      ...providerRequests.filter((r) => ["completed", "paid"].includes(r.status)),
       ...completedJobs,
-    ].filter((r) => {
-      const jobDate = parseJobDate(r.date);
-      // Only show jobs that are before today (completed in the past)
-      return isBefore(jobDate, startOfDay(now));
-    });
+    ];
 
     // Apply date range filter only if dates are selected
     const filteredCompleted = completedRange?.from || completedRange?.to

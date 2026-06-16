@@ -120,6 +120,7 @@ interface State {
   liveBroadcasts: JobBroadcast[];
   receivedQuotes: ProviderQuote[];
   quotedBroadcasts: string[];
+  cancelledBroadcasts: string[];
   onboardingData: {
     serviceIds: string[];
     homeType: string;
@@ -182,6 +183,7 @@ type Action =
   | { type: "CLEAR_LIVE_BROADCASTS" }
   | { type: "REMOVE_LIVE_BROADCAST"; id: string }
   | { type: "ADD_QUOTED_BROADCAST"; id: string }
+  | { type: "REMOVE_QUOTED_BROADCAST"; id: string }
   | { type: "CLEAR_RECEIVED_QUOTES" }
   | { type: "ADD_RECEIVED_QUOTE"; quote: ProviderQuote }
   | { type: "REMOVE_RECEIVED_QUOTE"; broadcastId: string; providerId: string }
@@ -295,6 +297,7 @@ const initialState: State = {
   liveBroadcasts: [],
   receivedQuotes: [],
   quotedBroadcasts: [],
+  cancelledBroadcasts: [],
   onboardingData: {
     serviceIds: [],
     homeType: "",
@@ -662,6 +665,10 @@ function reducer(state: State, action: Action): State {
       if (state.liveBroadcasts.some((b) => b.broadcastId === action.broadcast.broadcastId)) {
         return state;
       }
+      // If we cancelled it before, ignore
+      if (state.cancelledBroadcasts?.includes(action.broadcast.broadcastId)) {
+        return state;
+      }
       const hasQuoted = state.quotedBroadcasts?.includes(action.broadcast.broadcastId);
       const enrichedBroadcast = {
         ...action.broadcast,
@@ -692,6 +699,12 @@ function reducer(state: State, action: Action): State {
         liveBroadcasts: state.liveBroadcasts.map((b) =>
           b.broadcastId === action.id ? { ...b, status: "waiting_for_customer" } : b
         )
+      };
+    case "REMOVE_QUOTED_BROADCAST":
+      return {
+        ...state,
+        quotedBroadcasts: state.quotedBroadcasts?.filter(id => id !== action.id),
+        cancelledBroadcasts: [...(state.cancelledBroadcasts || []), action.id]
       };
     case "ACCEPT_REQUEST":
       return {
@@ -1365,6 +1378,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         text: `💰 New Quote Received from ${quote.providerName} — ₹${quote.price}`,
         notificationType: "new_quote_received",
         metadata: quote,
+        targetRole: "customer"
+      });
+    });
+
+    socket.on("quote_cancelled", (data: { broadcastId: string; providerId: string }) => {
+      console.log("[socket] ✅ quote_cancelled received:", data);
+      dispatch({ type: "REMOVE_RECEIVED_QUOTE", broadcastId: data.broadcastId, providerId: data.providerId });
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        text: `A provider has cancelled their quote.`,
+        notificationType: "quote_cancelled",
         targetRole: "customer"
       });
     });

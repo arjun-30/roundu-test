@@ -115,6 +115,19 @@ export async function uploadProviderVideo(
       duration_seconds: duration
     };
     localStorage.setItem(`mock_video_${providerId}`, JSON.stringify(mockVideo));
+
+    // UPDATE DATABASE
+    try {
+      // Import the api instance dynamically to avoid circular dependencies
+      const apiModule = await import('./api');
+      await apiModule.default.post('/providers/update-video', {
+        userId: providerId,
+        videoUrl: base64Url
+      });
+    } catch (e) {
+      console.error('Failed to update DB video_url', e);
+    }
+
     if (onProgress) onProgress(100);
     return base64Url;
   }

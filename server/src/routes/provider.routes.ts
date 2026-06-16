@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getProviderDashboard, searchProviders, registerProvider, updateServiceRadius, updateWorkingHours, checkProviderExists, getProviderProfile } from '../controllers/provider.controller';
+import { getProviderDashboard, searchProviders, registerProvider, updateServiceRadius, updateWorkingHours, checkProviderExists, getProviderProfile, updateVideoUrl } from '../controllers/provider.controller';
 import { getPool } from '../config/database';
 
 const router = Router();
@@ -9,6 +9,7 @@ router.get('/search', searchProviders);
 router.post('/register', registerProvider);
 router.post('/update-radius', updateServiceRadius);
 router.post('/update-hours', updateWorkingHours);
+router.post('/update-video', updateVideoUrl);
 router.get('/exists', checkProviderExists);
 
 // Real-time count of providers actually connected via socket for a service room
