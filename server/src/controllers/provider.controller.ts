@@ -212,6 +212,30 @@ export const updateWorkingHours = async (req: Request, res: Response) => {
   }
 };
 
+export const updateVideoUrl = async (req: Request, res: Response) => {
+  try {
+    const { userId, videoUrl } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const pool = getPool();
+    const result = await pool.query(
+      'UPDATE providers SET video_url = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 OR id::text = $2 RETURNING *',
+      [videoUrl, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+
+    res.json({ success: true, message: 'Video URL updated', data: result.rows[0] });
+  } catch (error) {
+    console.error('Update video url error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 export const checkProviderExists = async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
@@ -260,6 +284,7 @@ export const getProviderProfile = async (req: Request, res: Response) => {
       data: {
         provider: {
           id: provider.id,
+          user_id: provider.user_id,
           name: provider.name,
           phone: provider.phone,
           avatar: provider.avatar_url,
@@ -276,6 +301,8 @@ export const getProviderProfile = async (req: Request, res: Response) => {
           lng: provider.lng,
           display_location: provider.display_location,
           service_radius: provider.service_radius,
+          video_url: provider.video_url,
+          portfolio: provider.portfolio || [],
         },
         stats
       }

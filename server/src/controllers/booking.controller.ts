@@ -171,9 +171,26 @@ export const createBooking = async (req: Request, res: Response) => {
         await NotificationModel.create(n);
       }
 
+      // Extract the real user_id of the booked provider if available
+      let bookedProviderUserId = req.body.provider_id;
+      if (booking.provider_id) {
+        try {
+          const bookedProvider = await ProviderModel.findById(booking.provider_id);
+          if (bookedProvider && bookedProvider.user_id) {
+            bookedProviderUserId = bookedProvider.user_id;
+          }
+        } catch (e) {
+          console.error("Error fetching provider for socket event:", e);
+        }
+      }
+
       // Real-time notification via Socket.io
-      // Provide the booking directly to all connected clients, but clients filter by provider_id
-      req.app.locals.io.emit('job_accepted', { ...booking, provider_user_id: req.body.provider_id });
+      // Provide the booking directly to all connected clients, but clients filter by provider_user_id
+      req.app.locals.io.emit('job_accepted', { 
+        ...booking, 
+        provider_user_id: bookedProviderUserId, 
+        broadcastId: req.body.broadcast_id 
+      });
     }
 
     res.json({ success: true, data: booking });

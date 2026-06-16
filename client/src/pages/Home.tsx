@@ -504,7 +504,7 @@ const Home = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="px-5 pb-5 pt-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] relative z-0"
+        className="px-5 pb-5 pt-4 relative z-0"
       >
         <motion.button
           whileHover={{ scale: 1.01 }}
@@ -515,7 +515,7 @@ const Home = () => {
           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/40 group-hover:text-accent transition-colors">
             <Search size={20} strokeWidth={2.5} />
           </div>
-          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-[#F8FAFC]/40 border border-slate-200/80 group-hover:border-primary/20 group-hover:bg-white transition-all text-[15px] text-muted-foreground font-medium shadow-sm">
+          <div className="w-full pl-[52px] pr-5 py-4 rounded-[20px] bg-white border border-slate-200/80 group-hover:border-primary/20 transition-all text-[15px] text-muted-foreground font-medium shadow-sm">
             What service do you need today?
           </div>
         </motion.button>

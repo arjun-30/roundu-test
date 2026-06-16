@@ -176,9 +176,7 @@ const SearchingProviders = () => {
 
     // Cache quotes
     useEffect(() => {
-        if (receivedQuotes.length > 0) {
-            sessionStorage.setItem("searching_providers_quotes", JSON.stringify(receivedQuotes));
-        }
+        sessionStorage.setItem("searching_providers_quotes", JSON.stringify(receivedQuotes));
     }, [receivedQuotes]);
 
     // BROADCAST
@@ -252,6 +250,7 @@ const SearchingProviders = () => {
             setError("");
             setAcceptingQuoteId(quote.providerId);
             const bookingData = {
+                broadcast_id: quote.broadcastId,
                 customer_id: String(user?.id || ""),
                 provider_id: String(quote.providerId || ""),
                 service_id: String(serviceId || ""),

@@ -144,6 +144,10 @@ const Dashboard = () => {
     return false;
   });
 
+  const currentActiveJob = providerRequests.find((r: any) =>
+    ["assigned", "accepted", "on_the_way", "arrived", "in_progress", "payment_pending"].includes(r.status)
+  );
+
   const toggleOnline = () => {
     const nextStatus = !isOnline;
     dispatch({ type: "SET_ONLINE", value: nextStatus });
@@ -284,8 +288,7 @@ const Dashboard = () => {
         }
       });
 
-      // Navigate to Chat — enables immediate customer ↔ provider communication
-      navigate(`/chat/${data.bookingId}`);
+      // The job will now automatically display in the Dashboard UI without forcibly redirecting to chat
     };
 
     socket.on("quote_accepted", handleQuoteAccepted);
@@ -490,29 +493,29 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-        {/* Active Booking Lock Banner */}
-        <AnimatePresence>
-          {isBusy && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mx-5 mb-2 mt-4 overflow-hidden"
-            >
-              <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-[20px] p-4 flex items-start gap-4 shadow-sm">
-                <div className="w-10 h-10 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle size={20} className="text-[#D97706]" strokeWidth={2} />
-                </div>
-                <div>
-                  <p className="text-[14px] font-extrabold text-[#92400E]">Active Job Lock</p>
-                  <p className="text-[12px] text-[#B45309] mt-1 leading-relaxed font-medium">
-                    You are currently on an active job. Finish this job to accept new bookings.
-                  </p>
-                </div>
+      {/* Active Booking Lock Banner */}
+      <AnimatePresence>
+        {isBusy && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mx-5 mb-2 mt-4 overflow-hidden"
+          >
+            <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-[20px] p-4 flex items-start gap-4 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-[#FEF3C7] flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={20} className="text-[#D97706]" strokeWidth={2} />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div>
+                <p className="text-[14px] font-extrabold text-[#92400E]">Active Job Lock</p>
+                <p className="text-[12px] text-[#B45309] mt-1 leading-relaxed font-medium">
+                  You are currently on an active job. Finish this job to accept new bookings.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
         {/* Dynamic Warning Banner */}
         <AnimatePresence>
@@ -606,12 +609,28 @@ const Dashboard = () => {
 
                         <div className="flex gap-3 mt-4">
                           {isQuoted ? (
-                            <button
-                              disabled
-                              className="flex-1 py-3 bg-white text-muted-foreground border-2 border-[#FDE68A] rounded-[16px] text-[13px] font-bold cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                              ⏳ Waiting for customer...
-                            </button>
+                            <div className="flex flex-col gap-2 flex-1">
+                              <button
+                                disabled
+                                className="w-full py-3 bg-white text-muted-foreground border-2 border-[#FDE68A] rounded-[16px] text-[13px] font-bold cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                ⏳ Waiting for customer...
+                              </button>
+                              <button
+                                onClick={() => {
+                                  socket.emit('cancel_quote', {
+                                    broadcastId: b.broadcastId,
+                                    customerId: b.customerId,
+                                    providerId: user.id
+                                  });
+                                  dispatch({ type: "REMOVE_QUOTED_BROADCAST", id: b.broadcastId });
+                                  dispatch({ type: "REMOVE_LIVE_BROADCAST", id: b.broadcastId });
+                                }}
+                                className="w-full py-2 bg-white text-red-500 border-2 border-red-200 hover:bg-red-50 rounded-[16px] text-[13px] font-bold transition-colors"
+                              >
+                                Cancel Quote
+                              </button>
+                            </div>
                           ) : (
                             <>
                               <button

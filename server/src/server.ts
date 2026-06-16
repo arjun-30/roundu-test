@@ -577,7 +577,7 @@ async function main() {
       broadcastAndFilter();
     });
 
-    socket.on('accept_quote', (data: any) => {
+    socket.on('accept_quote', async (data: any) => {
       console.log(`[socket] accept_quote for ${data.broadcastId} by ${data.acceptedProviderId}, bookingId=${data.bookingId}`);
 
       const broadcast = activeBroadcasts.get(data.broadcastId);
@@ -594,8 +594,20 @@ async function main() {
           });
         }
 
+        // Map the provider ID to their user ID to ensure the message reaches them
+        let targetUserId = data.acceptedProviderId;
+        try {
+          const { getPool } = require('./config/database');
+          const pRes = await getPool().query('SELECT user_id FROM providers WHERE id = $1', [data.acceptedProviderId]);
+          if (pRes.rows[0]) {
+            targetUserId = pRes.rows[0].user_id;
+          }
+        } catch (e) {
+          console.error('[socket] Error fetching provider user_id for quote_accepted:', e);
+        }
+
         // ✅ Notify the WINNING provider with full job details
-        io.to(`user:${data.acceptedProviderId}`).emit('quote_accepted', {
+        io.to(`user:${targetUserId}`).emit('quote_accepted', {
           broadcastId: data.broadcastId,
           bookingId: data.bookingId,
           serviceId,
@@ -720,6 +732,52 @@ async function main() {
         socket.emit('quote_error', {
           message: 'An error occurred while processing your quote.'
         });
+      }
+    });
+
+    socket.on('cancel_quote', async (data: any) => {
+      console.log(`[socket] cancel_quote for ${data.broadcastId} from user ${data.providerId}`);
+      try {
+        const customerId = data.customerId;
+        let providerId = data.providerId;
+
+        // Resolve to providers table ID so it matches the DB and new_quote_received payload
+        try {
+          const provider = await ProviderModel.findByUserId(providerId);
+          if (provider) {
+            providerId = provider.id;
+          }
+        } catch (e) {
+          console.error("Error finding provider for cancel_quote", e);
+        }
+
+        if (customerId && providerId) {
+          // Check if there is an active booking from this quote that the customer just accepted
+          const { getPool } = require('./config/database');
+          const pool = getPool();
+          const res = await pool.query(
+            "UPDATE bookings SET status = 'cancelled' WHERE customer_id = $1 AND provider_id = $2 AND status IN ('pending', 'assigned') RETURNING id",
+            [customerId, providerId]
+          );
+          
+          if (res.rowCount > 0) {
+            console.log(`[socket] Cancelled booking ${res.rows[0].id} because provider cancelled quote`);
+            // Notify provider to remove from Active Jobs
+            socket.emit('job_status_updated', { bookingId: res.rows[0].id, status: 'cancelled' });
+            // Notify customer that the job was cancelled
+            io.to(`user:${customerId}`).emit('job_status_updated', { bookingId: res.rows[0].id, status: 'cancelled' });
+          }
+        }
+
+        if (customerId) {
+          io.to(`user:${customerId}`).emit('quote_cancelled', {
+            broadcastId: data.broadcastId,
+            providerId: providerId,
+          });
+          console.log(`[socket] quote_cancelled sent to customer user:${customerId}`);
+        }
+      } catch (err) {
+        console.error('[socket] error handling cancel_quote:', err);
       }
     });
 

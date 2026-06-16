@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Star } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useApp, ProviderQuote } from "@/context/AppContext";
@@ -11,6 +11,7 @@ import { getServiceById } from "@/data/mockData";
 const ProviderQuotes = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { serviceId } = useParams();
 
   // Preserve timer start time
   const [searchStartTime, setSearchStartTime] = useState<number>(0);
@@ -58,16 +59,40 @@ const ProviderQuotes = () => {
 
   const sortedQuotes = useMemo(() => {
     const copy = [...receivedQuotes];
+    if (copy.length === 0) return [];
+
     if (activeFilter === 'price') {
-      return copy.sort((a, b) => Number(a.price) - Number(b.price));
+      copy.sort((a, b) => Number(a.price) - Number(b.price));
+      return [copy[0]];
     }
     if (activeFilter === 'rating') {
-      return copy.sort((a, b) => Number(b.rating) - Number(a.rating));
+      copy.sort((a, b) => Number(b.rating) - Number(a.rating));
+      return [copy[0]];
     }
     return copy;
   }, [receivedQuotes, activeFilter]);
 
-  const service = getServiceById(user?.selectedServiceId || "");
+  useEffect(() => {
+    if (sortedQuotes.length > 0) {
+      setSelectedQuote(sortedQuotes[0]);
+    } else {
+      setSelectedQuote(null);
+    }
+  }, [sortedQuotes]);
+
+  const service = getServiceById(serviceId || "");
+
+  // Sync sessionStorage so quotes aren't resurrected when going back to SearchingProviders
+  useEffect(() => {
+    sessionStorage.setItem("searching_providers_quotes", JSON.stringify(receivedQuotes));
+  }, [receivedQuotes]);
+
+  // Navigate back to searching if all quotes are cancelled
+  useEffect(() => {
+    if (receivedQuotes.length === 0 && serviceId) {
+      navigate(`/searching-providers/${serviceId}`, { replace: true });
+    }
+  }, [receivedQuotes.length, serviceId, navigate]);
 
   const handleSelect = (quote: ProviderQuote) => {
     setSelectedQuote(quote);

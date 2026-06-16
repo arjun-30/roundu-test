@@ -92,21 +92,39 @@ const SelectProvider = () => {
 
   const sortedQuotes = useMemo(() => {
     const copy = [...receivedQuotes];
-    if (activeFilter === "price") return copy.sort((a, b) => Number(a.price) - Number(b.price));
-    if (activeFilter === "rating") return copy.sort((a, b) => Number(b.rating) - Number(a.rating));
+    if (copy.length === 0) return [];
+
+    if (activeFilter === "price") {
+      copy.sort((a, b) => Number(a.price) - Number(b.price));
+      return [copy[0]]; // Only the lowest price
+    }
+    if (activeFilter === "rating") {
+      copy.sort((a, b) => Number(b.rating) - Number(a.rating));
+      return [copy[0]]; // Only the highest rating
+    }
     return copy;
   }, [receivedQuotes, activeFilter]);
 
-  // Default to first quote
+  // Auto-select the top quote based on the current filter when quotes arrive or filter changes
   useEffect(() => {
     if (sortedQuotes.length > 0) {
-      if (!selectedQuote || !sortedQuotes.some((q) => q.providerId === selectedQuote.providerId)) {
-        setSelectedQuote(sortedQuotes[0]);
-      }
+      setSelectedQuote(sortedQuotes[0]);
     } else {
       setSelectedQuote(null);
     }
-  }, [sortedQuotes, selectedQuote]);
+  }, [sortedQuotes]);
+
+  // Sync sessionStorage so quotes aren't resurrected when going back to SearchingProviders
+  useEffect(() => {
+    sessionStorage.setItem("searching_providers_quotes", JSON.stringify(receivedQuotes));
+  }, [receivedQuotes]);
+
+  // Navigate back to searching if all quotes are cancelled
+  useEffect(() => {
+    if (receivedQuotes.length === 0 && serviceId) {
+      navigate(`/searching-providers/${serviceId}`, { replace: true });
+    }
+  }, [receivedQuotes.length, serviceId, navigate]);
 
   const handleCancelRequest = () => {
     sessionStorage.removeItem("search_start_time");
@@ -124,6 +142,7 @@ const SelectProvider = () => {
       setAcceptingQuoteId(quote.providerId);
 
       const bookingData = {
+        broadcast_id: quote.broadcastId,
         customer_id: String(user?.id || ""),
         provider_id: String(quote.providerId || ""),
         service_id: String(serviceId || ""),

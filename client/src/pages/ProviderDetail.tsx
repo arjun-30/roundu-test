@@ -96,6 +96,7 @@ const ProviderDetail = () => {
 
     const result = {
       id: baseProfile?.id || id,
+      user_id: baseProfile?.user_id,
       name: baseProfile?.name || "Professional",
       phone: baseProfile?.phone || "",
       avatar: baseProfile?.avatar || baseProfile?.avatar_url || baseProfile?.name?.charAt(0) || "P",
@@ -118,7 +119,10 @@ const ProviderDetail = () => {
       lat: baseProfile?.lat,
       lng: baseProfile?.lng,
       display_location: baseProfile?.display_location || "Service Area",
-      service_radius: baseProfile?.service_radius || 20
+      service_radius: baseProfile?.service_radius || 20,
+      portfolio: baseProfile?.portfolio || [],
+      certificates: baseProfile?.certificates || [],
+      videoUrl: baseProfile?.videoUrl || baseProfile?.video_url || ""
     };
 
     console.log('[ProviderDetail] Final provider object:', result);
@@ -191,7 +195,14 @@ const ProviderDetail = () => {
       if (!provider?.id) return;
       try {
         setLoadingVideo(true);
-        const activeVideo = await getProviderVideo(provider.id);
+        let activeVideo = await getProviderVideo(provider.id);
+        if (!activeVideo && provider.user_id) {
+          activeVideo = await getProviderVideo(provider.user_id);
+        }
+        if (!activeVideo) {
+          // Fallback to the mock provider ID used by the Portfolio page if API was unavailable during upload
+          activeVideo = await getProviderVideo('00000000-0000-0000-0000-000000000001');
+        }
         setVideo(activeVideo);
       } catch (err) {
         console.error("Error fetching provider video:", err);
@@ -200,7 +211,7 @@ const ProviderDetail = () => {
       }
     };
     fetchVideo();
-  }, [provider?.id]);
+  }, [provider?.id, provider?.user_id]);
 
   const handleShare = async () => {
     const shareUrl = `https://roundu.in/provider/${provider?.id}`;
@@ -323,16 +334,28 @@ const ProviderDetail = () => {
 
       <div className="min-h-screen bg-gray-50 pb-32 font-['DM_Sans',sans-serif]">
         {/* Portfolio Video Cover Section */}
-        <div className="relative w-full h-64 sm:h-80 bg-black overflow-hidden rounded-b-3xl">
-          {/* Video Player */}
-          <video
-            autoPlay
-            controls
-            playsInline
-            className="w-full h-full object-cover"
-            src={video?.video_url || "https://videos.pexels.com/video-files/6906106/6906106-hd_1920_1080_30fps.mp4"}
-            poster={portfolio.length > 0 ? portfolio[0]?.image : undefined}
-          />
+        <div className="relative w-full h-64 sm:h-80 bg-slate-900 overflow-hidden rounded-b-3xl">
+          {/* Video Player or Fallback Image */}
+          {(video?.video_url || provider.videoUrl) ? (
+            <video
+              autoPlay
+              muted
+              controls
+              playsInline
+              className="w-full h-full object-cover"
+              src={video?.video_url || provider.videoUrl}
+              poster={portfolio.length > 0 ? portfolio[0]?.image : undefined}
+            />
+          ) : (
+            <div className="w-full h-full relative">
+              <img 
+                src={portfolio.length > 0 ? portfolio[0]?.image : "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80"} 
+                alt="Cover" 
+                className="w-full h-full object-cover opacity-80" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            </div>
+          )}
         </div>
 
         {/* Content with Floating Avatar */}
