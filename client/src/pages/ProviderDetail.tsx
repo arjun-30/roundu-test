@@ -348,10 +348,10 @@ const ProviderDetail = () => {
             />
           ) : (
             <div className="w-full h-full relative">
-              <img 
-                src={portfolio.length > 0 ? portfolio[0]?.image : "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80"} 
-                alt="Cover" 
-                className="w-full h-full object-cover opacity-80" 
+              <img
+                src={portfolio.length > 0 ? portfolio[0]?.image : "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80"}
+                alt="Cover"
+                className="w-full h-full object-cover opacity-80"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
@@ -687,12 +687,12 @@ const ProviderDetail = () => {
             onClick={handleBook}
             disabled={isBooking || bookingSuccess}
             className={`flex-1 py-4 rounded-2xl font-extrabold text-white text-base shadow-lg transition-all active:scale-[0.98] ${bookingSuccess
-                ? "bg-green-500"
-                : isBooking
-                  ? "bg-blue-400"
-                  : quote
-                    ? "bg-[#152E4B]"
-                    : "bg-blue-600 hover:bg-blue-700"
+              ? "bg-green-500"
+              : isBooking
+                ? "bg-blue-400"
+                : quote
+                  ? "bg-[#152E4B]"
+                  : "bg-blue-600 hover:bg-blue-700"
               }`}
           >
             <span>

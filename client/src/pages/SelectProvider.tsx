@@ -180,8 +180,8 @@ const SelectProvider = () => {
       console.error("ACCEPT QUOTE ERROR", err);
       setError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to confirm booking"
+        err?.message ||
+        "Failed to confirm booking"
       );
     } finally {
       setAcceptingQuoteId(null);
@@ -267,11 +267,10 @@ const SelectProvider = () => {
           <button
             key={f}
             onClick={() => setActiveFilter(f)}
-            className={`px-5 py-2 rounded-full font-bold text-xs capitalize transition active:scale-95 border ${
-              activeFilter === f
+            className={`px-5 py-2 rounded-full font-bold text-xs capitalize transition active:scale-95 border ${activeFilter === f
                 ? "bg-[#A95D06] text-white border-transparent shadow-sm"
                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            }`}
+              }`}
           >
             {f === "all" ? "All" : f === "price" ? "Best Price" : "Top Rated"}
           </button>
@@ -311,11 +310,10 @@ const SelectProvider = () => {
                 <div
                   key={q.providerId}
                   onClick={() => setSelectedQuote(q)}
-                  className={`bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all duration-200 shadow-sm ${
-                    isSelected
+                  className={`bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all duration-200 shadow-sm ${isSelected
                       ? "border-[#152E4B] shadow-md"
                       : "border-slate-100 hover:border-slate-300"
-                  }`}
+                    }`}
                 >
                   {/* Provider info row */}
                   <div className="flex items-center justify-between mb-3">
@@ -359,17 +357,16 @@ const SelectProvider = () => {
                       e.stopPropagation();
                       setSelectedQuote(isSelected ? null : q);
                     }}
-                    className={`w-full py-3 rounded-[14px] font-bold text-[13px] transition active:scale-95 flex items-center justify-center gap-2 ${
-                      isSelected
+                    className={`w-full py-3 rounded-[14px] font-bold text-[13px] transition active:scale-95 flex items-center justify-center gap-2 ${isSelected
                         ? "bg-white text-slate-900"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                      }`}
                   >
                     {isSelected ? (
                       <>
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <circle cx="7" cy="7" r="7" fill="#15803d"/>
-                          <path d="M3.5 7L6 9.5L10.5 4.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          <circle cx="7" cy="7" r="7" fill="#15803d" />
+                          <path d="M3.5 7L6 9.5L10.5 4.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         Selected
                       </>
@@ -394,19 +391,18 @@ const SelectProvider = () => {
         <button
           disabled={!selectedQuote || !!acceptingQuoteId}
           onClick={() => selectedQuote && handleAcceptQuote(selectedQuote)}
-          className={`w-full py-4 rounded-2xl font-bold text-[15px] transition active:scale-95 ${
-            !selectedQuote
+          className={`w-full py-4 rounded-2xl font-bold text-[15px] transition active:scale-95 ${!selectedQuote
               ? "bg-slate-100 text-slate-400 cursor-not-allowed"
               : acceptingQuoteId
-              ? "bg-[#152E4B]/70 text-white cursor-wait"
-              : "bg-[#152E4B] text-white shadow-lg hover:bg-[#152E4B]/95"
-          }`}
+                ? "bg-[#152E4B]/70 text-white cursor-wait"
+                : "bg-[#152E4B] text-white shadow-lg hover:bg-[#152E4B]/95"
+            }`}
         >
           {acceptingQuoteId
             ? "Confirming Booking…"
             : selectedQuote
-            ? `Accept Quote — ₹${selectedQuote.price}`
-            : "Select a Provider to Accept"}
+              ? `Accept Quote — ₹${selectedQuote.price}`
+              : "Select a Provider to Accept"}
         </button>
 
         {/* Cancel */}

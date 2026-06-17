@@ -133,6 +133,7 @@ interface State {
   membership: MembershipSelection;
   providerId: string | null;
   activeBookingId: string | null;
+  cancelledJobsQueue: any[];
 }
 
 type Action =
@@ -195,6 +196,7 @@ type Action =
   | { type: "MARK_MESSAGES_SEEN"; payload: { bookingId: string; seenBy: string } }
   | { type: "UPDATE_ONLINE_STATUS"; payload: { userId: string; isOnline: boolean } }
   | { type: "SET_MEMBERSHIP"; membership: MembershipSelection }
+  | { type: "DISMISS_CANCELLED_JOB" }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
@@ -310,6 +312,7 @@ const initialState: State = {
   membership: getStoredMembership(),
   providerId: null,
   activeBookingId: null,
+  cancelledJobsQueue: [],
 };
 
 function reducer(state: State, action: Action): State {
@@ -449,6 +452,7 @@ function reducer(state: State, action: Action): State {
           in_progress: "🛠️ Job in progress...",
           completed: "✅ Job completed successfully!",
           paid: "💰 Payment confirmed! Please rate your experience.",
+          cancelled: "🚫 Booking cancelled successfully."
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -475,6 +479,7 @@ function reducer(state: State, action: Action): State {
         const statusTexts: Record<string, string> = {
           completed: "⏳ Job completed, waiting for payment.",
           paid: "💰 Payment received! Job completed successfully.",
+          cancelled: "🚫 Customer cancelled the request.",
         };
         const text = statusTexts[status];
         const newNotifications = text ? [
@@ -489,27 +494,39 @@ function reducer(state: State, action: Action): State {
         ].slice(0, 20) : state.notifications;
 
         const isCompleted = status === "completed" || status === "paid";
+        const isCancelled = status === "cancelled";
         let updatedRequests = state.providerRequests;
         let updatedCompleted = state.completedJobs;
+        let updatedCancelledQueue = state.cancelledJobsQueue;
 
-        if (isCompleted) {
+        if (isCompleted || isCancelled) {
           const targetReq = state.providerRequests.find(r => r.id === normalizedId || r.id === bookingId);
           if (targetReq) {
             const enrichedReq = {
               ...targetReq,
               status: status as any
-            }; updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
-            if (!updatedCompleted.some(c => c.id === targetReq.id)) {
-              updatedCompleted = [enrichedReq, ...updatedCompleted];
-            } else {
-              updatedCompleted = updatedCompleted.map(c => c.id === targetReq.id ? enrichedReq : c);
+            }; 
+            updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
+            if (isCompleted) {
+              if (!updatedCompleted.some(c => c.id === targetReq.id)) {
+                updatedCompleted = [enrichedReq, ...updatedCompleted];
+              } else {
+                updatedCompleted = updatedCompleted.map(c => c.id === targetReq.id ? enrichedReq : c);
+              }
+            }
+            if (isCancelled) {
+              if (!updatedCancelledQueue.some((c: any) => c.id === targetReq.id)) {
+                updatedCancelledQueue = [...updatedCancelledQueue, enrichedReq];
+              }
             }
           } else {
-            updatedCompleted = updatedCompleted.map(c =>
-              (c.id === normalizedId || c.id === bookingId)
-                ? { ...c, status: status as any }
-                : c
-            );
+            if (isCompleted) {
+              updatedCompleted = updatedCompleted.map(c =>
+                (c.id === normalizedId || c.id === bookingId)
+                  ? { ...c, status: status as any }
+                  : c
+              );
+            }
           }
         } else {
           updatedRequests = state.providerRequests.map((r) =>
@@ -523,10 +540,16 @@ function reducer(state: State, action: Action): State {
           ...state,
           providerRequests: updatedRequests,
           completedJobs: updatedCompleted,
+          cancelledJobsQueue: updatedCancelledQueue,
           notifications: newNotifications,
         };
       }
     }
+    case "DISMISS_CANCELLED_JOB":
+      return {
+        ...state,
+        cancelledJobsQueue: state.cancelledJobsQueue.slice(1)
+      };
     case "SET_PROVIDER_REQUESTS": {
       const completed = action.requests.filter((r: any) => r.status === "completed" || r.status === "paid");
       const activeOrUpcoming = action.requests.filter((r: any) => r.status !== "completed" && r.status !== "paid");
@@ -1377,6 +1400,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           jobType: data.jobType || "quick_fix",
         };
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
+      if (stateRef.current.role === "provider") {
+        navigate(`/provider/job/${data.bookingId}`);
+      }
     });
 
     // Server-side tracking emits this event to booking rooms: { bookingId, lat, lng }
@@ -1436,6 +1462,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     socket.on("job_accepted", (booking: any) => {
       dispatch({ type: "HANDLE_JOB_ACCEPTED", booking });
+      if (stateRef.current.role === "provider") {
+        navigate(`/provider/job/${booking.id}`);
+      }
     });
 
     socket.on("job_status_updated", (data: { bookingId: string; status: string; paid?: boolean }) => {

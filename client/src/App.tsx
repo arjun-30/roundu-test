@@ -10,6 +10,7 @@ import NetworkStatus from "@/components/NetworkStatus";
 import { getSavedRoleForPhone } from "@/lib/roleStorage";
 import SupportChatbot from "@/components/SupportChatbot";
 import GlobalIncomingRequestPopup from "@/components/GlobalIncomingRequestPopup";
+import GlobalCancellationPopup from "@/components/GlobalCancellationPopup";
 import { useProviderApprovalStatus } from "@/hooks/useProviderApprovalStatus";
 import { Toaster } from "sonner";
 
@@ -335,6 +336,7 @@ const App = () => (
               <AppRoutes />
               <SupportChatbot />
               <GlobalIncomingRequestPopup />
+              <GlobalCancellationPopup />
               <Toaster position="top-center" />
             </SocketProvider>
           </AppProvider>

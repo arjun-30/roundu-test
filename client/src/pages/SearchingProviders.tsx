@@ -218,7 +218,7 @@ const SearchingProviders = () => {
         const buildPayload = () => {
             const finalDate = selectedDate || cachedState?.selectedDate || new Date().toISOString().slice(0, 10);
             const finalTime = selectedTime || cachedState?.selectedTime || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            
+
             return {
                 broadcastId,
                 customerId: user.id,
@@ -273,7 +273,7 @@ const SearchingProviders = () => {
                 ? getAbsoluteIsoTimestamp(
                     actualSelectedDate,
                     actualSelectedTime || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                  )
+                )
                 : new Date().toISOString();
 
             const finalJobType = actualSelectedDate ? "scheduled" : "quick_fix";

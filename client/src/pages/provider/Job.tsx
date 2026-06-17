@@ -71,15 +71,7 @@ const Job = () => {
   } as any;
 
   const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else if (location.state?.from === "profile") {
-      navigate("/provider/profile");
-    } else if (location.state?.from === "jobs") {
-      navigate("/provider/jobs");
-    } else {
-      navigate("/provider");
-    }
+    navigate("/provider", { replace: true });
   };
 
   let job = providerRequests.find((r) => r.id === id);

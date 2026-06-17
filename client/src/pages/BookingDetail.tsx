@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, MapPin, Star } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Star, Info, Trash2, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { socket } from "@/lib/socket";
 import { getProviderById, getServiceById } from "@/data/mockData";
 
 const BookingDetail = () => {
@@ -48,8 +49,6 @@ const BookingDetail = () => {
           <div className="h-px bg-border my-4" />
           <Row icon={Calendar} text={booking.date} />
           <Row icon={Clock} text={booking.time} />
-          <Row icon={MapPin} text="Bangalore, KA" />
-
           {booking.notes && (
             <>
               <div className="h-px bg-border my-3" />
@@ -76,10 +75,43 @@ const BookingDetail = () => {
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Status</p>
           <p className="text-sm font-bold text-foreground capitalize">{booking.status.replace("_", " ")}</p>
         </div>
+
+        {['pending', 'assigned', 'accepted', 'on_the_way'].includes(booking.status) && (
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card space-y-4">
+            <div className="flex gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Info size={14} className="text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">Need to cancel?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You can cancel this booking before the provider starts the work.</p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                socket.emit("update_job_status", { bookingId: booking.id, status: "cancelled" });
+              }}
+              className="w-full py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center gap-3 px-4 active:scale-95 transition-transform"
+            >
+              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                <Trash2 size={16} className="text-red-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold">Cancel Booking</p>
+                <p className="text-[10px] opacity-80">Cancel this request and stop the service</p>
+              </div>
+            </button>
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
+              <ShieldCheck size={12} />
+              <p className="text-[10px]">Cancellation is allowed before work starts.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-card border-t border-border flex gap-2">
-        {booking.status !== "completed" && (
+        {booking.status !== "completed" && booking.status !== "cancelled" && (
           <>
             <button
               onClick={() => navigate(`/chat/${booking.id}`)}
