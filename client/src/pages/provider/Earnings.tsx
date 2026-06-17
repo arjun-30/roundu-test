@@ -135,7 +135,7 @@ const Earnings = () => {
           <Stat
             label="Earned"
             value={`₹${formatRupees(timeframeTotal)}`}
-            color="text-emerald-600"
+            color="text-[#006400]"
           />
         </div>
       </div>
@@ -166,7 +166,7 @@ const Earnings = () => {
                       <Calendar size={10} /> {j.date}
                     </p>
                   </div>
-                  <span className="text-sm font-extrabold text-success">+₹{formatRupees(Number(j.price) || 0)}</span>
+                  <span className="text-sm font-extrabold text-[#006400]">+₹{formatRupees(Number(j.price) || 0)}</span>
                 </div>
               );
             })}
