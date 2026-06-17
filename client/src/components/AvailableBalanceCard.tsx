@@ -25,7 +25,7 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
 
       <p
         className={`text-5xl font-extrabold mt-3 ${withdrawableBalance < 0
-          ? "text-[#DC2626]"
+          ? "text-red-600"
           : "text-white"
           }`}
       >
@@ -36,14 +36,14 @@ const AvailableBalanceCard: React.FC<AvailableBalanceCardProps> = ({
         <div className="flex justify-between text-slate-300">
           <span>Wallet Balance</span>
           <span
-            className={`font-bold ${walletBalance < 0 ? "text-[#DC2626]" : ""
+            className={`font-bold ${walletBalance < 0 ? "text-red-600" : ""
               }`}
           >
             ₹{walletBalance.toLocaleString('en-IN')}
           </span>
         </div>
 
-        <div className="flex justify-between text-[#DC2626]">
+        <div className="flex justify-between text-red-300">
           <span>Platform Fee</span>
           <span className="font-bold">
             Already Deducted

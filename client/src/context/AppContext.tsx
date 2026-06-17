@@ -856,9 +856,18 @@ function reducer(state: State, action: Action): State {
       };
     }
     case "CLEAR_COMMISSION_DUE": {
-      const newCommission = Math.max(
-        0,
-        state.commissionDue - action.amount
+      const newWallet =
+        state.walletBalance + action.amount;
+
+      const newCommission =
+        Math.max(
+          0,
+          state.commissionDue - action.amount
+        );
+
+      localStorage.setItem(
+        "roundu_wallet_balance",
+        String(newWallet)
       );
 
       localStorage.setItem(
@@ -866,9 +875,17 @@ function reducer(state: State, action: Action): State {
         String(newCommission)
       );
 
+      localStorage.setItem(
+        "roundu_cod_pending_count",
+        "0"
+      );
+
       return {
         ...state,
-        commissionDue: newCommission
+        walletBalance: newWallet,
+        commissionDue: newCommission,
+        codPendingCount: 0,
+        isFrozen: false
       };
     }
     case "INCREMENT_COD_COUNT": {

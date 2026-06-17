@@ -303,8 +303,7 @@ const Job = () => {
                 );
 
                 const commission = amount * 0.15;
-
-                if (walletBalance > 0) {
+                if (walletBalance >= commission) {
                   dispatch({
                     type: "UPDATE_WALLET",
                     amount: -commission
@@ -319,12 +318,11 @@ const Job = () => {
                     type: "ADD_COMMISSION_DUE",
                     amount: commission
                   });
+
+                  dispatch({
+                    type: "INCREMENT_COD_COUNT"
+                  });
                 }
-
-                dispatch({
-                  type: "INCREMENT_COD_COUNT"
-                });
-
                 emitStatus("paid");
 
                 showNotification(

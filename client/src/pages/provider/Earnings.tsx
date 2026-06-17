@@ -21,7 +21,8 @@ const Earnings = () => {
     user,
     walletBalance = 0,
     commissionDue = 0,
-    codPendingCount = 0
+    codPendingCount = 0,
+    dispatch
   } = useApp() as any;
   const [balance, setBalance] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<any[]>([]);
@@ -107,9 +108,80 @@ const Earnings = () => {
           commissionDue={commissionDue}
           codPendingCount={codPendingCount}
           onWithdraw={() => {
-            // Placeholder: actual withdraw handler logic remains unchanged
+            if (walletBalance <= 0) {
+              alert("No withdrawable balance");
+              return;
+            }
+
+            const amount = Number(
+              prompt(
+                `Enter amount to withdraw (Available ₹${walletBalance.toFixed(2)})`
+              )
+            );
+
+            if (!amount || amount <= 0) return;
+
+            if (amount > walletBalance) {
+              alert("Insufficient wallet balance");
+              return;
+            }
+
+            dispatch({
+              type: "UPDATE_WALLET",
+              amount: -amount
+            });
+
+            alert(`₹${amount.toFixed(2)} withdrawn successfully`);
           }}
         />
+
+        {commissionDue > 0 && (
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+            <h3 className="text-sm font-bold text-red-600 mb-2">
+              Outstanding Commission
+            </h3>
+
+            <p className="text-3xl font-extrabold text-red-600 mb-4">
+              ₹{formatRupees(commissionDue)}
+            </p>
+
+            <button
+              onClick={() => {
+                dispatch({
+                  type: "CLEAR_COMMISSION_DUE",
+                  amount: commissionDue
+                });
+              }}
+              className="w-full py-3 rounded-xl bg-red-600 text-white font-bold"
+            >
+              Pay Commission
+            </button>
+          </div>
+        )}
+
+        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold mb-2">
+            Wallet Top Up
+          </h3>
+
+          <button
+            onClick={() => {
+              const amount = Number(
+                prompt("Enter amount to add")
+              );
+
+              if (!amount || amount <= 0) return;
+
+              dispatch({
+                type: "UPDATE_WALLET",
+                amount
+              });
+            }}
+            className="w-full py-3 rounded-xl bg-primary text-white font-bold"
+          >
+            Add Money
+          </button>
+        </div>
 
         <div className="flex gap-2 justify-center overflow-x-auto no-scrollbar py-1">
           {["Today", "This Week", "This Month"].map((label) => (
