@@ -154,12 +154,9 @@ const Dashboard = () => {
     setLocating(true);
     try {
       const result = await reverseGeocode(lat, lng);
-      if (result.address) {
-        const cityCountry = getShortAddress(result.city ? `${result.city}, India` : result.address);
-        if (cityCountry) {
-          dispatch({ type: "UPDATE_USER", user: { address: cityCountry } });
+        if (result.address) {
+          dispatch({ type: "UPDATE_USER", user: { address: result.address } });
         }
-      }
     } catch (err) {
       console.warn("Reverse geocode failed:", err);
       dispatch({ type: "UPDATE_USER", user: { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` } });
@@ -284,7 +281,7 @@ const Dashboard = () => {
                     <span className="block h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" /> Detecting...
                   </span>
                 ) : (
-                  getShortAddress(user.address) || "Set Location"
+                  user.address || "Set Location"
                 )}
               </p>
             </button>

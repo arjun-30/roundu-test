@@ -255,9 +255,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
   const isDev = import.meta.env.DEV;
 
   if (isDev) {
-    console.log("[DEBUG LOCATION] Latitude:", lat);
-    console.log("[DEBUG LOCATION] Longitude:", lng);
-    console.log("[DEBUG LOCATION] Geocoding request URL:", url);
+    console.log("[LOCATION DEBUG] Latitude:", lat);
+    console.log("[LOCATION DEBUG] Longitude:", lng);
+    console.log("[LOCATION DEBUG] Geocoding request URL:", url);
   }
 
   let res;
@@ -266,7 +266,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
   } catch (fetchErr: any) {
     const errorMsg = `Network request failure: Unable to reach geocoding service. Please check your internet connection.`;
     if (isDev) {
-      console.error("[DEBUG LOCATION] Fetch Error:", fetchErr);
+      console.error("[LOCATION DEBUG] Fetch Error:", fetchErr);
     }
     throw new Error(errorMsg);
   }
@@ -283,7 +283,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
       errorMsg = `Reverse geocoding API failure: ${errText}`;
     }
     if (isDev) {
-      console.error("[DEBUG LOCATION] Response Error:", errorMsg);
+      console.error("[LOCATION DEBUG] Response Error:", errorMsg);
     }
     throw new Error(errorMsg);
   }
@@ -294,13 +294,13 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
   } catch (jsonErr: any) {
     const errorMsg = `Address parsing failure: Failed to parse geocoding service response.`;
     if (isDev) {
-      console.error("[DEBUG LOCATION] JSON Parse Error:", jsonErr);
+      console.error("[LOCATION DEBUG] JSON Parse Error:", jsonErr);
     }
     throw new Error(errorMsg);
   }
 
   if (isDev) {
-    console.log("[DEBUG LOCATION] API response:", data);
+    console.log("[LOCATION DEBUG] Full Mapbox response", data);
   }
 
   const features = data.features || [];
@@ -308,6 +308,31 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
     throw new Error("Address parsing failure: No address found for the current coordinates.");
   }
   
+  const mainFeature = features[0];
+  let parsedArea = "";
+  let parsedCity = "";
+
+  if (mainFeature) {
+    const context = mainFeature.context || [];
+    const getContextField = (prefix: string) => context.find((c: any) => c.id.startsWith(prefix))?.text;
+
+    const ctxLocality = getContextField("locality");
+    const ctxNeighborhood = getContextField("neighborhood");
+    const ctxPlace = getContextField("place");
+    const ctxDistrict = getContextField("district");
+    const ctxRegion = getContextField("region");
+    const fText = mainFeature.text;
+
+    parsedArea = ctxLocality || ctxNeighborhood || ctxPlace || fText || "";
+    parsedCity = ctxPlace || ctxDistrict || ctxRegion || "";
+  }
+
+  // Fallback to original logic if new logic fails to find an area
+  let useFallback = false;
+  if (!parsedArea && !parsedCity) {
+    useFallback = true;
+  }
+
   let locality = "";
   let sublocality = "";
   let neighborhood = "";
@@ -337,7 +362,6 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
     }
   }
 
-  // Fallback for postcode check in place_names
   for (const f of features) {
     if (!pincode && f.place_name) {
       const match = f.place_name.match(/\b\d{6}\b/);
@@ -347,71 +371,80 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ addres
     }
   }
 
-  const cleanDistrictName = (name: string): string => {
-    if (!name) return "";
-    return name
-      .replace(/\bDistrict\b/gi, "")
-      .replace(/\bState\b/gi, "")
-      .trim();
-  };
+  let finalArea = parsedArea;
+  let finalCity = parsedCity;
 
-  const finalDistrict = cleanDistrictName(district || city);
+  if (useFallback) {
+    const cleanDistrictName = (name: string): string => {
+      if (!name) return "";
+      return name
+        .replace(/\bDistrict\b/gi, "")
+        .replace(/\bState\b/gi, "")
+        .trim();
+    };
 
-  const EXCLUDED_NAMES = new Set([
-    "india", "tamil nadu", "tamilnadu", "karnataka", "andhra pradesh", 
-    "kerala", "maharashtra", "delhi", "state", "country"
-  ]);
+    const finalDistrict = cleanDistrictName(district || city);
 
-  const isExcluded = (name: string): boolean => {
-    if (!name) return true;
-    const lower = name.toLowerCase().trim();
-    return EXCLUDED_NAMES.has(lower);
-  };
+    const EXCLUDED_NAMES = new Set([
+      "india", "tamil nadu", "tamilnadu", "karnataka", "andhra pradesh", 
+      "kerala", "maharashtra", "delhi", "state", "country"
+    ]);
 
-  // Determine Area with Priority:
-  // 1. locality
-  // 2. subLocality
-  // 3. neighborhood
-  // 4. suburb
-  let finalArea = "";
-  if (locality && !isExcluded(locality)) finalArea = locality;
-  else if (sublocality && !isExcluded(sublocality)) finalArea = sublocality;
-  else if (neighborhood && !isExcluded(neighborhood)) finalArea = neighborhood;
-  else if (suburb && !isExcluded(suburb)) finalArea = suburb;
+    const isExcluded = (name: string): boolean => {
+      if (!name) return true;
+      const lower = name.toLowerCase().trim();
+      return EXCLUDED_NAMES.has(lower);
+    };
 
-  const filteredDistrict = isExcluded(finalDistrict) ? "" : finalDistrict;
+    if (locality && !isExcluded(locality)) finalArea = locality;
+    else if (sublocality && !isExcluded(sublocality)) finalArea = sublocality;
+    else if (neighborhood && !isExcluded(neighborhood)) finalArea = neighborhood;
+    else if (suburb && !isExcluded(suburb)) finalArea = suburb;
 
-  // If Area is same as District, clear/try backup
-  if (finalArea.toLowerCase() === filteredDistrict.toLowerCase()) {
-    if (finalArea === locality) {
-      const backupArea = sublocality || neighborhood || suburb || "";
-      if (backupArea && !isExcluded(backupArea)) {
-        finalArea = backupArea;
+    const filteredDistrict = isExcluded(finalDistrict) ? "" : finalDistrict;
+    
+    finalCity = filteredDistrict;
+
+    if (finalArea.toLowerCase() === filteredDistrict.toLowerCase()) {
+      if (finalArea === locality) {
+        const backupArea = sublocality || neighborhood || suburb || "";
+        if (backupArea && !isExcluded(backupArea)) {
+          finalArea = backupArea;
+        } else {
+          finalArea = "";
+        }
       } else {
         finalArea = "";
       }
-    } else {
-      finalArea = "";
     }
   }
 
-  let formattedAddress = "";
-  if (finalArea && filteredDistrict) {
-    formattedAddress = `${finalArea}, ${filteredDistrict}`;
-  } else {
-    formattedAddress = finalArea || filteredDistrict || "Set Location";
+  // Prevent duplicate names
+  if (finalArea && finalCity && finalArea.toLowerCase() === finalCity.toLowerCase()) {
+    finalArea = finalCity;
+    finalCity = "";
   }
 
   if (isDev) {
-    console.log("[DEBUG LOCATION] Parsed Area:", finalArea);
-    console.log("[DEBUG LOCATION] Parsed District/City:", filteredDistrict);
-    console.log("[DEBUG LOCATION] Final display location:", formattedAddress);
+    console.log("[LOCATION DEBUG] Parsed area", finalArea);
+    console.log("[LOCATION DEBUG] Parsed city", finalCity);
+  }
+
+  let formattedAddress = "";
+  if (finalArea && finalCity) {
+    formattedAddress = `${finalArea}, ${finalCity}`;
+  } else {
+    formattedAddress = finalArea || finalCity || "Set Location";
+  }
+
+  if (isDev) {
+    console.log("[LOCATION DEBUG] Final display location", formattedAddress);
   }
 
   return { 
     address: formattedAddress,
     area: finalArea,
-    city: filteredDistrict,
+    city: finalCity,
     pincode: pincode
   };
 }

@@ -43,10 +43,7 @@ const GPSMonitor = () => {
 
     reverseGeocode(latitude, longitude)
       .then((result) => {
-        const shortAddr = result.area
-          ? `${result.area}${result.city ? ", " + result.city : ""}`
-          : result.address?.split(",").slice(0, 2).join(",") || "Unknown Location";
-        setDisplayAddress(shortAddr);
+        setDisplayAddress(result.address || "Unknown Location");
       })
       .catch(() => {
         setDisplayAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
