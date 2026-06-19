@@ -171,9 +171,15 @@ const CustomerProviderProfile = () => {
           {services.length > 0 ? services[0] : "Service Professional"}
         </p>
         <div className="flex items-center gap-1.5 mt-1.5">
-          <Star size={14} className="text-yellow-500 fill-yellow-500" />
-          <span className="text-sm font-bold text-slate-700">{Number(rating).toFixed(1)}</span>
-          <span className="text-xs text-slate-400">({totalJobs} reviews)</span>
+          {totalJobs === 0 ? (
+            <span className="text-sm font-bold text-slate-500">No reviews</span>
+          ) : (
+            <>
+              <Star size={14} className="text-yellow-500 fill-yellow-500" />
+              <span className="text-sm font-bold text-slate-700">{Number(rating).toFixed(1)}</span>
+              <span className="text-xs text-slate-400">({totalJobs} reviews)</span>
+            </>
+          )}
           <span className="text-slate-300 mx-1">·</span>
           <span className="text-xs text-slate-400">Member since {memberSince}</span>
         </div>
@@ -210,7 +216,7 @@ const CustomerProviderProfile = () => {
       {/* ── STATS ────────────────────────────────────────────────────────── */}
       <div className="mx-5 mt-4 bg-white rounded-2xl shadow-sm border border-slate-100 grid grid-cols-3 divide-x divide-slate-100">
         {[
-          { value: Number(rating).toFixed(1), label: "RATING",        icon: <Star size={14} className="text-yellow-500 fill-yellow-500" /> },
+          { value: totalJobs === 0 ? "No reviews" : Number(rating).toFixed(1), label: "RATING",        icon: totalJobs === 0 ? null : <Star size={14} className="text-yellow-500 fill-yellow-500" /> },
           { value: totalJobs,                 label: "TOTAL JOBS",     icon: null },
           { value: `${responseRate}%`,         label: "RESPONSE RATE", icon: null },
         ].map((s, i) => (
@@ -347,19 +353,25 @@ const CustomerProviderProfile = () => {
         <div className="flex gap-5 items-start">
           {/* overall */}
           <div className="flex flex-col items-center min-w-[64px]">
-            <span className="text-[32px] font-black text-slate-900 leading-none">
-              {Number(rating).toFixed(1)}
-            </span>
-            <div className="flex gap-0.5 mt-1">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star
-                  key={s}
-                  size={11}
-                  className={s <= Math.round(rating) ? "text-yellow-500 fill-yellow-500" : "text-slate-200 fill-slate-200"}
-                />
-              ))}
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1">({totalJobs} reviews)</span>
+            {totalJobs === 0 ? (
+              <span className="text-sm font-black text-slate-500 text-center mt-2">No reviews</span>
+            ) : (
+              <>
+                <span className="text-[32px] font-black text-slate-900 leading-none">
+                  {Number(rating).toFixed(1)}
+                </span>
+                <div className="flex gap-0.5 mt-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={11}
+                      className={s <= Math.round(rating) ? "text-yellow-500 fill-yellow-500" : "text-slate-200 fill-slate-200"}
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1">({totalJobs} reviews)</span>
+              </>
+            )}
           </div>
 
           {/* breakdown bars */}

@@ -459,7 +459,7 @@ const Home = () => {
           </motion.button>
           <div>
             <h1 className="text-[22px] font-bold text-foreground leading-tight tracking-tight">
-              Hi {user.name.split(" ")[0]}!{" "}
+              Hi {(user?.name || "User").split(" ")[0]}!{" "}
               <span className="inline-block animate-waving-hand origin-bottom-right">👋</span>
             </h1>
             <button

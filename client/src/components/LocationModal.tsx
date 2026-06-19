@@ -42,14 +42,38 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSelectLocation = (lat: number, lng: number, address: string) => {
+  const handleSelectLocation = async (lat: number, lng: number, address: string, isManual = true) => {
     dispatch({ type: "SET_CURRENT_LOCATION", lat, lng });
-    dispatch({ type: "UPDATE_USER", user: { address } });
+    dispatch({ type: "UPDATE_USER", user: { address, lat, lng, display_location: address } as any });
+    
+    localStorage.setItem("roundu_last_location", JSON.stringify({ lat, lng, address, ts: Date.now() }));
+    if (isManual) {
+      localStorage.setItem("roundu_is_manual_location", "true");
+    } else {
+      localStorage.removeItem("roundu_is_manual_location");
+    }
+    
+    if (user.id) {
+      try {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(user.id, { lat, lng, display_location: address, address });
+      } catch (err) {
+        console.error("Failed to persist location to backend", err);
+      }
+    }
+    
     onClose();
   };
 
-  const handleSaveManual = () => {
-    dispatch({ type: "UPDATE_USER", user: { address: manualAddress } });
+  const handleSaveManual = async () => {
+    dispatch({ type: "UPDATE_USER", user: { address: manualAddress } as any });
+    localStorage.setItem("roundu_is_manual_location", "true");
+    if (user.id) {
+      try {
+        const { updateUser } = await import("@/lib/api");
+        await updateUser(user.id, { address: manualAddress, display_location: manualAddress });
+      } catch (err) {}
+    }
     onClose();
   };
 
@@ -89,7 +113,7 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, onClose }) => {
 
       try {
         const result = await reverseGeocode(lat, lng);
-        handleSelectLocation(lat, lng, result.address);
+        handleSelectLocation(lat, lng, result.address, false);
       } catch (err: any) {
         setError(err.message || "Failed to resolve address. Please enter manually.");
         setIsDetecting(false);

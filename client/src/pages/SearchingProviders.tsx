@@ -527,8 +527,14 @@ const SearchingProviders = () => {
                                             <div>
                                                 <p className="font-bold text-[14px] text-[#152E4B]">{q.providerName}</p>
                                                 <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                                                    <Star size={10} className="fill-[#A95D06] text-[#A95D06]" />
-                                                    <span>{Number(q.rating || 0).toFixed(1)}</span>
+                                                    {(!q.rating || q.rating === 0) ? (
+                                                        <span className="font-bold">No reviews</span>
+                                                    ) : (
+                                                        <>
+                                                            <Star size={10} className="fill-[#A95D06] text-[#A95D06]" />
+                                                            <span>{Number(q.rating).toFixed(1)}</span>
+                                                        </>
+                                                    )}
                                                     <span>·</span>
                                                     <span>{q.distanceKm} km away</span>
                                                 </div>

@@ -601,8 +601,14 @@ const Dashboard = () => {
                 <Star size={14} fill="currentColor" strokeWidth={2.5} />
                 <span className="text-[10px] uppercase tracking-widest font-black">Rating</span>
               </div>
-              <p className="text-[24px] font-black text-foreground tracking-tight">{Number(providerStats.rating || 0).toFixed(1)}</p>
-              <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
+              {(!providerStats.rating || providerStats.rating === 0) ? (
+                <p className="text-[14px] font-black text-muted-foreground tracking-tight mt-1">No reviews</p>
+              ) : (
+                <>
+                  <p className="text-[24px] font-black text-foreground tracking-tight">{Number(providerStats.rating).toFixed(1)}</p>
+                  <p className="text-[11px] font-bold text-muted-foreground mt-0.5">Out of 5.0</p>
+                </>
+              )}
             </div>
             <div className="bg-white border-2 border-transparent hover:border-emerald-500/20 rounded-[24px] p-5 min-w-[140px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex-shrink-0 transition-colors">
               <div className="flex items-center gap-2 mb-3 text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">

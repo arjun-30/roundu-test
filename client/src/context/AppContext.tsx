@@ -1594,6 +1594,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshLocation = useCallback(async () => {
     try {
+      if (localStorage.getItem("roundu_is_manual_location") === "true") {
+        console.log("[refreshLocation] Skipping auto GPS fetch because user is using a manual location.");
+        // Try to initialize currentLocation from the saved data if it isn't set yet
+        if (!state.currentLocation) {
+          const cached = localStorage.getItem("roundu_last_location");
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+                dispatch({ type: "SET_CURRENT_LOCATION", lat: parsed.lat, lng: parsed.lng });
+              }
+            } catch (e) {}
+          }
+        }
+        return;
+      }
+
       let perm;
       try {
         perm = await Geolocation.checkPermissions();

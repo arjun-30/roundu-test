@@ -129,7 +129,7 @@ export const createBooking = async (req: Request, res: Response) => {
           const maxRadius = p.serviceRadius || 20;
           inRadius = dist <= maxRadius;
         } else {
-          inRadius = process.env.NODE_ENV !== 'production';
+          inRadius = false;
         }
 
         let decision = "ACCEPTED";

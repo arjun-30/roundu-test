@@ -390,9 +390,15 @@ const ProviderDetail = () => {
 
             <div className="text-center mb-4">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-sm font-bold text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({provider.reviews || 0} reviews)</span>
+                {(!provider.reviews || provider.reviews === 0) ? (
+                  <span className="text-sm font-bold text-muted-foreground">No reviews</span>
+                ) : (
+                  <>
+                    <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-sm font-bold text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
+                    <span className="text-xs text-muted-foreground">({provider.reviews} reviews)</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -426,11 +432,17 @@ const ProviderDetail = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-3 mb-8 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <span className="text-2xl sm:text-3xl font-black text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
-                <Star size={16} className="text-yellow-500 fill-yellow-500" />
-              </div>
+            <div className="text-center flex flex-col justify-center">
+              {(!provider.reviews || provider.reviews === 0) ? (
+                <div className="flex items-center justify-center h-[36px] mb-1">
+                  <span className="text-sm font-black text-muted-foreground">No reviews</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className="text-2xl sm:text-3xl font-black text-foreground">{Number(provider.rating || 0).toFixed(1)}</span>
+                  <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                </div>
+              )}
               <p className="text-[10px] font-bold text-muted-foreground uppercase">Rating</p>
             </div>
             <div className="text-center">
@@ -593,15 +605,21 @@ const ProviderDetail = () => {
             <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200">
               <div className="flex justify-between">
                 <div>
-                  <p className="text-4xl font-black text-foreground">
-                    {Number(provider.rating || 0).toFixed(1)}
-                  </p>
-                  <div className="flex gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">({reviews.length} reviews)</p>
+                  {(!provider.reviews || provider.reviews === 0) ? (
+                    <p className="text-xl font-black text-muted-foreground mt-2">No reviews yet</p>
+                  ) : (
+                    <>
+                      <p className="text-4xl font-black text-foreground">
+                        {Number(provider.rating || 0).toFixed(1)}
+                      </p>
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={12} className={i < Math.round(provider.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"} />
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">({reviews.length} reviews)</p>
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   {[5, 4, 3, 2, 1].map((rating) => (

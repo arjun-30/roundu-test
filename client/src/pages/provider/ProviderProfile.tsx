@@ -131,9 +131,13 @@ const ProviderProfile = () => {
 
           <div className="grid grid-cols-3 divide-x divide-border mt-5 border-t border-border pt-4">
             <div>
-              <p className="text-lg font-extrabold text-foreground flex items-center justify-center gap-1">
-                {Number(providerStats.rating || 0).toFixed(1)} <Star size={14} className="text-accent fill-accent" />
-              </p>
+              {(!providerStats.rating || providerStats.rating === 0) ? (
+                <p className="text-[12px] font-extrabold text-muted-foreground mt-1">No reviews</p>
+              ) : (
+                <p className="text-lg font-extrabold text-foreground flex items-center justify-center gap-1">
+                  {Number(providerStats.rating).toFixed(1)} <Star size={14} className="text-accent fill-accent" />
+                </p>
+              )}
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mt-1">Rating</p>
             </div>
             <div>

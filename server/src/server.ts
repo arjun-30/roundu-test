@@ -270,6 +270,26 @@ async function main() {
 
         // Send active broadcasts for their services (skip expired ones — 120s popup TTL)
         const BROADCAST_TTL_MS = 120 * 1000;
+        
+        let provider: any = null;
+        let providerRow: any = null;
+        if (data.userId) {
+          try {
+            const { getPool } = require('./config/database');
+            const pRes = await getPool().query(
+              'SELECT p.*, COALESCE(p.lat, u.lat) as lat, COALESCE(p.lng, u.lng) as lng, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+              [data.userId]
+            );
+            providerRow = pRes.rows[0];
+            if (providerRow) {
+              const { mapProvider } = require('./models/provider.model');
+              provider = mapProvider(providerRow);
+            }
+          } catch (err) {
+            console.error('[socket] error fetching provider during register:', err);
+          }
+        }
+
         activeBroadcasts.forEach((payload, id) => {
           if (serviceIds.includes(payload.serviceId)) {
             const age = Date.now() - (payload.createdAt || 0);
@@ -277,8 +297,23 @@ async function main() {
               console.log(`[socket] skipping expired broadcast ${id} (age: ${Math.floor(age / 1000)}s) for provider ${data.userId}`);
               return;
             }
-            socket.emit('incoming_broadcast', payload);
-            console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
+            
+            if (providerRow && provider) {
+              const { getDistanceKm } = require('./utils/locationHelper');
+              let dist = 0;
+              let hasCoords = payload.lat != null && payload.lng != null && provider.latitude != null && provider.longitude != null;
+              if (hasCoords) {
+                dist = getDistanceKm({ lat: Number(payload.lat), lng: Number(payload.lng) }, { lat: provider.latitude, lng: provider.longitude });
+              }
+
+              const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
+              const inRadius = hasCoords ? (provider.serviceRadius === -1 || dist <= (provider.serviceRadius || 20)) : false;
+
+              if (isApproved && inRadius) {
+                socket.emit('incoming_broadcast', payload);
+                console.log(`[socket] sent active broadcast ${id} to newly registered provider ${data.userId}`);
+              }
+            }
           }
         });
 
@@ -357,7 +392,7 @@ async function main() {
               const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                 matchesServiceCategory(provider.serviceCategory, serviceLabel);
-              const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
+              const inRadius = hasCoords ? (dist <= (provider.serviceRadius || 20)) : false;
 
               let decision = "ACCEPTED";
               if (!isOnline) {
@@ -424,7 +459,7 @@ async function main() {
           const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
           const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
             matchesServiceCategory(provider.serviceCategory, serviceLabel);
-          const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
+          const inRadius = hasCoords ? (dist <= (provider.serviceRadius || 20)) : false;
 
           let decision = "ACCEPTED";
           if (!isOnline) {
@@ -484,6 +519,13 @@ async function main() {
         }
         : activeBroadcasts.get(data.broadcastId); // reuse stored payload (preserves createdAt)
 
+      // Always update payload coordinates if they become available in subsequent emits
+      if (!isNew && data.lat != null && data.lng != null) {
+        broadcastPayload.lat = data.lat;
+        broadcastPayload.lng = data.lng;
+        activeBroadcasts.set(data.broadcastId, broadcastPayload);
+      }
+
       if (isNew) {
         // Store and schedule auto-expire only on first emit
         activeBroadcasts.set(data.broadcastId, broadcastPayload);
@@ -517,7 +559,7 @@ async function main() {
             try {
               const { getPool } = require('./config/database');
               const pRes = await getPool().query(
-                'SELECT p.*, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
+                'SELECT p.*, COALESCE(p.lat, u.lat) as lat, COALESCE(p.lng, u.lng) as lng, u.name, u.phone, u.avatar_url FROM providers p JOIN users u ON p.user_id = u.id WHERE p.user_id = $1',
                 [s.data.userId]
               );
               const providerRow = pRes.rows[0];
@@ -540,7 +582,7 @@ async function main() {
               const isApproved = (providerRow.is_verified === true || process.env.NODE_ENV !== 'production') && providerRow.is_active !== false && providerRow.approval_status !== 'rejected';
               const matchesCategory = matchesServiceCategory(provider.serviceCategory, data.serviceId) ||
                 matchesServiceCategory(provider.serviceCategory, serviceLabel);
-              const inRadius = (!hasCoords && process.env.NODE_ENV !== 'production') ? true : (dist <= (provider.serviceRadius || 20));
+              const inRadius = hasCoords ? (provider.serviceRadius === -1 || dist <= (provider.serviceRadius || 20)) : false;
 
               let decision = "ACCEPTED";
               if (!isOnline) {

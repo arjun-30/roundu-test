@@ -48,6 +48,11 @@ export const useCurrentLocation = (onUpdate?: (lat: number, lng: number) => void
   const MAX_CACHE_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
   const fetch = useCallback(async (forcePrompt = false) => {
+    if (localStorage.getItem("roundu_is_manual_location") === "true" && !forcePrompt) {
+      setState(s => ({ ...s, loading: false }));
+      return;
+    }
+
     setState(s => ({ ...s, loading: true, error: null }));
     try {
       let perm;
