@@ -28,9 +28,13 @@ const VideoPortfolio = () => {
   const { user, providerRegistrationDraft, dispatch } = useApp();
 
   // Video state
-  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>('idle');
-  const [videoUri, setVideoUri] = useState<string | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(() => providerRegistrationDraft?.videoFile || null);
+  const [videoUri, setVideoUri] = useState<string | null>(() => 
+    providerRegistrationDraft?.videoFile ? URL.createObjectURL(providerRegistrationDraft.videoFile) : null
+  );
+  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>(() => 
+    providerRegistrationDraft?.videoFile ? 'recorded' : 'idle'
+  );
   const [providerId, setProviderId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -68,22 +72,18 @@ const VideoPortfolio = () => {
           const pId = res.data.provider.id;
           console.log('[VideoPortfolio] Provider ID from dashboard:', pId);
           setProviderId(pId);
-          const activeVideo = await getProviderVideo(pId);
-          if (activeVideo) {
-            console.log('[VideoPortfolio] Existing video found:', activeVideo.video_url);
-            setVideoUri(activeVideo.video_url);
-            setVideoState('uploaded');
-          }
         } else {
-          // Provider not yet registered — use user.id as fallback key so video
-          // upload can still work during the registration flow
-          console.warn('[VideoPortfolio] No provider record found. Using user.id as fallback provider key.');
-          setProviderId(user.id);
+          console.warn('[VideoPortfolio] No provider record found.');
+        }
+
+        const activeVideo = await getProviderVideo(user.id);
+        if (activeVideo) {
+          console.log('[VideoPortfolio] Existing video found:', activeVideo.video_url);
+          setVideoUri(activeVideo.video_url);
+          setVideoState('uploaded');
         }
       } catch (err) {
-        console.warn('[VideoPortfolio] Dashboard API failed. Using user.id as fallback provider key.', err);
-        // Fallback: use user.id so video upload still works
-        setProviderId(user.id);
+        console.warn('[VideoPortfolio] Error checking existing video:', err);
       } finally {
         setLoading(false);
       }
@@ -91,13 +91,7 @@ const VideoPortfolio = () => {
     checkExistingVideo();
   }, [user?.id]);
 
-  useEffect(() => {
-    if (providerRegistrationDraft?.videoFile && !videoUri) {
-      setVideoFile(providerRegistrationDraft.videoFile);
-      setVideoUri(URL.createObjectURL(providerRegistrationDraft.videoFile));
-      setVideoState('recorded');
-    }
-  }, [providerRegistrationDraft?.videoFile, videoUri]);
+
 
   const startCamera = async () => {
     try {
@@ -351,25 +345,26 @@ const VideoPortfolio = () => {
         navigate('/provider/portfolio');
         return;
       }
-      if (!providerId) {
-        showError('Could not identify provider. Please go back and try again.');
+      if (!user?.id) {
+        showError('User not authenticated');
         return;
       }
       setIsUploading(true);
       setUploadProgress(5);
       try {
-        console.log('[VideoPortfolio] Starting upload for providerId:', providerId);
+        console.log('[VideoPortfolio] Starting upload for userId:', user.id);
         console.log('[VideoPortfolio] Video file:', videoFile.name, 'size:', videoFile.size, 'type:', videoFile.type);
-        await replaceProviderVideo(providerId, videoFile, (p) => {
+        await replaceProviderVideo(user.id, videoFile, (p) => {
           setUploadProgress(p);
           console.log('[VideoPortfolio] Upload progress:', p + '%');
         });
         console.log('[VideoPortfolio] ✅ Upload complete!');
         showNotification('Video Introduction uploaded successfully.');
         setTimeout(() => navigate('/provider/portfolio'), 1000);
-      } catch (err: any) {
-        console.error('[VideoPortfolio] ❌ Upload failed:', err);
-        const msg = err?.message || err?.error_description || 'Upload failed. Please try again.';
+      } catch (err) {
+        const errorVal = err as Error;
+        console.error('[VideoPortfolio] ❌ Upload failed:', errorVal);
+        const msg = errorVal?.message || 'Upload failed. Please try again.';
         showError(msg);
       } finally {
         setIsUploading(false);
@@ -381,7 +376,7 @@ const VideoPortfolio = () => {
       }
       navigate('/provider/gps-consent');
     }
-  }, [navigate, location.state, providerId, videoFile, dispatch]);
+  }, [navigate, location.state, providerId, videoFile, dispatch, user?.id]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

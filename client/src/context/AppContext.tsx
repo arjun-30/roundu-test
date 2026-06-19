@@ -100,6 +100,7 @@ interface State {
     experienceYears: number;
     workingHours: string;
     serviceRadius: number;
+    videoFile?: File;
     kyc: {
       aadhaarVerified: boolean;
       panVerified: boolean;
@@ -197,6 +198,9 @@ type Action =
   | { type: "UPDATE_ONLINE_STATUS"; payload: { userId: string; isOnline: boolean } }
   | { type: "SET_MEMBERSHIP"; membership: MembershipSelection }
   | { type: "DISMISS_CANCELLED_JOB" }
+  | { type: "ADD_TO_REQUEST_QUEUE"; request: any }
+  | { type: "DEQUEUE_REQUEST" }
+  | { type: "REMOVE_FROM_REQUEST_QUEUE"; id: string }
   | { type: "LOGOUT" };
 
 const token = localStorage.getItem("roundu_token");
