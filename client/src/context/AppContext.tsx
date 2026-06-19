@@ -160,6 +160,9 @@ type Action =
   | { type: "RESET_BOOKING_DRAFT" }
   | { type: "ADD_BOOKING"; booking: Booking }
   | { type: "SET_BOOKINGS"; bookings: Booking[] }
+  | { type: "ADD_TO_REQUEST_QUEUE"; request: any }
+  | { type: "DEQUEUE_REQUEST" }
+  | { type: "REMOVE_FROM_REQUEST_QUEUE"; id: string }
   | {
     type: "UPDATE_BOOKING";
     id: string;
@@ -271,7 +274,10 @@ const initialState: State = {
   ), isFrozen:
     Number(
       localStorage.getItem("roundu_cod_pending_count") || 0
-    ) >= 2,
+    ) >= 4 &&
+    Number(
+      localStorage.getItem("roundu_commission_due") || 0
+    ) > 0,
   selectedServiceId: null,
   selectedProviderId: null,
   selectedDate: null,
@@ -383,8 +389,8 @@ function reducer(state: State, action: Action): State {
       };
     }
     case "ADD_TO_REQUEST_QUEUE":
-      if (state.requestQueue.some((r: any) => 
-        (action.request.id && r.id === action.request.id) || 
+      if (state.requestQueue.some((r: any) =>
+        (action.request.id && r.id === action.request.id) ||
         (action.request.broadcastId && r.broadcastId === action.request.broadcastId)
       )) {
         return state;
@@ -401,7 +407,7 @@ function reducer(state: State, action: Action): State {
     case "REMOVE_FROM_REQUEST_QUEUE":
       return {
         ...state,
-        requestQueue: state.requestQueue.filter((r: any) => 
+        requestQueue: state.requestQueue.filter((r: any) =>
           r.id !== action.id && r.broadcastId !== action.id
         )
       };
@@ -505,7 +511,7 @@ function reducer(state: State, action: Action): State {
             const enrichedReq = {
               ...targetReq,
               status: status as any
-            }; 
+            };
             updatedRequests = state.providerRequests.filter(r => r.id !== targetReq.id);
             if (isCompleted) {
               if (!updatedCompleted.some(c => c.id === targetReq.id)) {
@@ -900,7 +906,9 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         codPendingCount: nextCount,
-        isFrozen: nextCount >= 2
+        isFrozen:
+          nextCount >= 4 &&
+          state.commissionDue > 0
       };
     }
 
@@ -1160,8 +1168,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     time,
                     address: b.address,
                     price: b.price,
-                    status: b.status,
-                    notes: b.notes,
+                    status: (b.status || "pending") as ProviderRequest["status"], notes: b.notes,
                     voiceNote: b.voice_note || false,
                     voiceNoteUrl: b.voice_note_url || null,
                     scheduled_at: b.scheduled_at,
@@ -1246,11 +1253,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const pbRes = await fetchProviderBookings(state.providerId!);
         if (pbRes.success && pbRes.data) {
           const pendingBookings = pbRes.data.filter((b: any) => b.status === "assigned");
-          
+
           pendingBookings.forEach((b: any) => {
             const reqId = b.id;
             const existing = stateRef.current.providerRequests.find((r: any) => String(r.id) === String(reqId) || String(r.id) === `req-${reqId}`);
-            
+
             if (!existing) {
               const { date, time } = formatLocalBookingDateTime(b.scheduled_at);
               const request = {
@@ -1263,14 +1270,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 time,
                 address: b.address,
                 price: b.price,
-                status: "pending",
-                notes: b.notes,
+                status: "pending" as const, notes: b.notes,
                 voiceNote: b.voice_note || false,
                 voiceNoteUrl: b.voice_note_url || null,
                 jobType: b.job_type || b.jobType || "quick_fix",
                 scheduled_at: b.scheduled_at
               };
-              
               console.log("[SOCKET] [NEW BOOKING RECEIVED] Missed notification recovered via polling:", request);
               dispatch({ type: "ADD_PROVIDER_REQUEST", request });
               setActiveDirectRequest(request);
@@ -1400,22 +1405,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       console.log("[SOCKET] [NEW BOOKING RECEIVED] Accepted quote details:", data);
       const { date: parsedDate, time: parsedTime } = formatLocalBookingDateTime(data.scheduled_at);
       const request = {
-          id: data.bookingId,
-          customerName: data.customerName || "Customer",
-          customerPhone: data.customerPhone || "9999999991",
-          serviceId: data.serviceId,
-          address: data.address || "Customer Location",
-          lat: data.lat,
-          lng: data.lng,
-          status: "assigned",
-          date: parsedDate,
-          time: parsedTime,
-          price: data.price || 0,
-          notes: data.notes || "",
-          voiceNote: data.voiceNote || false,
-          voiceNoteUrl: data.voiceNoteUrl || undefined,
-          jobType: data.jobType || "quick_fix",
-        };
+        id: data.bookingId,
+        customerName: data.customerName || "Customer",
+        customerPhone: data.customerPhone || "9999999991",
+        serviceId: data.serviceId,
+        address: data.address || "Customer Location",
+        lat: data.lat,
+        lng: data.lng,
+        status: "assigned" as const, date: parsedDate,
+        time: parsedTime,
+        price: data.price || 0,
+        notes: data.notes || "",
+        voiceNote: data.voiceNote || false,
+        voiceNoteUrl: data.voiceNoteUrl || undefined,
+        jobType: data.jobType || "quick_fix",
+      };
       dispatch({ type: "ADD_PROVIDER_REQUEST", request });
       if (stateRef.current.role === "provider") {
         navigate(`/provider/job/${data.bookingId}`);
