@@ -192,17 +192,11 @@ const ProviderDetail = () => {
 
   useEffect(() => {
     const fetchVideo = async () => {
-      if (!provider?.id) return;
+      const targetUserId = provider?.user_id || provider?.id;
+      if (!targetUserId) return;
       try {
         setLoadingVideo(true);
-        let activeVideo = await getProviderVideo(provider.id);
-        if (!activeVideo && provider.user_id) {
-          activeVideo = await getProviderVideo(provider.user_id);
-        }
-        if (!activeVideo) {
-          // Fallback to the mock provider ID used by the Portfolio page if API was unavailable during upload
-          activeVideo = await getProviderVideo('00000000-0000-0000-0000-000000000001');
-        }
+        const activeVideo = await getProviderVideo(targetUserId);
         setVideo(activeVideo);
       } catch (err) {
         console.error("Error fetching provider video:", err);

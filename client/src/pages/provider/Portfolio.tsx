@@ -27,14 +27,11 @@ const Portfolio = () => {
             pid = dashboard.data.provider.id;
           }
         } catch {
-          // Server might be down — fall back to mock provider ID
-          console.warn("[Portfolio] Dashboard fetch failed, falling back to mock provider ID");
+          // Server might be down
+          console.warn("[Portfolio] Dashboard fetch failed");
         }
-        // If we couldn't get a real provider ID, use the mock provider UUID
-        // which is what the mock DB returns for new registrations
-        const effectivePid = pid || '00000000-0000-0000-0000-000000000001';
-        setProviderId(effectivePid);
-        const activeVideo = await getProviderVideo(effectivePid);
+        setProviderId(pid);
+        const activeVideo = await getProviderVideo(user.id);
         setVideo(activeVideo);
       } catch (err) {
         console.error("Error fetching provider video:", err);

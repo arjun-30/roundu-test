@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, Mail, LogOut } from 'lucide-react';
 import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
+import { uploadProviderVideo } from '@/lib/supabase';
 import { createProviderRegistrationNotification } from '@/lib/notificationService';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
   const { providerRegistrationDraft, user, dispatch } = useApp();
-  const { kyc } = providerRegistrationDraft;
+
 
   // We'll add a secret simulation feature for demo purposes: 
   // clicking the clock 5 times automatically "approves" the application.
@@ -17,12 +18,16 @@ const PendingApproval = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (clicks >= 5) {
-      setNotification("Application Approved (Simulation)!");
-      setTimeout(() => navigate('/provider'), 1000);
-    }
-  }, [clicks, navigate]);
+  const handleClockClick = () => {
+    setClicks(prev => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setNotification("Application Approved (Simulation)!");
+        setTimeout(() => navigate('/provider'), 1000);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background items-center justify-center p-6 text-center relative overflow-hidden">
@@ -30,8 +35,8 @@ const PendingApproval = () => {
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
       
-      <div className="relative mb-8 mt-12 group">
-        <div className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle">
+      <div className="relative mb-8 mt-12 group" onClick={handleClockClick}>
+        <div className="w-28 h-28 bg-accent/10 rounded-[36px] flex items-center justify-center animate-bounce-subtle cursor-pointer">
           <Clock size={56} className="text-accent" />
         </div>
         <div className="absolute -top-2 -right-2 w-10 h-10 bg-card border border-border rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
@@ -106,6 +111,15 @@ const PendingApproval = () => {
                   : ['plumber']
               });
               if (!res.success) throw new Error(res.message || "Registration failed");
+              // Upload video introduction if present in draft
+              if (providerRegistrationDraft.videoFile) {
+                try {
+                  await uploadProviderVideo(user.id, providerRegistrationDraft.videoFile);
+                } catch (uploadErr) {
+                  console.error("Failed to upload video introduction:", uploadErr);
+                }
+              }
+
               // Notify admin via Supabase — fire and forget, never block the UI
               createProviderRegistrationNotification(
                 res.data?.id ?? "",
@@ -116,8 +130,9 @@ const PendingApproval = () => {
               dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
               setNotification("Registration successful! Redirecting to Dashboard...");
               setTimeout(() => navigate('/provider'), 1000);
-            } catch (err: any) {
-              setError(err.message || 'Connection failed');
+            } catch (err) {
+              const errorVal = err as Error;
+              setError(errorVal.message || 'Connection failed');
               setTimeout(() => setError(""), 3000);
             } finally {
               setIsLoading(false);

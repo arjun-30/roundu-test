@@ -29,6 +29,7 @@ function fileToBase64(file: File): Promise<string> {
 export interface VideoPortfolio {
   id: string;
   provider_id: string;
+  user_id: string;
   video_url: string;
   storage_path: string;
   uploaded_at: string;
@@ -58,9 +59,9 @@ function getVideoDuration(file: File): Promise<number> {
 /**
  * Fetch a provider's active video portfolio.
  */
-export async function getProviderVideo(providerId: string): Promise<VideoPortfolio | null> {
+export async function getProviderVideo(userId: string): Promise<VideoPortfolio | null> {
   if (isMock) {
-    const mockDataStr = localStorage.getItem(`mock_video_${providerId}`);
+    const mockDataStr = localStorage.getItem(`mock_video_${userId}`);
     if (mockDataStr) {
       try {
         return JSON.parse(mockDataStr);
@@ -75,7 +76,7 @@ export async function getProviderVideo(providerId: string): Promise<VideoPortfol
     const { data, error } = await supabase
       .from('provider_video_portfolios')
       .select('*')
-      .eq('provider_id', providerId)
+      .eq('user_id', userId)
       .eq('status', 'Active')
       .maybeSingle();
 
@@ -94,7 +95,7 @@ export async function getProviderVideo(providerId: string): Promise<VideoPortfol
  * Uploads provider video to Supabase Storage and records metadata in database.
  */
 export async function uploadProviderVideo(
-  providerId: string,
+  userId: string,
   videoFile: File,
   onProgress?: (progress: number) => void
 ): Promise<string> {
@@ -106,22 +107,23 @@ export async function uploadProviderVideo(
     if (onProgress) onProgress(80);
     const mockVideo: VideoPortfolio = {
       id: 'mock-id-' + Date.now(),
-      provider_id: providerId,
+      provider_id: userId,
+      user_id: userId,
       video_url: base64Url,
-      storage_path: `mock_storage/provider_${providerId}/introduction_video.webm`,
+      storage_path: `mock_storage/provider_${userId}/introduction_video.webm`,
       uploaded_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       status: 'Active',
       duration_seconds: duration
     };
-    localStorage.setItem(`mock_video_${providerId}`, JSON.stringify(mockVideo));
+    localStorage.setItem(`mock_video_${userId}`, JSON.stringify(mockVideo));
 
     // UPDATE DATABASE
     try {
       // Import the api instance dynamically to avoid circular dependencies
       const apiModule = await import('./api');
       await apiModule.default.post('/providers/update-video', {
-        userId: providerId,
+        userId: userId,
         videoUrl: base64Url
       });
     } catch (e) {
@@ -135,11 +137,11 @@ export async function uploadProviderVideo(
   const duration = await getVideoDuration(videoFile);
   const ext = videoFile.name.split('.').pop() || 'mp4';
   const timestamp = Date.now();
-  const storagePath = `provider_${providerId}/introduction_video_${timestamp}.${ext}`;
+  const storagePath = `provider_${userId}/introduction_video_${timestamp}.${ext}`;
 
   // Step 1: Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
-    .from('provider-video-portfolios')
+    .from('provider-videos')
     .upload(storagePath, videoFile, {
       cacheControl: '3600',
       upsert: true,
@@ -155,7 +157,7 @@ export async function uploadProviderVideo(
 
   // Step 2: Get public URL
   const { data: urlData } = supabase.storage
-    .from('provider-video-portfolios')
+    .from('provider-videos')
     .getPublicUrl(storagePath);
 
   const videoUrl = urlData.publicUrl;
@@ -164,7 +166,8 @@ export async function uploadProviderVideo(
   const { error: dbError } = await supabase
     .from('provider_video_portfolios')
     .insert({
-      provider_id: providerId,
+      provider_id: userId,
+      user_id: userId,
       video_url: videoUrl,
       storage_path: storagePath,
       status: 'Active',
@@ -175,9 +178,20 @@ export async function uploadProviderVideo(
 
   if (dbError) {
     // Rollback: Clean up uploaded file if DB insert fails
-    await supabase.storage.from('provider-video-portfolios').remove([storagePath]);
+    await supabase.storage.from('provider-videos').remove([storagePath]);
     console.error('Error inserting video metadata to database:', dbError);
     throw dbError;
+  }
+
+  // Also update the Express server's database via the API
+  try {
+    const apiModule = await import('./api');
+    await apiModule.default.post('/providers/update-video', {
+      userId: userId,
+      videoUrl: videoUrl
+    });
+  } catch (e) {
+    console.error('Failed to update Express DB video_url:', e);
   }
 
   // Set progress to 100% on complete success
@@ -191,16 +205,16 @@ export async function uploadProviderVideo(
  * Adheres to safety requirement: Upload new first, update DB, then delete old.
  */
 export async function replaceProviderVideo(
-  providerId: string,
+  userId: string,
   newVideoFile: File,
   onProgress?: (progress: number) => void
 ): Promise<string> {
   if (isMock) {
-    return uploadProviderVideo(providerId, newVideoFile, onProgress);
+    return uploadProviderVideo(userId, newVideoFile, onProgress);
   }
 
   // Fetch existing video first (to delete later)
-  const oldVideo = await getProviderVideo(providerId);
+  const oldVideo = await getProviderVideo(userId);
 
   if (onProgress) onProgress(10);
 
@@ -208,10 +222,10 @@ export async function replaceProviderVideo(
   const duration = await getVideoDuration(newVideoFile);
   const ext = newVideoFile.name.split('.').pop() || 'mp4';
   const timestamp = Date.now();
-  const newStoragePath = `provider_${providerId}/introduction_video_${timestamp}.${ext}`;
+  const newStoragePath = `provider_${userId}/introduction_video_${timestamp}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
-    .from('provider-video-portfolios')
+    .from('provider-videos')
     .upload(newStoragePath, newVideoFile, {
       cacheControl: '3600',
       upsert: true
@@ -225,7 +239,7 @@ export async function replaceProviderVideo(
   if (onProgress) onProgress(50);
 
   const { data: urlData } = supabase.storage
-    .from('provider-video-portfolios')
+    .from('provider-videos')
     .getPublicUrl(newStoragePath);
 
   const newVideoUrl = urlData.publicUrl;
@@ -247,7 +261,8 @@ export async function replaceProviderVideo(
     const { error } = await supabase
       .from('provider_video_portfolios')
       .insert({
-        provider_id: providerId,
+        provider_id: userId,
+        user_id: userId,
         video_url: newVideoUrl,
         storage_path: newStoragePath,
         status: 'Active',
@@ -260,9 +275,20 @@ export async function replaceProviderVideo(
 
   if (dbError) {
     // Rollback: Clean up the new file if update fails
-    await supabase.storage.from('provider-video-portfolios').remove([newStoragePath]);
+    await supabase.storage.from('provider-videos').remove([newStoragePath]);
     console.error('Error updating database with new video:', dbError);
     throw dbError;
+  }
+
+  // Also update the Express server's database via the API
+  try {
+    const apiModule = await import('./api');
+    await apiModule.default.post('/providers/update-video', {
+      userId: userId,
+      videoUrl: newVideoUrl
+    });
+  } catch (e) {
+    console.error('Failed to update Express DB video_url:', e);
   }
 
   if (onProgress) onProgress(80);
@@ -270,7 +296,7 @@ export async function replaceProviderVideo(
   // Step 3: Delete old video file from storage after successful update
   if (oldVideo && oldVideo.storage_path) {
     const { error: deleteError } = await supabase.storage
-      .from('provider-video-portfolios')
+      .from('provider-videos')
       .remove([oldVideo.storage_path]);
     if (deleteError) {
       console.warn('Warning: Failed to delete old video file from storage:', deleteError);
@@ -285,19 +311,19 @@ export async function replaceProviderVideo(
 /**
  * Deletes the provider's video portfolio from storage and database.
  */
-export async function deleteProviderVideo(providerId: string): Promise<void> {
+export async function deleteProviderVideo(userId: string): Promise<void> {
   if (isMock) {
-    localStorage.removeItem(`mock_video_${providerId}`);
+    localStorage.removeItem(`mock_video_${userId}`);
     return;
   }
 
-  const video = await getProviderVideo(providerId);
+  const video = await getProviderVideo(userId);
   if (!video) return;
 
   // Step 1: Delete from storage
   if (video.storage_path) {
     const { error: storageError } = await supabase.storage
-      .from('provider-video-portfolios')
+      .from('provider-videos')
       .remove([video.storage_path]);
     if (storageError) {
       console.error('Error deleting video from storage:', storageError);
@@ -314,6 +340,17 @@ export async function deleteProviderVideo(providerId: string): Promise<void> {
   if (dbError) {
     console.error('Error deleting video from database:', dbError);
     throw dbError;
+  }
+
+  // Also reset video_url on the Express backend
+  try {
+    const apiModule = await import('./api');
+    await apiModule.default.post('/providers/update-video', {
+      userId: userId,
+      videoUrl: ''
+    });
+  } catch (e) {
+    console.error('Failed to update Express DB video_url:', e);
   }
 }
 
