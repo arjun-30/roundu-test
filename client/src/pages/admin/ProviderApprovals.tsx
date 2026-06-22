@@ -121,7 +121,7 @@ export default function ProviderApprovals() {
           rows = (res.data ?? []).map((raw: any) => ({
             id: raw.id,
             user_id: raw.user_id,
-            name: raw.name ?? "Unknown",
+            name: raw.name || raw.phone || raw.email || "Unknown",
             email: raw.email ?? "—",
             phone: raw.phone ?? "—",
             kyc_status: raw.kyc_status ?? "unverified",
@@ -161,7 +161,7 @@ export default function ProviderApprovals() {
       rows = (providers as any[]).map((raw) => ({
         id: raw.id,
         user_id: raw.user_id,
-        name: raw.users?.name ?? "Unknown",
+        name: raw.users?.name || raw.users?.phone || raw.users?.email || "Unknown",
         email: raw.users?.email ?? "—",
         phone: raw.users?.phone ?? "—",
         kyc_status: raw.users?.kyc_status ?? "unverified",
@@ -284,10 +284,12 @@ export default function ProviderApprovals() {
         success = res.success;
         if (!success) throw new Error(res.error);
       } catch (serverErr: any) {
-        if (serverErr?.response?.status) throw serverErr; // real API error — propagate
-        // Server unreachable — fall back to Supabase
+        // Only block fallback for non-404 server errors (auth failure, 5xx, etc).
+        // A 404 means the provider is in Supabase but not in Railway DB — fall through.
+        const status = serverErr?.response?.status;
+        if (status && status !== 404) throw serverErr;
         const fallback = await supabaseApprove(provider.id);
-        if (!fallback.success) throw new Error(fallback.error);
+        if (!fallback.success) throw new Error(fallback.error ?? "Approval failed");
         success = true;
       }
 
@@ -327,9 +329,10 @@ export default function ProviderApprovals() {
         success = res.success;
         if (!success) throw new Error(res.error);
       } catch (serverErr: any) {
-        if (serverErr?.response?.status) throw serverErr;
+        const status = serverErr?.response?.status;
+        if (status && status !== 404) throw serverErr;
         const fallback = await supabaseReject(rejectTarget.id, trimmed);
-        if (!fallback.success) throw new Error(fallback.error);
+        if (!fallback.success) throw new Error(fallback.error ?? "Rejection failed");
         success = true;
       }
 
