@@ -213,28 +213,6 @@ export const ProviderModel = {
       );
       const provider = providerRes.rows[0];
 
-      // 3. Create notification for admin about new provider registration
-      const userRes = await client.query('SELECT name, phone FROM users WHERE id = $1', [userId]);
-      const user = userRes.rows[0];
-
-      const notificationRes = await client.query(
-        `INSERT INTO notifications (title, message, type, provider_id, created_at, is_read, metadata) 
-         VALUES ($1, $2, $3, $4, NOW(), false, $5)`,
-        [
-          'New Provider Registration',
-          `${user?.name || 'A new provider'} has submitted registration and requires approval.`,
-          'provider_registration',
-          provider.id,
-          JSON.stringify({
-            provider_name: user?.name,
-            provider_phone: user?.phone,
-            service_category: serviceCategories,
-            registration_date: new Date().toISOString()
-          })
-        ]
-      );
-      console.log('[ProviderModel] Created notification for new provider registration:', notificationRes.rows[0]?.id);
-
       // 3. Insert provider services
       if (data.serviceIds && data.serviceIds.length > 0) {
         for (const serviceId of data.serviceIds) {
@@ -246,7 +224,24 @@ export const ProviderModel = {
       }
 
       await client.query('COMMIT');
-      return mapProvider(provider);
+      const mapped = mapProvider(provider);
+
+      // Fire-and-forget: create admin notification outside transaction so it can't rollback registration
+      pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, data, is_read)
+         VALUES (NULL, $1, $2, 'provider_registration', $3::jsonb, false)`,
+        [
+          'New Provider Registration',
+          `${provider.name || 'A provider'} has submitted a registration and requires approval.`,
+          JSON.stringify({ provider_id: provider.id, provider_name: provider.name }),
+        ]
+      ).then(r => {
+        console.log('[ProviderModel] Admin notification created:', r.rows[0]?.id);
+      }).catch(err => {
+        console.error('[ProviderModel] Non-fatal: failed to create admin notification:', err.message);
+      });
+
+      return mapped;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

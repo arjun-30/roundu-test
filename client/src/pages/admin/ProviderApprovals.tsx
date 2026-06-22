@@ -102,24 +102,64 @@ export default function ProviderApprovals() {
     setLoading(true);
     setError("");
     try {
+      // 1. Fetch all providers (no FK joins — avoids PostgREST schema cache issues)
       const { data: providers, error: provErr } = await supabase
         .from("providers")
-        .select("*, users!user_id(name, phone, email, kyc_status), provider_services(service_id, services(label))")
+        .select("*")
         .order("created_at", { ascending: false });
-
       if (provErr) throw provErr;
 
-      const rows: ProviderRow[] = (providers ?? []).map((raw: any) => {
-        const userInfo = raw.users as { name?: string; phone?: string; email?: string; kyc_status?: string } | null;
-        const psRows = (raw.provider_services ?? []) as Array<{ service_id: string; services?: { label?: string } | null }>;
+      if (!providers || providers.length === 0) {
+        setAllProviders([]);
+        return;
+      }
+
+      // 2. Fetch user info for all provider user_ids in one query
+      const userIds = [...new Set(providers.map((p: any) => p.user_id).filter(Boolean))];
+      const { data: usersData } = await supabase
+        .from("users")
+        .select("id, name, phone, email, kyc_status")
+        .in("id", userIds);
+      const userMap = new Map<string, { name: string; phone: string; email: string; kyc_status: string }>(
+        (usersData ?? []).map((u: any) => [u.id, u])
+      );
+
+      // 3. Fetch provider_services + service labels in two queries
+      const providerIds = providers.map((p: any) => p.id);
+      const { data: psData } = await supabase
+        .from("provider_services")
+        .select("provider_id, service_id")
+        .in("provider_id", providerIds);
+
+      const serviceIds = [...new Set((psData ?? []).map((ps: any) => ps.service_id).filter(Boolean))];
+      let servicesMap = new Map<string, string>();
+      if (serviceIds.length > 0) {
+        const { data: servicesData } = await supabase
+          .from("services")
+          .select("id, label")
+          .in("id", serviceIds);
+        servicesMap = new Map((servicesData ?? []).map((s: any) => [s.id, s.label ?? s.id]));
+      }
+
+      // Group service labels per provider
+      const psGrouped = (psData ?? []).reduce<Record<string, string[]>>((acc, ps: any) => {
+        if (!acc[ps.provider_id]) acc[ps.provider_id] = [];
+        const label = servicesMap.get(ps.service_id) ?? ps.service_id;
+        if (label) acc[ps.provider_id].push(label);
+        return acc;
+      }, {});
+
+      // 4. Map everything together
+      const rows: ProviderRow[] = providers.map((raw: any) => {
+        const u = userMap.get(raw.user_id);
         return {
           id: raw.id,
           user_id: raw.user_id,
-          name: userInfo?.name ?? "Unknown",
-          email: userInfo?.email ?? "—",
-          phone: userInfo?.phone ?? "—",
-          kyc_status: userInfo?.kyc_status ?? "unverified",
-          service_labels: psRows.map(ps => ps.services?.label ?? ps.service_id).filter(Boolean),
+          name: u?.name ?? "Unknown",
+          email: u?.email ?? "—",
+          phone: u?.phone ?? "—",
+          kyc_status: u?.kyc_status ?? "unverified",
+          service_labels: psGrouped[raw.id] ?? [],
           rating: raw.rating ?? null,
           is_verified: raw.is_verified ?? false,
           is_active: raw.is_active ?? true,

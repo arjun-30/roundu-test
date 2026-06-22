@@ -11,10 +11,12 @@ interface AdminTopBarProps {
 function getNotificationRoute(n: DatabaseNotification): string | null {
     switch (n.type) {
         case "provider_registration":
-            return "/admin/providers";
+            return n.data?.provider_id
+                ? `/admin/provider-approvals?highlight=${n.data.provider_id}`
+                : "/admin/provider-approvals";
         case "provider_approved":
         case "provider_rejected":
-            return "/admin/providers";
+            return "/admin/provider-approvals";
         case "booking_cancelled":
         case "booking_created":
             return "/admin/bookings";

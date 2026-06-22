@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, MoreHorizontal, Mail, LogOut } from 'lucide-react';
 import { registerProvider } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
+import { createProviderRegistrationNotification } from '@/lib/notificationService';
 
 const PendingApproval = () => {
   const navigate = useNavigate();
@@ -105,6 +106,12 @@ const PendingApproval = () => {
                   : ['plumber']
               });
               if (!res.success) throw new Error(res.message || "Registration failed");
+              // Notify admin via Supabase — fire and forget, never block the UI
+              createProviderRegistrationNotification(
+                res.data?.id ?? "",
+                user.name ?? "Unknown Provider",
+                providerRegistrationDraft.serviceIds ?? []
+              ).catch(err => console.error("[PendingApproval] Notification error:", err));
               dispatch({ type: "SET_ROLE", role: "provider" });
               dispatch({ type: "UPDATE_USER", user: { role: "provider", accountType: "provider" } });
               setNotification("Registration successful! Redirecting to Dashboard...");
