@@ -28,12 +28,18 @@ const VideoPortfolio = () => {
   const { user, providerRegistrationDraft, dispatch } = useApp();
 
   // Video state
-  const [videoFile, setVideoFile] = useState<File | null>(() => providerRegistrationDraft?.videoFile || null);
-  const [videoUri, setVideoUri] = useState<string | null>(() => 
-    providerRegistrationDraft?.videoFile ? URL.createObjectURL(providerRegistrationDraft.videoFile) : null
-  );
-  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>(() => 
-    providerRegistrationDraft?.videoFile ? 'recorded' : 'idle'
+  // Guard with instanceof File/Blob — context state may hold a truthy non-File object
+  // if the draft was ever serialized (plain object passes the truthy check but crashes createObjectURL)
+  const [videoFile, setVideoFile] = useState<File | null>(() => {
+    const f = providerRegistrationDraft?.videoFile;
+    return f instanceof File ? f : null;
+  });
+  const [videoUri, setVideoUri] = useState<string | null>(() => {
+    const f = providerRegistrationDraft?.videoFile;
+    return f instanceof Blob ? URL.createObjectURL(f) : null;
+  });
+  const [videoState, setVideoState] = useState<'idle' | 'camera' | 'recorded' | 'uploaded'>(() =>
+    providerRegistrationDraft?.videoFile instanceof Blob ? 'recorded' : 'idle'
   );
   const [providerId, setProviderId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);

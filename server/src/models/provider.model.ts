@@ -226,20 +226,23 @@ export const ProviderModel = {
       await client.query('COMMIT');
       const mapped = mapProvider(provider);
 
-      // Fire-and-forget: create admin notification outside transaction so it can't rollback registration
-      pool.query(
-        `INSERT INTO notifications (user_id, title, message, type, data, is_read)
-         VALUES (NULL, $1, $2, 'provider_registration', $3::jsonb, false)`,
-        [
-          'New Provider Registration',
-          `${provider.name || 'A provider'} has submitted a registration and requires approval.`,
-          JSON.stringify({ provider_id: provider.id, provider_name: provider.name }),
-        ]
-      ).then(r => {
-        console.log('[ProviderModel] Admin notification created:', r.rows[0]?.id);
-      }).catch(err => {
-        console.error('[ProviderModel] Non-fatal: failed to create admin notification:', err.message);
-      });
+      // Fire-and-forget: create admin notification in Railway DB so GET /api/admin/notifications surfaces it.
+      // client is already released in finally below, so we use getPool() directly.
+      getPool().query('SELECT name FROM users WHERE id = $1', [userId])
+        .then(nameRes => {
+          const providerName = nameRes.rows[0]?.name ?? 'A new provider';
+          return getPool().query(
+            `INSERT INTO notifications (user_id, title, message, type, data, is_read)
+             VALUES (NULL, $1, $2, 'provider_registration', $3::jsonb, false)`,
+            [
+              'New Provider Registration',
+              `${providerName} has registered as a service provider and requires admin approval.`,
+              JSON.stringify({ provider_id: mapped.id, provider_name: providerName })
+            ]
+          );
+        })
+        .then(() => console.log(`[ProviderModel] Admin notification created for provider ${mapped.id}`))
+        .catch(err => console.error('[ProviderModel] Admin notification error (non-fatal):', err.message));
 
       return mapped;
     } catch (error) {

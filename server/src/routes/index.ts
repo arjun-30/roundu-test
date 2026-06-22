@@ -11,9 +11,11 @@ import kycRouter from './kyc.routes';
 import webhookRouter from './webhook.routes';
 import chatRouter from './chat.routes';
 import ratingRouter from './rating.routes';
+import adminRouter from './admin.routes';
 
 const router = Router();
 
+router.use('/admin', adminRouter);
 router.use('/chat', chatRouter);
 
 router.use('/auth', authRouter);

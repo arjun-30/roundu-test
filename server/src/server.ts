@@ -91,6 +91,22 @@ async function main() {
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);`);
 
+    // ── Notifications table (used by admin bell and provider registration flow) ──
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+        title      VARCHAR(255) NOT NULL,
+        message    TEXT NOT NULL,
+        type       VARCHAR(50),
+        is_read    BOOLEAN DEFAULT false,
+        data       JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);`);
+
     // ── Ensure all services used by the app exist in the services table ────
     await db.query(`
       INSERT INTO services (id, label, description, price_per_hr) VALUES

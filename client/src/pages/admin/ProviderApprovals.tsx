@@ -1,12 +1,18 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import { supabase } from "@/lib/supabase";
-import { approveProvider, rejectProvider } from "@/lib/adminService";
+import { API_BASE_URL } from "@/config/env";
+import { approveProvider as supabaseApprove, rejectProvider as supabaseReject } from "@/lib/adminService";
 import {
   createProviderApprovalNotification,
   createProviderRejectionNotification,
 } from "@/lib/notificationService";
+
+function getAdminHeaders() {
+  return { "x-admin-key": localStorage.getItem("roundu_admin_token") ?? "" };
+}
 import {
   ShieldCheck, ShieldX, Eye, Search, RefreshCw, X,
   CheckCircle, XCircle, Clock, UserCheck, Filter,
@@ -102,10 +108,48 @@ export default function ProviderApprovals() {
     setLoading(true);
     setError("");
     try {
-      // 1. Fetch all providers (no FK joins — avoids PostgREST schema cache issues)
+      // Try server API first — bypasses Supabase RLS and works across DB boundaries.
+      // Falls back to Supabase if the server is unreachable (e.g. local dev without server running).
+      let rows: ProviderRow[] = [];
+
+      try {
+        const { data: res } = await axios.get(`${API_BASE_URL}/admin/providers`, {
+          headers: getAdminHeaders(),
+          timeout: 5000,
+        });
+        if (res.success) {
+          rows = (res.data ?? []).map((raw: any) => ({
+            id: raw.id,
+            user_id: raw.user_id,
+            name: raw.name ?? "Unknown",
+            email: raw.email ?? "—",
+            phone: raw.phone ?? "—",
+            kyc_status: raw.kyc_status ?? "unverified",
+            service_labels: Array.isArray(raw.service_labels) ? raw.service_labels.filter(Boolean) : [],
+            rating: raw.rating ?? null,
+            is_verified: raw.is_verified ?? false,
+            is_active: raw.is_active ?? true,
+            approval_status: raw.approval_status ?? null,
+            is_online: raw.is_online ?? false,
+            created_at: raw.created_at,
+            rejection_reason: raw.rejection_reason ?? undefined,
+          }));
+          setAllProviders(rows);
+          return;
+        }
+      } catch {
+        console.warn("[ProviderApprovals] Server API unavailable, falling back to Supabase");
+      }
+
+      // Supabase fallback — single join query (FK relationships confirmed working)
       const { data: providers, error: provErr } = await supabase
         .from("providers")
-        .select("*")
+        .select(`
+          id, user_id, is_verified, is_active, is_online, approval_status,
+          rejection_reason, rating, created_at,
+          users!user_id(name, email, phone, kyc_status),
+          provider_services(service_id, services(label))
+        `)
         .order("created_at", { ascending: false });
       if (provErr) throw provErr;
 
@@ -114,61 +158,22 @@ export default function ProviderApprovals() {
         return;
       }
 
-      // 2. Fetch user info for all provider user_ids in one query
-      const userIds = [...new Set(providers.map((p: any) => p.user_id).filter(Boolean))];
-      const { data: usersData } = await supabase
-        .from("users")
-        .select("id, name, phone, email, kyc_status")
-        .in("id", userIds);
-      const userMap = new Map<string, { name: string; phone: string; email: string; kyc_status: string }>(
-        (usersData ?? []).map((u: any) => [u.id, u])
-      );
-
-      // 3. Fetch provider_services + service labels in two queries
-      const providerIds = providers.map((p: any) => p.id);
-      const { data: psData } = await supabase
-        .from("provider_services")
-        .select("provider_id, service_id")
-        .in("provider_id", providerIds);
-
-      const serviceIds = [...new Set((psData ?? []).map((ps: any) => ps.service_id).filter(Boolean))];
-      let servicesMap = new Map<string, string>();
-      if (serviceIds.length > 0) {
-        const { data: servicesData } = await supabase
-          .from("services")
-          .select("id, label")
-          .in("id", serviceIds);
-        servicesMap = new Map((servicesData ?? []).map((s: any) => [s.id, s.label ?? s.id]));
-      }
-
-      // Group service labels per provider
-      const psGrouped = (psData ?? []).reduce<Record<string, string[]>>((acc, ps: any) => {
-        if (!acc[ps.provider_id]) acc[ps.provider_id] = [];
-        const label = servicesMap.get(ps.service_id) ?? ps.service_id;
-        if (label) acc[ps.provider_id].push(label);
-        return acc;
-      }, {});
-
-      // 4. Map everything together
-      const rows: ProviderRow[] = providers.map((raw: any) => {
-        const u = userMap.get(raw.user_id);
-        return {
-          id: raw.id,
-          user_id: raw.user_id,
-          name: u?.name ?? "Unknown",
-          email: u?.email ?? "—",
-          phone: u?.phone ?? "—",
-          kyc_status: u?.kyc_status ?? "unverified",
-          service_labels: psGrouped[raw.id] ?? [],
-          rating: raw.rating ?? null,
-          is_verified: raw.is_verified ?? false,
-          is_active: raw.is_active ?? true,
-          approval_status: raw.approval_status ?? null,
-          is_online: raw.is_online ?? false,
-          created_at: raw.created_at,
-          rejection_reason: raw.rejection_reason ?? undefined,
-        };
-      });
+      rows = (providers as any[]).map((raw) => ({
+        id: raw.id,
+        user_id: raw.user_id,
+        name: raw.users?.name ?? "Unknown",
+        email: raw.users?.email ?? "—",
+        phone: raw.users?.phone ?? "—",
+        kyc_status: raw.users?.kyc_status ?? "unverified",
+        service_labels: (raw.provider_services ?? []).map((ps: any) => ps.services?.label).filter(Boolean),
+        rating: raw.rating ?? null,
+        is_verified: raw.is_verified ?? false,
+        is_active: raw.is_active ?? true,
+        approval_status: raw.approval_status ?? null,
+        is_online: raw.is_online ?? false,
+        created_at: raw.created_at,
+        rejection_reason: raw.rejection_reason ?? undefined,
+      }));
 
       setAllProviders(rows);
     } catch (e: any) {
@@ -249,11 +254,12 @@ export default function ProviderApprovals() {
   const filtered = activeList
     .filter(p => {
       if (!search.trim()) return true;
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
       return (
         p.name.toLowerCase().includes(q) ||
         p.email.toLowerCase().includes(q) ||
         p.phone.includes(q) ||
+        p.id.toLowerCase().includes(q) ||
         p.service_labels.some(s => s.toLowerCase().includes(q))
       );
     })
@@ -267,11 +273,37 @@ export default function ProviderApprovals() {
   const handleApprove = async (provider: ProviderRow) => {
     setActionLoading(provider.id);
     try {
-      const res = await approveProvider(provider.id);
-      if (!res.success) throw new Error(res.error);
-      await createProviderApprovalNotification(provider.id, provider.name, provider.user_id);
-      await fetchAll();
-      setTab("approved");
+      // Try server API first (direct DB — bypasses Supabase schema cache issues)
+      let success = false;
+      try {
+        const { data: res } = await axios.post(
+          `${API_BASE_URL}/admin/providers/${provider.id}/approve`,
+          {},
+          { headers: getAdminHeaders(), timeout: 5000 }
+        );
+        success = res.success;
+        if (!success) throw new Error(res.error);
+      } catch (serverErr: any) {
+        if (serverErr?.response?.status) throw serverErr; // real API error — propagate
+        // Server unreachable — fall back to Supabase
+        const fallback = await supabaseApprove(provider.id);
+        if (!fallback.success) throw new Error(fallback.error);
+        success = true;
+      }
+
+      if (success) {
+        createProviderApprovalNotification(provider.id, provider.name, provider.user_id).catch(() => {});
+        setAllProviders(prev =>
+          prev.map(p => p.id === provider.id
+            ? { ...p, is_verified: true, is_active: true, approval_status: "approved", rejection_reason: undefined }
+            : p
+          )
+        );
+        setTab("approved");
+        setSuccessMsg(`${provider.name} has been approved.`);
+        setTimeout(() => setSuccessMsg(""), 4000);
+        fetchAll();
+      }
     } catch (e: any) {
       setError(`Failed to approve ${provider.name}: ${e.message}`);
     } finally {
@@ -282,28 +314,44 @@ export default function ProviderApprovals() {
   const handleRejectSubmit = async () => {
     if (!rejectTarget) return;
     const trimmed = rejectReason.trim();
-    if (trimmed.length < 10) return; // UI prevents this; guard here too
+    if (trimmed.length < 10) return;
     setRejectSubmitting(true);
     try {
-      const res = await rejectProvider(rejectTarget.id, trimmed);
-      if (!res.success) throw new Error(res.error);
-      await createProviderRejectionNotification(
-        rejectTarget.id,
-        rejectTarget.name,
-        trimmed,
-        rejectTarget.user_id
-      );
-      setAllProviders(prev =>
-        prev.map(p => p.id === rejectTarget.id
-          ? { ...p, is_verified: false, is_active: false, approval_status: "rejected", rejection_reason: trimmed }
-          : p
-        )
-      );
-      setRejectTarget(null);
-      setRejectReason("");
-      setTab("rejected");
-      setSuccessMsg("Provider application rejected successfully.");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      let success = false;
+      try {
+        const { data: res } = await axios.post(
+          `${API_BASE_URL}/admin/providers/${rejectTarget.id}/reject`,
+          { reason: trimmed },
+          { headers: getAdminHeaders(), timeout: 5000 }
+        );
+        success = res.success;
+        if (!success) throw new Error(res.error);
+      } catch (serverErr: any) {
+        if (serverErr?.response?.status) throw serverErr;
+        const fallback = await supabaseReject(rejectTarget.id, trimmed);
+        if (!fallback.success) throw new Error(fallback.error);
+        success = true;
+      }
+
+      if (success) {
+        createProviderRejectionNotification(
+          rejectTarget.id,
+          rejectTarget.name,
+          trimmed,
+          rejectTarget.user_id
+        ).catch(() => {});
+        setAllProviders(prev =>
+          prev.map(p => p.id === rejectTarget.id
+            ? { ...p, is_verified: false, is_active: false, approval_status: "rejected", rejection_reason: trimmed }
+            : p
+          )
+        );
+        setRejectTarget(null);
+        setRejectReason("");
+        setTab("rejected");
+        setSuccessMsg("Provider application rejected successfully.");
+        setTimeout(() => setSuccessMsg(""), 4000);
+      }
     } catch (e: any) {
       setError(`Failed to reject provider: ${e.message}`);
     } finally {

@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, Bell, ShieldCheck, X, CheckCheck } from "lucide-react";
-import { fetchAdminNotifications, markAsRead, markAllAdminNotificationsRead, DatabaseNotification } from "@/lib/notificationService";
-import { useAdminNotificationUpdates } from "@/hooks/useRealtimeUpdates";
+import axios from "axios";
+import { DatabaseNotification, fetchAdminNotifications } from "@/lib/notificationService";
+import { API_BASE_URL } from "@/config/env";
+
+function getAdminHeaders() {
+  return { "x-admin-key": localStorage.getItem("roundu_admin_token") ?? "" };
+}
 
 interface AdminTopBarProps {
     onMenuClick: () => void;
@@ -45,12 +50,26 @@ export default function AdminTopBar({ onMenuClick }: AdminTopBarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<DatabaseNotification[]>([]);
     const [loadingNotifications, setLoadingNotifications] = useState(false);
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
     const loadNotifications = async () => {
         setLoadingNotifications(true);
         try {
+            // Try server API first (bypasses Supabase RLS / cross-DB gap)
+            try {
+                const { data: res } = await axios.get(
+                    `${API_BASE_URL}/admin/notifications?limit=20`,
+                    { headers: getAdminHeaders(), timeout: 5000 }
+                );
+                if (res.success) {
+                    setNotifications(res.data ?? []);
+                    return;
+                }
+            } catch {
+                // Server unavailable — fall back to Supabase
+            }
             const data = await fetchAdminNotifications(20);
             setNotifications(data);
         } catch (e) {
@@ -60,16 +79,14 @@ export default function AdminTopBar({ onMenuClick }: AdminTopBarProps) {
         }
     };
 
-    useEffect(() => { loadNotifications(); }, []);
-
-    // Realtime: prepend new admin notifications as they arrive
-    useAdminNotificationUpdates((newNotification) => {
-        // Only show admin-relevant notification types
-        const adminTypes = ["provider_registration", "provider_approved", "provider_rejected", "booking_cancelled", "refund_requested"];
-        if (adminTypes.includes(newNotification.type)) {
-            setNotifications(prev => [newNotification, ...prev.slice(0, 19)]);
-        }
-    });
+    useEffect(() => {
+        loadNotifications();
+        // Poll every 30 seconds so new provider registrations appear without reload
+        pollRef.current = setInterval(loadNotifications, 30_000);
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Clock
     useEffect(() => {
@@ -79,8 +96,12 @@ export default function AdminTopBar({ onMenuClick }: AdminTopBarProps) {
 
     const handleNotificationClick = async (n: DatabaseNotification) => {
         if (!n.is_read) {
-            await markAsRead(n.id);
             setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+            axios.patch(
+                `${API_BASE_URL}/admin/notifications/${n.id}/read`,
+                {},
+                { headers: getAdminHeaders() }
+            ).catch(() => {});
         }
         const route = getNotificationRoute(n);
         if (route) {
@@ -90,8 +111,12 @@ export default function AdminTopBar({ onMenuClick }: AdminTopBarProps) {
     };
 
     const handleMarkAllRead = async () => {
-        await markAllAdminNotificationsRead();
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        axios.patch(
+            `${API_BASE_URL}/admin/notifications/mark-all-read`,
+            {},
+            { headers: getAdminHeaders() }
+        ).catch(() => {});
     };
 
     const formatTime = (createdAt: string): string => {
