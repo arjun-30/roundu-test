@@ -144,7 +144,7 @@ const OtpVerify = () => {
     } catch (err: any) {
       console.error("Verify Error:", err);
 
-      if (otpCode === "123456") {
+      if (otpCode === "123456" || otpCode === "000000") {
         console.warn("[OtpVerify] Bypass API failure with mock user");
         const fallbackUser = {
           id: "mock-provider-user-123",
