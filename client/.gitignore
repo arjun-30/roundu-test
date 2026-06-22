@@ -4,8 +4,7 @@ node_modules/
 .pnp.js
 bun.lockb
 
-# Build output
-dist/
+# Build output — dist/ is committed so Vercel serves the pre-built files directly
 build/
 
 # Environment

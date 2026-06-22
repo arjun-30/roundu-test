@@ -1,0 +1,1 @@
+import{j as e}from"./vendor-query-BKy-jsDF.js";const s=()=>e.jsxs("div",{className:"p-4",children:[e.jsx("h1",{className:"text-2xl font-bold",children:"Favorites"}),e.jsx("p",{className:"mt-2 text-muted-foreground",children:"Your favorited providers will appear here."})]});export{s as default};
