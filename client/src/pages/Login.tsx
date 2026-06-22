@@ -45,10 +45,10 @@ const Login = () => {
     } catch (err: any) {
       console.error('Send OTP Failed:', err);
       if (import.meta.env.DEV) {
-        console.warn('[Login] Server unreachable — using dev bypass (000000)');
+        console.warn('[Login] Using Mock OTP fallback');
         dispatch({ type: "SET_PHONE", phone: data.phone });
         localStorage.setItem("roundu_pending_phone", data.phone);
-        navigate("/otp", { state: { devOtp: "000000" } });
+        navigate("/otp");
       } else {
         setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
       }
