@@ -240,7 +240,11 @@ let parsedDraft = {
 };
 if (savedDraft) {
   try {
-    parsedDraft = JSON.parse(savedDraft);
+    const parsed = JSON.parse(savedDraft);
+    // File objects serialize to {} — remove any stale phantom value so VideoPortfolio
+    // doesn't call createObjectURL({}) and crash on mount
+    delete parsed.videoFile;
+    parsedDraft = parsed;
   } catch (e) {
     console.error("Failed to parse saved draft", e);
   }
@@ -804,7 +808,10 @@ function reducer(state: State, action: Action): State {
     case "UPDATE_REGISTRATION_DRAFT": {
       const newDraft = { ...state.providerRegistrationDraft, ...action.patch };
       try {
-        localStorage.setItem("roundu_provider_draft", JSON.stringify(newDraft));
+        // File objects can't survive JSON serialization — exclude videoFile so it
+        // doesn't come back as {} on the next page load and crash createObjectURL
+        const { videoFile: _drop, ...draftToSave } = newDraft as any;
+        localStorage.setItem("roundu_provider_draft", JSON.stringify(draftToSave));
       } catch (e) {
         console.error(e);
       }
