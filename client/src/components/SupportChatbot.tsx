@@ -32,7 +32,8 @@ const SupportChatbot = () => {
   }
 
   const isJobPage = pathname.startsWith("/provider/job/");
-  const bottomClass = isJobPage ? "bottom-32" : "bottom-24";
+  const isServiceSelectPage = pathname.startsWith("/service-select/");
+  const bottomClass = (isJobPage || isServiceSelectPage) ? "bottom-32" : "bottom-24";
 
   return (
     <button

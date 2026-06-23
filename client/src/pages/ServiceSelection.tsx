@@ -305,7 +305,7 @@ const ServiceSelection = () => {
 
   return (
 
-    <div className="min-h-screen relative overflow-hidden pb-10">
+    <div className="min-h-screen relative overflow-hidden pb-32">
 
       {/* BACKGROUND */}
       <div
@@ -558,7 +558,7 @@ const ServiceSelection = () => {
 
             <motion.div
               initial={{
-                y: 100,
+                y: 120,
                 opacity: 0,
               }}
               animate={{
@@ -566,7 +566,7 @@ const ServiceSelection = () => {
                 opacity: 1,
               }}
               exit={{
-                y: 100,
+                y: 120,
                 opacity: 0,
               }}
               transition={{
@@ -574,13 +574,14 @@ const ServiceSelection = () => {
                 stiffness: 300,
                 damping: 28,
               }}
-              className="sticky bottom-0 z-30 px-5 pt-5 pb-6 bg-gradient-to-t from-[#F8FAFC] to-transparent"
+              className="fixed bottom-0 left-0 right-0 z-30 px-5 pt-5 pb-6 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC] to-transparent"
             >
 
               <button
                 onClick={handleContinue}
                 disabled={isLoading}
-                className="premium-button w-full h-[72px] rounded-[28px] text-white font-black text-[18px] flex items-center justify-center gap-3 shadow-[0_20px_60px_rgba(23,55,94,0.25)]"
+                className="w-full h-[72px] rounded-[28px] text-white font-black text-[18px] flex items-center justify-center gap-3 shadow-[0_20px_60px_rgba(23,55,94,0.25)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
+                style={{ background: "hsl(215, 71%, 13%)" }}
               >
 
                 {isLoading ? (
