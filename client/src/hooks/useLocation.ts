@@ -55,28 +55,13 @@ export const useCurrentLocation = (onUpdate?: (lat: number, lng: number) => void
 
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      let perm;
       try {
-        perm = await Geolocation.checkPermissions();
+        // Attempt to request permissions explicitly (useful for native Capacitor)
+        await Geolocation.requestPermissions();
       } catch (e) {
-        perm = { location: 'prompt' };
-      }
-
-      if (perm.location !== 'granted') {
-        if (perm.location === 'denied' && !forcePrompt) {
-          setState(s => ({ ...s, error: 'Location permission denied.', loading: false }));
-          return;
-        }
-        try {
-          perm = await Geolocation.requestPermissions();
-        } catch (e) {
-          perm = { location: 'denied' };
-        }
-      }
-
-      if (perm.location !== 'granted') {
-        setState(s => ({ ...s, error: 'Location permission denied.', loading: false }));
-        return;
+        // On web, requestPermissions might not be supported. We ignore the error 
+        // and rely on getCurrentPosition to naturally trigger the browser prompt.
+        console.warn("requestPermissions not supported, relying on getCurrentPosition prompt");
       }
 
       const pos = await Geolocation.getCurrentPosition({
@@ -168,16 +153,13 @@ export const useWatchLocation = (
 
     const startWatch = async () => {
       try {
-        let perm = await Geolocation.checkPermissions();
-        if (perm.location !== 'granted') {
-          perm = await Geolocation.requestPermissions();
+        try {
+          await Geolocation.requestPermissions();
+        } catch (e) {
+          console.warn("requestPermissions not supported, relying on watchPosition prompt");
         }
+        
         if (!active) return;
-
-        if (perm.location !== 'granted') {
-          setError('Location permission denied.');
-          return;
-        }
 
         watchId = await Geolocation.watchPosition(
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },

@@ -96,25 +96,13 @@ const LocationPage = () => {
     setError("");
 
     try {
-      let perm;
       try {
-        perm = await Geolocation.checkPermissions();
+        // Attempt to request permissions explicitly (useful for native Capacitor)
+        await Geolocation.requestPermissions();
       } catch (e) {
-        perm = { location: "prompt" };
-      }
-
-      if (perm.location !== "granted") {
-        try {
-          perm = await Geolocation.requestPermissions();
-        } catch (e) {
-          perm = { location: "denied" };
-        }
-      }
-
-      if (perm.location !== "granted") {
-        setError("Unable to access current location. Please grant permission.");
-        setIsDetecting(false);
-        return;
+        // On web, requestPermissions might not be supported. We ignore the error 
+        // and rely on getCurrentPosition to naturally trigger the browser prompt.
+        console.warn("requestPermissions not supported, relying on getCurrentPosition prompt");
       }
 
       const pos = await Geolocation.getCurrentPosition({
@@ -134,9 +122,12 @@ const LocationPage = () => {
       }
     } catch (err: any) {
       console.warn("Location detection error:", err);
-      let msg = "Failed to get your location.";
-      if (err.message?.includes("denied")) {
+      let msg = err.message || "Failed to get your location.";
+      if (err.message?.includes("denied") || err.code === 1) {
         msg = "Unable to access current location. Please grant permission.";
+      }
+      if (!window.isSecureContext) {
+        msg = "Location requires HTTPS or localhost. Please use a secure connection.";
       }
       setError(msg);
       setIsDetecting(false);
@@ -254,10 +245,35 @@ const LocationPage = () => {
                 </div>
               </button>
               {error && (
-                <p className="text-[12px] text-red-500 font-bold px-1 flex items-center gap-1.5 animate-in fade-in">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  {error}
-                </p>
+                <div className="mt-3 p-4 rounded-2xl bg-red-50 border border-red-100 animate-in fade-in">
+                  <p className="text-[12px] text-red-500 font-bold px-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    {error}
+                  </p>
+                  {(error.includes("permission") || error.includes("HTTPS")) && (
+                    <button
+                      onClick={async () => {
+                        const { Capacitor } = await import('@capacitor/core');
+                        if (Capacitor.isNativePlatform()) {
+                          try {
+                            const { NativeSettings, AndroidSettings, IOSSettings } = await import('capacitor-native-settings');
+                            NativeSettings.open({
+                              optionAndroid: AndroidSettings.ApplicationDetails,
+                              optionIOS: IOSSettings.App
+                            });
+                          } catch (e) {
+                            console.error("Failed to open settings", e);
+                          }
+                        } else {
+                          alert("Location is blocked. To allow it, click the lock icon (🔒) or settings icon next to your website address bar, change Location to 'Allow', and refresh the page.");
+                        }
+                      }}
+                      className="mt-3 w-full py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors"
+                    >
+                      Open Settings
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

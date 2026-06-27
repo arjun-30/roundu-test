@@ -45,25 +45,10 @@ const PersonalDetails = () => {
     setDetectError("");
 
     try {
-      let permResult;
       try {
-        permResult = await Geolocation.checkPermissions();
+        await Geolocation.requestPermissions();
       } catch (e) {
-        permResult = { location: 'prompt' };
-      }
-
-      if (permResult.location !== 'granted') {
-        try {
-          permResult = await Geolocation.requestPermissions();
-        } catch (e) {
-          permResult = { location: 'denied' };
-        }
-      }
-
-      if (permResult.location !== 'granted') {
-        setDetectError("Location access denied. Please enable permission.");
-        setIsDetecting(false);
-        return;
+        console.warn("requestPermissions not supported, relying on getCurrentPosition prompt");
       }
 
       const pos = await Geolocation.getCurrentPosition({
@@ -85,9 +70,12 @@ const PersonalDetails = () => {
       }
     } catch (err: any) {
       console.error("Geolocation error:", err);
-      let msg = "Failed to detect location. Please check settings.";
-      if (err.message?.includes("denied")) {
+      let msg = err.message || "Failed to detect location. Please check settings.";
+      if (err.message?.includes("denied") || err.code === 1) {
         msg = "Location access denied. Please enable permission.";
+      }
+      if (!window.isSecureContext) {
+        msg = "Location requires HTTPS or localhost. Please use a secure connection.";
       }
       setDetectError(msg);
       setIsDetecting(false);
